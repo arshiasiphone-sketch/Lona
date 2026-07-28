@@ -1,5 +1,19 @@
-import { createContext, createElement, useContext, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+/**
+ * Wishlist — Convex-backed.
+ *
+ * Same public surface as the legacy localStorage implementation
+ * ({ ids, has, toggle, remove, clear }) so the locked UI keeps working.
+ */
+import { api } from "@/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
+import { useDeviceSession } from "@/lib/data/session";
 
 interface WishlistContextValue {
   ids: string[];
@@ -9,43 +23,48 @@ interface WishlistContextValue {
   clear: () => void;
 }
 
-const STORAGE_KEY = "aeon-wishlist-v1";
-
 const WishlistContext = createContext<WishlistContextValue | null>(null);
 
-export function WishlistProvider({ children }: { children: ReactNode }) {
-  const [ids, setIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    } catch {
-      return [];
-    }
-  });
+export function WishlistProvider({ children }: { children: React.ReactNode }) {
+  const sessionId = useDeviceSession();
+  const remote = useQuery(
+    api.wishlist.getMine,
+    sessionId ? { sessionId } : "skip"
+  );
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-    } catch {
-      /* swallow quota errors */
-    }
-  }, [ids]);
+  const toggleWish = useMutation(api.wishlist.toggle);
+  const removeWish = useMutation(api.wishlist.remove);
+  const clearWish = useMutation(api.wishlist.clear);
 
-  const value = useMemo<WishlistContextValue>(
-    () => ({
-      ids,
-      has: (id) => ids.includes(id),
-      toggle: (id) =>
-        setIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        ),
-      remove: (id) => setIds((prev) => prev.filter((x) => x !== id)),
-      clear: () => setIds([]),
-    }),
+  const ids = useMemo(() => remote?.productIds ?? [], [remote]);
+
+  const has = useCallback(
+    (id: string) => ids.includes(id),
     [ids]
   );
 
+  const toggle = useCallback(
+    (id: string) => {
+      if (!sessionId) return;
+      void toggleWish({ sessionId, productId: id });
+    },
+    [sessionId, toggleWish]
+  );
+
+  const remove = useCallback(
+    (id: string) => {
+      if (!sessionId) return;
+      void removeWish({ sessionId, productId: id });
+    },
+    [sessionId, removeWish]
+  );
+
+  const clear = useCallback(() => {
+    if (!sessionId) return;
+    void clearWish({ sessionId });
+  }, [sessionId, clearWish]);
+
+  const value: WishlistContextValue = { ids, has, toggle, remove, clear };
   return createElement(WishlistContext.Provider, { value }, children);
 }
 
