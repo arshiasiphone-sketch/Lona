@@ -21,9 +21,9 @@ export default function Wishlist() {
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="flex items-end justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Saved</p>
+          <p className="type-eyebrow text-ink-muted">علاقه‌مندی‌ها</p>
           <h1 className="mt-3 font-display text-4xl text-ink lg:text-6xl">
-            Wishlist
+            فهرست دلخواه شما
           </h1>
         </div>
         {items.length > 0 && (
@@ -31,7 +31,7 @@ export default function Wishlist() {
             onClick={clear}
             className="text-[11px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
           >
-            Clear all
+            پاک کردن همه
           </button>
         )}
       </header>
@@ -39,16 +39,17 @@ export default function Wishlist() {
       {items.length === 0 ? (
         <div className="mt-16 text-center">
           <p className="font-display text-3xl text-ink lg:text-4xl">
-            Nothing saved yet.
+            هنوز محصولی ذخیره نکرده‌اید.
           </p>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink-soft">
-            Heart a piece to keep it here. Wishlist items persist for ninety days.
+            برای نگه‌داشتن محصولات در این فهرست، روی آیکون قلب کلیک کنید. موارد ذخیره‌شده
+            تا ۹۰ روز در دسترس شما هستند.
           </p>
           <Link
             to="/shop"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
           >
-            Browse Catalogue
+            مشاهده کالکسیون
           </Link>
         </div>
       ) : (
@@ -65,13 +66,13 @@ export default function Wishlist() {
                 className="relative"
               >
                 <ProductCard product={product} />
-                <div className="absolute right-1 top-1">
+                <div className="absolute left-1 top-1">
                   <button
                     onClick={() => remove(product.id)}
                     className={cn(
                       "grid h-8 w-8 place-items-center rounded-full glass-subtle text-ink-soft hover:bg-white hover:text-ink"
                     )}
-                    aria-label="remove from wishlist"
+                    aria-label="حذف از علاقه‌مندی‌ها"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -87,7 +88,7 @@ export default function Wishlist() {
                   }
                   className="mt-4 w-full rounded-full hairline px-4 py-2 text-[11px] uppercase tracking-[0.16em] text-ink-soft transition hover:bg-ink hover:text-canvas"
                 >
-                  Move to bag
+                  انتقال به سبد
                 </button>
               </motion.div>
             ))}

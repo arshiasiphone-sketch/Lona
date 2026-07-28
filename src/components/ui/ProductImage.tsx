@@ -14,10 +14,25 @@ const gradientClass = (value: GradientInput): string =>
 interface ProductImageProps {
   gradient?: GradientInput;
   className?: string;
-  /** "Mannequin" silhouette: coat, knit, trouser, dress, accessory */
-  silhouette?: "coat" | "knit" | "trouser" | "shirt" | "dress" | "leather" | "accessory";
+  /**
+   * Garment silhouette. The Aeon/Æon outerwear/knitwear taxonomy is preserved
+   * alongside the LONA lingerie taxonomy (bra · brief · robe · tee · bodysuit).
+   */
+  silhouette?:
+    | "coat"
+    | "knit"
+    | "trouser"
+    | "shirt"
+    | "dress"
+    | "leather"
+    | "accessory"
+    | "bra"
+    | "brief"
+    | "robe"
+    | "tee"
+    | "bodysuit";
   alt?: string;
-  /** Floating "Æ" wordmark ratio */
+  /** Floating "L" wordmark ratio */
   withMark?: boolean;
 }
 
@@ -125,6 +140,76 @@ const silhouetteFor = (s: ProductImageProps["silhouette"]) => {
           />
         </svg>
       );
+    case "bra":
+      return (
+        <svg
+          viewBox="0 0 120 200"
+          aria-hidden="true"
+          className="absolute inset-0 m-auto h-[58%] w-[62%] drop-shadow-[0_18px_30px_rgba(20,30,55,0.12)]"
+        >
+          <path
+            d="M20 60c0-8 8-14 18-14 6 0 12 4 16 12 2 4 4 6 6 6s4-2 6-6c4-8 10-12 16-12 10 0 18 6 18 14 0 16-12 30-40 30S20 76 20 60zm4 24c12 12 32 14 36 14s24-2 36-14l-4 24c-4 14-16 22-32 22s-28-8-32-22l-4-24z"
+            fill="currentColor"
+            opacity="0.78"
+          />
+        </svg>
+      );
+    case "brief":
+      return (
+        <svg
+          viewBox="0 0 120 200"
+          aria-hidden="true"
+          className="absolute inset-0 m-auto h-[40%] w-[58%] drop-shadow-[0_18px_30px_rgba(20,30,55,0.12)]"
+        >
+          <path
+            d="M28 80h64c4 0 8 4 8 10v30c0 18-18 28-40 28s-40-10-40-28V90c0-6 4-10 8-10zm-4 28h72"
+            fill="currentColor"
+            opacity="0.78"
+          />
+        </svg>
+      );
+    case "robe":
+      return (
+        <svg
+          viewBox="0 0 120 200"
+          aria-hidden="true"
+          className="absolute inset-0 m-auto h-[84%] w-[46%] drop-shadow-[0_18px_30px_rgba(20,30,55,0.12)]"
+        >
+          <path
+            d="M60 14c6 0 10 4 10 10v6l16 6 16 60 6 90H12l6-90 16-60 16-6v-6c0-6 4-10 10-10z"
+            fill="currentColor"
+            opacity="0.78"
+          />
+        </svg>
+      );
+    case "tee":
+      return (
+        <svg
+          viewBox="0 0 120 200"
+          aria-hidden="true"
+          className="absolute inset-0 m-auto h-[68%] w-[54%] drop-shadow-[0_18px_30px_rgba(20,30,55,0.12)]"
+        >
+          <path
+            d="M60 14l-22 4-28 14 8 24 16-4v116h52V52l16 4 8-24-28-14z"
+            fill="currentColor"
+            opacity="0.78"
+          />
+        </svg>
+      );
+    case "bodysuit":
+      return (
+        <svg
+          viewBox="0 0 120 200"
+          aria-hidden="true"
+          className="absolute inset-0 m-auto h-[84%] w-[42%] drop-shadow-[0_18px_30px_rgba(20,30,55,0.12)]"
+        >
+          <path
+            d="M60 12l-18 6c-14 6-22 16-22 30v20h-8v60c0 14 10 22 24 22h8v40h32v-40h8c14 0 24-8 24-22v-60h-8V48c0-14-8-24-22-30z"
+            fill="currentColor"
+            opacity="0.78"
+          />
+        </svg>
+      );
     default:
       return null;
   }
@@ -152,7 +237,7 @@ export function ProductImage({
       <div className="text-ink/55">{silhouetteFor(silhouette)}</div>
       {withMark && (
         <span className="absolute bottom-3 left-3 font-display text-[10px] tracking-[0.4em] text-ink/50">
-          ÆON
+          LONA
         </span>
       )}
     </div>

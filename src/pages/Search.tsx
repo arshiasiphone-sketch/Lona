@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { motion } from "framer-motion";
-import { Search as SearchIcon, Sparkles, ArrowUpRight, History, X } from "lucide-react";
+import { Search as SearchIcon, Sparkles, ArrowUpLeft, History, X } from "lucide-react";
 import {
   useProducts,
   useCollections,
@@ -17,28 +17,30 @@ import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
+import { formatPrice } from "@/lib/format";
 
-const RECENT_KEY = "aeon-recent-searches-v1";
+const RECENT_KEY = "lona-recent-searches-v1";
 const POPULAR = [
-  "Cashmere",
-  "Outerwear",
-  "The Permanent collection",
-  "Leather",
-  "Eyewear",
+  "سوتین",
+  "شورت",
+  "لباس خواب",
+  "کالکسیون تابستان",
+  "بادی",
+  "اکسسوری",
 ];
+
 const silhouetteFor = (cat: string) => {
   switch (cat) {
-    case "outerwear": return "coat" as const;
-    case "knitwear": return "knit" as const;
-    case "trousers": return "trouser" as const;
-    case "shirting": return "shirt" as const;
-    case "dresses": return "dress" as const;
-    case "leather": return "leather" as const;
+    case "intimates-bras": return "bra" as const;
+    case "intimates-briefs": return "brief" as const;
+    case "sleepwear": return "robe" as const;
+    case "homewear": return "tee" as const;
+    case "bodysuits": return "bodysuit" as const;
+    case "shapewear": return "bodysuit" as const;
+    case "loungewear-sets": return "robe" as const;
     default: return "accessory" as const;
   }
 };
-const gradientFor = (k: string) =>
-  k === "oat" ? "gradient-oat" : k === "deep" ? "gradient-deep" : k === "rose" ? "gradient-rose-quartz" : "gradient-mist";
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -86,17 +88,16 @@ export default function Search() {
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="max-w-3xl">
-        <p className="type-eyebrow text-ink-muted">Search</p>
+        <p className="type-eyebrow text-ink-muted">جستجو</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-7xl">
-          {q ? `“${q}”` : "What are you looking for?"}
+          {q ? `«${q}»` : "دنبال چه می‌گردید؟"}
         </h1>
         <p className="mt-5 text-sm leading-relaxed text-ink-soft lg:text-base">
-          Search across the catalogue. Pieces and collections are matched against name,
-          description, and category.
+          در کالکسیون بوتیک جستجو کنید. محصولات بر اساس نام، توضیح و دسته‌بندی
+          مطابقت داده می‌شوند.
         </p>
       </header>
 
-      {/* Search field */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -110,7 +111,7 @@ export default function Search() {
         <input
           name="q"
           defaultValue={q}
-          placeholder="Knitwear, leather, the Paragon coat…"
+          placeholder="سوتین، شورت، لباس خواب، بادی…"
           className="flex-1 bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none"
         />
         {q && (
@@ -118,7 +119,7 @@ export default function Search() {
             type="button"
             onClick={() => navigate("/search")}
             className="grid h-8 w-8 place-items-center rounded-full text-ink-soft hover:bg-white"
-            aria-label="Clear search"
+            aria-label="پاک کردن جستجو"
           >
             <X className="h-4 w-4" />
           </button>
@@ -127,14 +128,13 @@ export default function Search() {
           type="submit"
           className="rounded-full bg-ink px-4 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          Search
+          جستجو
         </button>
       </form>
 
-      {/* Keyboard hints */}
       <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        Press <kbd className="hairline rounded bg-canvas/60 px-1.5 py-0.5 text-ink">⌘ K</kbd>{" "}
-        to open the command palette anywhere.
+        فشردن <kbd className="hairline rounded bg-canvas/60 px-1.5 py-0.5 text-ink">⌘ K</kbd>{" "}
+        پنل فرمان را در هر صفحه‌ای باز می‌کند.
       </p>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_320px]">
@@ -145,7 +145,7 @@ export default function Search() {
           {q && results.length > 0 && (
             <>
               <p className="type-eyebrow text-ink-muted">
-                {results.length} pieces match
+                {results.length.toLocaleString("fa-IR")} محصول یافت شد
               </p>
               <div className="mt-6">
                 <ProductGrid products={results} columns={3} />
@@ -155,19 +155,18 @@ export default function Search() {
           {!q && (
             <div className="grid gap-10">
               <div>
-                <p className="type-eyebrow text-ink-muted">Trending now</p>
+                <p className="type-eyebrow text-ink-muted">پرفروش‌های این هفته</p>
                 <div className="mt-5">
                   <ProductGrid products={trending} columns={4} />
                 </div>
               </div>
               <div>
-                <p className="type-eyebrow text-ink-muted">From your preferences</p>
+                <p className="type-eyebrow text-ink-muted">پیشنهاد بوتیک برای شما</p>
                 <h2 className="mt-2 font-display text-3xl text-ink lg:text-4xl">
-                  Considered for you
+                  انتخاب‌های ویژه
                 </h2>
                 <p className="mt-3 max-w-md text-sm text-ink-soft">
-                  Discover pieces based on your last visits. Personalization arrives fully
-                  with the next release.
+                  محصولاتی بر اساس بازدیدهای اخیر شما. شخصی‌سازی کامل در نسخه بعدی فعال خواهد شد.
                 </p>
                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {products.slice(0, 4).map((p) => (
@@ -190,7 +189,7 @@ export default function Search() {
                         />
                         <p className="mt-3 font-display text-base text-ink">{p.name}</p>
                         <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                          ${p.price}
+                          {formatPrice(p.price)}
                         </p>
                       </Link>
                     </motion.div>
@@ -201,10 +200,9 @@ export default function Search() {
           )}
         </div>
 
-        {/* Side rail */}
         <aside className="lg:sticky lg:top-32 lg:h-fit">
           <div className="glass rounded-3xl p-6">
-            <p className="type-eyebrow text-ink-muted">Popular searches</p>
+            <p className="type-eyebrow text-ink-muted">جستجوی پرطرفدار</p>
             <ul className="mt-4 flex flex-wrap gap-2">
               {POPULAR.map((term) => (
                 <li key={term}>
@@ -221,19 +219,19 @@ export default function Search() {
 
           <div className="glass mt-6 rounded-3xl p-6">
             <div className="flex items-center justify-between">
-              <p className="type-eyebrow text-ink-muted">Your recent searches</p>
+              <p className="type-eyebrow text-ink-muted">جستجوهای اخیر شما</p>
               {recent.length > 0 && (
                 <button
                   onClick={onClearRecent}
                   className="text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
                 >
-                  Clear
+                  پاک کردن
                 </button>
               )}
             </div>
             {recent.length === 0 ? (
               <p className="mt-4 text-sm text-ink-muted">
-                Searches you make here are remembered for later sessions.
+                جستجوهای شما در نشست‌های بعدی ذخیره می‌شوند.
               </p>
             ) : (
               <ul className="mt-4 space-y-1">
@@ -242,7 +240,7 @@ export default function Search() {
                     <button
                       onClick={() => submit(term)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/60",
+                        "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-right text-sm transition hover:bg-white/60",
                         term === q && "bg-white/80 text-ink"
                       )}
                     >
@@ -258,7 +256,7 @@ export default function Search() {
           <div className="glass mt-6 rounded-3xl p-6">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <p className="type-eyebrow text-ink-muted">Suggested collections</p>
+              <p className="type-eyebrow text-ink-muted">کالکسیون‌های پیشنهادی</p>
             </div>
             <ul className="mt-4 space-y-2">
               {collections.slice(0, 4).map((c) => (
@@ -279,18 +277,18 @@ export default function Search() {
 
           {isAuthenticated && (
             <div className="glass mt-6 rounded-3xl p-6">
-              <p className="type-eyebrow text-ink-muted">From your account</p>
+              <p className="type-eyebrow text-ink-muted">از حساب شما</p>
               <ul className="mt-4 space-y-2 text-sm">
                 <li>
                   <Link to="/wishlist" className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/60">
-                    <span>Saved pieces</span>
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{wishlistIds.length}</span>
+                    <span>محصولات ذخیره‌شده</span>
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{wishlistIds.length.toLocaleString("fa-IR")}</span>
                   </Link>
                 </li>
                 <li>
-                  <Link to="/account" className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/60">
-                    <span>Workspace</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-ink-muted" />
+                  <Link to="/dashboard" className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-white/60">
+                    <span>حساب کاربری</span>
+                    <ArrowUpLeft className="h-3.5 w-3.5 text-ink-muted" />
                   </Link>
                 </li>
               </ul>

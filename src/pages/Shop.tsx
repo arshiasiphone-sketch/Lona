@@ -67,7 +67,7 @@ const filterProducts = (items: Product[], f: ShopFilters): Product[] => {
     if (
       f.availability === "in_stock" &&
       p.badges?.includes("limited") &&
-      false /* mock: always available */
+      false
     ) {
       return false;
     }
@@ -98,12 +98,6 @@ const sortItems = (items: Product[], sort: ShopSort): Product[] => {
   }
 };
 
-// Optionally align a "badge" query — invisible here, but the URL ?badge=new is read.
-const matchesBadge = (p: Product, badge: string | null): boolean => {
-  if (!badge) return true;
-  return !!p.badges?.includes(badge as NonNullable<Product["badges"]>[number]);
-};
-
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [drawer, setDrawer] = useState(false);
@@ -131,12 +125,10 @@ export default function Shop() {
   const hasMore = visible.length < sorted.length;
 
   useEffect(() => {
-    // brief skeleton placeholder for perceived polish; immediate on real data
     const t = setTimeout(() => setLoading(false), 240);
     return () => clearTimeout(t);
   }, []);
 
-  // Reset page whenever filters change
   useEffect(() => {
     setPage(1);
   }, [filters, sort]);
@@ -158,14 +150,14 @@ export default function Shop() {
       {/* Heading */}
       <header className="flex flex-col gap-4 pb-10 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">The Catalogue</p>
+          <p className="type-eyebrow text-ink-muted">کالکسیون بوتیک</p>
           <h1 className="mt-3 font-display text-5xl leading-[1.02] tracking-[-0.02em] text-ink lg:text-7xl">
-            Shop
+            محصولات
           </h1>
         </div>
         <p className="max-w-xl text-sm leading-relaxed text-ink-muted">
-          Every ÆON piece is made in limited runs at our ateliers in Italy and
-          Japan. Pieces are restocked seasonally — not continuously.
+          هر محصول لونا در تعداد محدود و با تمرکز بر کیفیت پارچه، دوخت ظریف و
+          راحتی طراحی و تولید می‌شود. محصولات به‌صورت فصلی عرضه می‌شوند.
         </p>
       </header>
 
@@ -177,10 +169,10 @@ export default function Shop() {
             className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/60 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-white/80"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            Filter
+            فیلتر
             {activeFacetCount(filters) > 0 && (
               <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                {activeFacetCount(filters)}
+                {activeFacetCount(filters).toLocaleString("fa-IR")}
               </span>
             )}
           </button>
@@ -191,7 +183,7 @@ export default function Shop() {
           />
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-[11px] uppercase tracking-[0.18em] text-ink-muted sm:inline">
-              {sorted.length} pieces
+              {sorted.length.toLocaleString("fa-IR")} محصول
             </span>
             <span className="hidden h-3 w-px bg-edge sm:inline-block" />
             <SortDropdown />
@@ -202,7 +194,6 @@ export default function Shop() {
 
       {/* Body */}
       <div className="grid gap-10 lg:grid-cols-[260px_1fr]">
-        {/* Sidebar */}
         <aside
           className={cn(
             "lg:sticky lg:top-32 lg:h-fit lg:block",
@@ -212,7 +203,7 @@ export default function Shop() {
           )}
         >
           <div className="flex items-center justify-between lg:hidden">
-            <h2 className="font-display text-2xl text-ink">Filter</h2>
+            <h2 className="font-display text-2xl text-ink">فیلتر</h2>
             <button
               onClick={() => setDrawer(false)}
               className="grid h-9 w-9 place-items-center rounded-full hairline"
@@ -232,12 +223,11 @@ export default function Shop() {
               onClick={() => onFiltersChange(FILTER_DEFAULTS)}
               className="mt-10 w-full rounded-full hairline bg-canvas/60 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-soft transition hover:bg-white"
             >
-              Reset all filters
+              پاک کردن همه فیلترها
             </button>
           </div>
         </aside>
 
-        {/* Grid */}
         <div>
           {loading ? (
             <div className="grid gap-10">
@@ -290,8 +280,8 @@ export default function Shop() {
               transition={{ delay: 0.3, duration: 0.6, ease: EASE_LUXURY }}
               className="mt-8 text-center text-xs text-ink-muted"
             >
-              Showing {visible.length} of {sorted.length} pieces. The next page
-              loads as you scroll.
+              نمایش {visible.length.toLocaleString("fa-IR")} از {sorted.length.toLocaleString("fa-IR")} محصول. صفحه بعدی
+              هنگام اسکرول بارگذاری می‌شود.
             </motion.p>
           )}
         </div>
@@ -301,16 +291,16 @@ export default function Shop() {
       <section className="mt-32 grid gap-8 md:grid-cols-3">
         {[
           {
-            title: "Complimentary shipping",
-            body: "On orders above $300, express worldwide.",
+            title: "ارسال رایگان",
+            body: "برای سفارش‌های بالای ۵٬۰۰۰٬۰۰۰ تومان، ارسال سریع در سراسر کشور.",
           },
           {
-            title: "30-day returns",
-            body: "Quiet, full-refund window — we send a courier.",
+            title: "۷ روز ضمانت بازگشت",
+            body: "بازگشت آسان و بازپرداخت کامل، با بسته‌بندی محرمانه.",
           },
           {
-            title: "Concierge",
-            body: "Write to the atelier directly. Replies within 24h.",
+            title: "پشتیبانی بوتیک",
+            body: "مستقیم با بوتیک در ارتباط باشید. پاسخ در کمتر از ۲۴ ساعت.",
           },
         ].map((s) => (
           <div key={s.title} className="glass rounded-3xl p-7">
@@ -320,19 +310,18 @@ export default function Shop() {
               to="/about#contact"
               className="mt-4 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink hover:text-primary"
             >
-              Concierge →
+              پشتیبانی
             </Link>
           </div>
         ))}
       </section>
 
-      {/* Helpful empty-search slot for empty state consumers */}
       <div className="sr-only">
         <EmptyState
           icon={<SlidersHorizontal className="h-5 w-5 text-ink" />}
-          eyebrow="Search"
-          title="No piece matches your filter."
-          body="Try loosening the price ceiling or returning to the full catalogue."
+          eyebrow="جستجو"
+          title="محصولی با این فیلتر یافت نشد."
+          body="محدوده قیمت را گسترده‌تر کنید یا به کالکسیون کامل بازگردید."
         />
       </div>
     </div>

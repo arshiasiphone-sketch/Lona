@@ -13,7 +13,7 @@ import { api } from "@/convex/_generated/api";
 import {
   Activity,
   AlertTriangle,
-  ArrowRight,
+  ArrowLeft,
   CheckCheck,
   DollarSign,
   Layers,
@@ -26,7 +26,6 @@ import { motion } from "framer-motion";
 
 import {
   AdminKPI,
-  AdminShell,
   AdminEmptyState,
 } from "@/components/admin";
 import { StatusBadge } from "@/components/admin";
@@ -34,10 +33,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
 
-// Standalone shell so this file works both as a child of `<Outlet/>`
-// inside the AdminShell layout and as the direct import target from
-// the router. We mount AdminShell conditionally to avoid double
-// chrome when nested.
 export function AdminDashboard() {
   return (
     <div>
@@ -46,7 +41,6 @@ export function AdminDashboard() {
   );
 }
 
-// Legacy export — the layout expects this name to pick the body.
 export default function DashboardBody() {
   return <KpisAndFeeds />;
 }
@@ -71,57 +65,57 @@ function KpisAndFeeds() {
     <div className="space-y-10">
       <header className="space-y-1">
         <p className="type-eyebrow text-ink-muted">
-          Welcome back · {user?.name || "Admin"}
+          خوش آمدید · {user?.name || "مدیر بوتیک"}
         </p>
         <h1 className="font-display text-4xl text-ink lg:text-5xl">
-          The state of ÆON, today.
+          وضعیت لونا، امروز.
         </h1>
       </header>
 
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         <AdminKPI
-          label="Revenue"
+          label="درآمد"
           value={formatPrice(stats.totalRevenueCents / 100, true)}
-          trend={`${stats.activeOrderCount} active orders`}
+          trend={`${stats.activeOrderCount.toLocaleString("fa-IR")} سفارش فعال`}
           icon={<DollarSign className="h-3.5 w-3.5" />}
         />
         <AdminKPI
-          label="Products"
-          value={String(stats.productCount)}
-          trend={`${stats.publishedCount} published · ${stats.draftCount} drafts · ${stats.archivedCount} archived`}
+          label="محصولات"
+          value={stats.productCount.toLocaleString("fa-IR")}
+          trend={`${stats.publishedCount.toLocaleString("fa-IR")} منتشر شده · ${stats.draftCount.toLocaleString("fa-IR")} پیش‌نویس · ${stats.archivedCount.toLocaleString("fa-IR")} آرشیو`}
           icon={<Layers className="h-3.5 w-3.5" />}
         />
         <AdminKPI
-          label="Customers"
-          value={String(stats.customerCount)}
-          trend={`Avg order size tracked over time`}
+          label="مشتریان"
+          value={stats.customerCount.toLocaleString("fa-IR")}
+          trend={`میانگین سفارش در طول زمان دنبال می‌شود`}
           icon={<Users className="h-3.5 w-3.5" />}
         />
         <AdminKPI
-          label="Active coupons"
-          value={String(stats.activeCouponCount)}
-          trend={`${stats.pendingReviewCount} reviews awaiting moderation`}
+          label="کدهای تخفیف فعال"
+          value={stats.activeCouponCount.toLocaleString("fa-IR")}
+          trend={`${stats.pendingReviewCount.toLocaleString("fa-IR")} بازخورد در انتظار بررسی`}
           icon={<Tag className="h-3.5 w-3.5" />}
         />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <AdminKPI
-          label="Active orders"
-          value={String(stats.activeOrderCount)}
-          trend={`over ${stats.orderCount} total`}
+          label="سفارش‌های فعال"
+          value={stats.activeOrderCount.toLocaleString("fa-IR")}
+          trend={`بیش از ${stats.orderCount.toLocaleString("fa-IR")} سفارش کل`}
           icon={<Package className="h-3.5 w-3.5" />}
         />
         <AdminKPI
-          label="Low-stock SKUs"
-          value={String(stats.lowStockVariantCount)}
-          trend={`Needs replenishment`}
+          label="موجودی کم"
+          value={stats.lowStockVariantCount.toLocaleString("fa-IR")}
+          trend={`نیاز به تأمین دوباره`}
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
         />
         <AdminKPI
-          label="Reviews"
-          value={String(stats.reviewCount)}
-          trend={`Tracked via the moderation queue`}
+          label="بازخوردها"
+          value={stats.reviewCount.toLocaleString("fa-IR")}
+          trend={`از طریق صف بررسی مدیریت می‌شود`}
           icon={<CheckCheck className="h-3.5 w-3.5" />}
         />
       </div>
@@ -148,18 +142,18 @@ function RecentOrdersCard({
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-2xl text-ink">Recent orders</h2>
+        <h2 className="font-display text-2xl text-ink">سفارش‌های اخیر</h2>
         <Link
           to="/admin/orders"
           className="text-[11px] uppercase tracking-[0.18em] text-ink-muted transition hover:text-ink"
         >
-          View all <ArrowRight className="ml-1 inline h-3 w-3" />
+          مشاهده همه <ArrowLeft className="ml-1 inline h-3 w-3" />
         </Link>
       </div>
       {orders.length === 0 ? (
         <AdminEmptyState
-          title="Quiet so far."
-          body="New orders fill in here automatically. The dashboard reads from your live Convex data."
+          title="فعلاً آرام است."
+          body="سفارش‌های جدید به‌طور خودکار اینجا نمایش داده می‌شوند. داده‌ها از Convex زنده خوانده می‌شوند."
           icon={<ShoppingBag className="h-5 w-5" />}
         />
       ) : (
@@ -181,7 +175,7 @@ function RecentOrdersCard({
                     {order.number}
                   </p>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                    Placed {new Date(order.placedAt).toLocaleDateString()}
+                    ثبت شد {new Date(order.placedAt).toLocaleDateString("fa-IR")}
                   </p>
                 </div>
                 <StatusBadge status={order.status as "pending" | "processing" | "shipped" | "delivered" | "returning" | "cancelled"} />
@@ -212,12 +206,12 @@ function ActivityFeed({
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <div className="flex items-center gap-2">
         <Activity className="h-4 w-4 text-primary" />
-        <h2 className="font-display text-2xl text-ink">Activity</h2>
+        <h2 className="font-display text-2xl text-ink">فعالیت‌ها</h2>
       </div>
       {items.length === 0 ? (
         <AdminEmptyState
-          title="Nothing logged yet."
-          body="Every admin write is captured here. Try publishing a draft."
+          title="هنوز موردی ثبت نشده."
+          body="هر تغییر مدیر اینجا ثبت می‌شود. می‌توانید اولین پیش‌نویس را منتشر کنید."
           icon={<Activity className="h-5 w-5" />}
         />
       ) : (
@@ -232,7 +226,7 @@ function ActivityFeed({
                 <span className="font-medium">{event.resource}</span>
               </p>
               <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                {new Date(event.at).toLocaleString()}
+                {new Date(event.at).toLocaleString("fa-IR")}
               </p>
             </li>
           ))}

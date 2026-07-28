@@ -11,7 +11,7 @@
 import { Link, useParams } from "react-router";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
+  ArrowLeft,
   BarChart3,
   Blocks,
   Boxes,
@@ -63,20 +63,20 @@ export default function AdminStub() {
             to="/admin/products"
             className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
           >
-            Begin with the catalogue <ArrowRight className="h-3 w-3" />
+            شروع با کالکسیون <ArrowLeft className="h-3 w-3" />
           </Link>
           <Link
             to="/admin"
             className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
           >
-            Back to overview
+            بازگشت به نمای کلی
           </Link>
         </div>
       </div>
 
       <aside className="space-y-4">
         <div className="rounded-3xl border border-edge bg-white/85 p-6">
-          <p className="type-eyebrow text-ink-muted">Up next for this slice</p>
+          <p className="type-eyebrow text-ink-muted">مراحل بعدی</p>
           <ul className="mt-4 space-y-2">
             {spec.upNext.map((item) => (
               <li
@@ -90,13 +90,13 @@ export default function AdminStub() {
           </ul>
         </div>
         <div className="rounded-3xl border border-edge bg-white/85 p-6">
-          <p className="type-eyebrow text-ink-muted">Permissions</p>
+          <p className="type-eyebrow text-ink-muted">دسترسی‌ها</p>
           <p className="mt-3 text-[12px] uppercase tracking-[0.18em] text-ink-soft">
             {spec.permission}
           </p>
           <p className="mt-2 text-sm text-ink-soft">
-            Authorization is server-side. The sidebar nav hides this
-            card if you don't carry the role required.
+            احراز هویت در سرور بررسی می‌شود. در صورت نداشتن نقش لازم، منوی
+            کناری این بخش را نمایش نمی‌دهد.
           </p>
         </div>
       </aside>
@@ -134,140 +134,137 @@ const ICONS: Record<string, React.ReactNode> = {
 
 const DOMAIN_MAP: Record<string, Spec> = {
   categories: {
-    eyebrow: "Catalogue · Categories",
-    title: "Taxonomy, in progress.",
+    eyebrow: "کالکسیون · دسته‌بندی‌ها",
+    title: "دسته‌بندی، در حال تکمیل.",
     body:
-      "The category surface keeps the storefront filter single-select at the moment. The Phase 5.2 follow-up graduates categories to a nested tree (parent · children · ordering · visibility) and adds the assignment workflow.",
+      "در حال حاضر دسته‌بندی‌ها در فیلتر فروشگاه به‌صورت تک‌انتخابی است. در فاز بعدی، دسته‌بندی‌ها به ساختار درختی با والد، فرزند، ترتیب و قابلیت دیده‌شدن ارتقا پیدا می‌کنند و گردش کار تخصیص محصول به آن‌ها افزوده می‌شود.",
     icon: "Tree",
-    permission: "manage_products",
+    permission: "مدیریت محصولات",
     upNext: [
-      "tree builder with drag-to-reorder",
-      "nested categories for Spring/Summer 2026",
+      "ساخت درخت با قابلیت کشیدن و رها کردن برای مرتب‌سازی",
+      "دسته‌بندی‌های تو در تو برای فصل بهار و تابستان ۱۴۰۵",
     ],
   },
   collections: {
-    eyebrow: "Catalogue · Collections",
-    title: "Collection stories, soon.",
+    eyebrow: "کالکسیون · مجموعه‌ها",
+    title: "داستان‌های مجموعه‌ها، به‌زودی.",
     body:
-      "Phase 5.1 binds collections as a single field on the product. The full collection editor (campaign layouts, ordering, mixed-archive inclusions) drops in with the next admin slice.",
+      "در فاز ۵.۱، مجموعه‌ها به‌عنوان یک فیلد روی محصول قرار گرفته‌اند. ویرایشگر کامل مجموعه‌ها (چیدمان کمپین، ترتیب، ترکیب آرشیو) در تکه بعدی ادمین اضافه می‌شود.",
     icon: "Collection",
-    permission: "manage_products",
+    permission: "مدیریت محصولات",
     upNext: [
-      "drag-to-reorder cards within a collection",
-      "seasonal cover image editor",
+      "مرتب‌سازی کارت‌ها در مجموعه با کشیدن و رها کردن",
+      "ویرایشگر تصویر جلد فصلی",
     ],
   },
   inventory: {
-    eyebrow: "Catalogue · Inventory",
-    title: "Stock at a glance.",
+    eyebrow: "کالکسیون · موجودی",
+    title: "موجودی در یک نگاه.",
     body:
-      "Variants ship with stock + SKU + availability; the wizard matrix is the deepest surface. Warehouse-aware stock movements and a low-stock inbox land in the next phase.",
+      "تنوع‌ها همراه با موجودی، SKU و وضعیت در دسترس ارائه می‌شوند؛ ماتریس ویزارد عمیق‌ترین سطح است. ثبت حرکت‌های موجودی بر اساس انبار و صندوق هشدار کمبود، در فاز بعدی اضافه می‌شود.",
     icon: "Inventory",
-    permission: "manage_inventory",
+    permission: "مدیریت موجودی",
     upNext: [
-      "warehouse-aware transfer ledger",
-      "low-stock email alerts to suppliers",
+      "دفتر کل انتقال‌های انبار",
+      "هشدار ایمیلی کمبود موجودی به تأمین‌کنندگان",
     ],
   },
   media: {
-    eyebrow: "Catalogue · Media Library",
-    title: "Visual library, in progress.",
+    eyebrow: "کالکسیون · کتابخانه رسانه",
+    title: "کتابخانه تصاویر، در حال تکمیل.",
     body:
-      "Product images upload via the MediaUploader. The reusable cross-product library (with alt-text search, tag filters, orphan reclamation) ships in Phase 5.2 once media volume crosses the threshold for search usefulness.",
+      "تصاویر محصول از طریق MediaUploader بارگذاری می‌شوند. کتابخانه مشترک بین محصولات (جستجو بر اساس متن جایگزین، فیلتر برچسب، بازیافت تصاویر بدون استفاده) در فاز ۵.۲ ارائه می‌شود.",
     icon: "Image",
-    permission: "manage_media",
+    permission: "مدیریت رسانه",
     upNext: [
-      "search by alt-text or tag",
-      "usage tracker — where each asset is referenced",
+      "جستجو بر اساس متن جایگزین یا برچسب",
+      "ردیابی استفاده — هر تصویر کجا به‌کار رفته",
     ],
   },
   orders: {
-    eyebrow: "Operations · Orders",
-    title: "Order ledger, scaffolding.",
+    eyebrow: "عملیات · سفارش‌ها",
+    title: "دفتر کل سفارش، اسکفولدینگ.",
     body:
-      "The Convex `orders` table and `dashboardStats` already power the dashboard. The order workspace (search · status filters · refunds · fulfilment timeline) arrives in the next slice.",
+      "جدول سفارش‌ها و dashboardStats در Convex قبلاً داشبورد را پشتیبانی می‌کنند. محیط کاری سفارش (جستجو، فیلتر وضعیت، بازپرداخت، جدول زمانی ارسال) در تکه بعدی ارائه می‌شود.",
     icon: "Receipt",
-    permission: "manage_orders",
+    permission: "مدیریت سفارش‌ها",
     upNext: [
-      "fulfilment timeline editor",
-      "refund + restock workflow",
+      "ویرایشگر جدول زمانی ارسال",
+      "گردش کار بازپرداخت و بازگشت به موجودی",
     ],
   },
   customers: {
-    eyebrow: "Operations · Customers",
-    title: "Customer ledger, scaffolding.",
+    eyebrow: "عملیات · مشتریان",
+    title: "دفتر کل مشتری، اسکفولدینگ.",
     body:
-      "The Convex `customerDetail` query already joins orders + addresses + preferences + activity. The Phase 5.2 surface puts that data in context with search, segmentation and audit-ready notes.",
+      "کوئری customerDetail در Convex قبلاً سفارش‌ها، آدرس‌ها، تنظیمات و فعالیت را به‌هم متصل می‌کند. محیط فاز ۵.۲ این داده‌ها را با جستجو، بخش‌بندی و یادداشت‌های داخلی حساس به حسابرسی در زمینه قرار می‌دهد.",
     icon: "Customers",
-    permission: "manage_customers",
+    permission: "مدیریت مشتریان",
     upNext: [
-      "filterable customer table",
-      "internal note thread per customer",
+      "جدول مشتری با فیلتر",
+      "رشته یادداشت داخلی برای هر مشتری",
     ],
   },
   reviews: {
-    eyebrow: "Operations · Reviews",
-    title: "Moderation queue, soon.",
+    eyebrow: "عملیات · بازخوردها",
+    title: "صف بررسی، به‌زودی.",
     body:
-      "Reviews already persist through the Phase 4 schema. The Phase 5.2 moderator gate uses `status: \"pending\"` and ships an approve / reject / respond flow.",
+      "بازخوردها از طریق طرحواره فاز ۴ ذخیره می‌شوند. صفحه بررسی فاز ۵.۲ از وضعیت «در انتظار» استفاده می‌کند و گردش کار تأیید/رد/پاسخ را ارائه می‌دهد.",
     icon: "Reviews",
-    permission: "manage_content",
+    permission: "مدیریت محتوا",
     upNext: [
-      "approve · reject · respond inline",
-      "audit trail shown alongside the review",
+      "تأیید · رد · پاسخ‌گویی درون‌خطی",
+      "گزارش ممیزی در کنار بازخورد",
     ],
   },
   coupons: {
-    eyebrow: "Content · Coupons",
-    title: "Coupon admin, in progress.",
+    eyebrow: "محتوا · کدهای تخفیف",
+    title: "مدیریت کد تخفیف، در حال تکمیل.",
     body:
-      "`admin_catalog.upsertCoupon` already handles create / edit / archive. The visible workspace (active list · usage graph · copy-to-clipboard) ships with the next slice.",
+      "تابع admin_catalog.upsertCoupon قبلاً ساخت/ویرایش/آرشیو را انجام می‌دهد. محیط کاری قابل مشاهده (فهرست فعال، نمودار استفاده، کپی در کلیپ‌بورد) در تکه بعدی ارائه می‌شود.",
     icon: "Coupons",
-    permission: "manage_coupons",
+    permission: "مدیریت کدهای تخفیف",
     upNext: [
-      "coupon usage charts",
-      "auto-archive on max uses",
+      "نمودار استفاده از کد تخفیف",
+      "آرشیو خودکار پس از رسیدن به سقف استفاده",
     ],
   },
   editorial: {
-    eyebrow: "Content · Editorial",
-    title: "Editorial CMS, scaffolding.",
+    eyebrow: "محتوا · مجله",
+    title: "CMS مجله، اسکفولدینگ.",
     body:
-      "The editorials table is fully wired; the editor itself (rich body, cover image picker, scheduling) lands next.",
+      "جدول editorials به‌طور کامل سیم‌کشی شده است؛ ویرایشگر (بدنه‌ی غنی، انتخاب تصویر جلد، زمان‌بندی انتشار) در تکه بعدی اضافه می‌شود.",
     icon: "Newspaper",
-    permission: "manage_content",
+    permission: "مدیریت محتوا",
     upNext: [
-      "rich body editor with image inserts",
-      "publication scheduling",
+      "ویرایشگر بدنه غنی با درج تصویر",
+      "زمان‌بندی انتشار",
     ],
   },
   settings: {
-    eyebrow: "System · Settings",
-    title: "Brand & ops settings, in progress.",
+    eyebrow: "سیستم · تنظیمات",
+    title: "تنظیمات برند و عملیات، در حال تکمیل.",
     body:
-      "Settings, brand-styling knobs and notification delivery primitives arrive in Phase 5.3 once the data domain has settled.",
+      "تنظیمات، کلیدهای استایل برند و ابزارهای ارسال اعلان، پس از تثبیت دامنه داده در فاز ۵.۳ ارائه می‌شوند.",
     icon: "Settings",
-    permission: "manage_settings",
+    permission: "مدیریت تنظیمات",
     upNext: [
-      "brand tokens (palette · typography)",
-      "notification templates",
+      "توکن‌های برند (پالت‌ها · تایپوگرافی)",
+      "قالب‌های اعلان",
     ],
   },
 };
 
 const FALLBACK: Spec = {
-  eyebrow: "Admin · Up next",
-  title: "This slice ships in phase 5.2.",
+  eyebrow: "ادمین · مراحل بعدی",
+  title: "این تکه در فاز ۵.۲ ارائه می‌شود.",
   body:
-    "Routes to a domain we haven't surfaced yet. The Products slice at full depth is the entry point; the rest lands in subsequent slices.",
+    "مسیری به دامنه‌ای که هنوز ارائه نشده است. تکه محصولات با عمق کامل، نقطه ورود است؛ بقیه در تکه‌های بعدی اضافه می‌شود.",
   icon: "Data",
-  permission: "manage_products",
+  permission: "مدیریت محصولات",
   upNext: ["", "—"],
 };
 
-// Convenience helper: the route summary bars on the stub pages share
-// this exact typography / colour. The label here is intentionally
-// narrow so it doesn't fight the dominant copy.
 export function stubHeadingClass() {
   return cn(
     "type-eyebrow text-ink-muted",

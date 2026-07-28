@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Lock, MapPin, CreditCard, ShoppingBag, ArrowRight } from "lucide-react";
+import { Check, Lock, MapPin, CreditCard, ShoppingBag, ArrowLeft } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useCoupon } from "@/hooks/use-coupon";
 import { getProductById } from "@/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatOrderNumber } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
-const STEPS = ["Contact", "Shipping", "Payment"] as const;
+const STEPS = ["اطلاعات تماس", "ارسال", "پرداخت"] as const;
 
 interface FieldErrors {
   email?: string;
@@ -27,6 +27,19 @@ interface FieldErrors {
   cvc?: string;
 }
 
+const silhouetteFor = (cat: string) => {
+  switch (cat) {
+    case "intimates-bras": return "bra" as const;
+    case "intimates-briefs": return "brief" as const;
+    case "sleepwear": return "robe" as const;
+    case "homewear": return "tee" as const;
+    case "bodysuits": return "bodysuit" as const;
+    case "shapewear": return "bodysuit" as const;
+    case "loungewear-sets": return "robe" as const;
+    default: return "accessory" as const;
+  }
+};
+
 export default function Checkout() {
   const { lines, clear } = useCart();
   const { applied } = useCoupon();
@@ -34,7 +47,7 @@ export default function Checkout() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [placed, setPlaced] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string>(() =>
-    `Æ-${Math.floor(24000 + Math.random() * 9999)}`
+    formatOrderNumber(Math.floor(24000 + Math.random() * 9999))
   );
   const [shippingMethod, setShippingMethod] = useState<"std" | "exp" | "white">("exp");
 
@@ -47,10 +60,9 @@ export default function Checkout() {
     0
   );
   const discount = applied ? subtotal * applied.percentOff : 0;
-  const shippingPrice = shippingMethod === "std" ? 0 : shippingMethod === "exp" ? 24 : 64;
+  const shippingPrice = shippingMethod === "std" ? 0 : shippingMethod === "exp" ? 250000 : 650000;
   const total = subtotal - discount + shippingPrice;
 
-  // Field refs (simple — Uncontrolled with forwardRef would be nicer, but state-driven is fine here.)
   const [form, setForm] = useState({
     email: "",
     phone: "",
@@ -59,7 +71,7 @@ export default function Checkout() {
     address: "",
     city: "",
     postal: "",
-    country: "United States",
+    country: "ایران",
     card: "",
     expiry: "",
     cvc: "",
@@ -72,21 +84,21 @@ export default function Checkout() {
       const errs: FieldErrors = {};
       const req = (val: string) => val.trim().length > 0;
       if (s === 0) {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Enter a valid email.";
-        if (form.phone && !/^[+]?[\d\s()-]{7,}$/.test(form.phone)) errs.phone = "Looks off — check the number.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "ایمیل معتبر وارد کنید.";
+        if (form.phone && !/^[+]?[\d\s()-]{7,}$/.test(form.phone)) errs.phone = "شماره تلفن را بررسی کنید.";
       }
       if (s === 1) {
-        if (!req(form.firstName)) errs.firstName = "Required";
-        if (!req(form.lastName)) errs.lastName = "Required";
-        if (!req(form.address)) errs.address = "Required";
-        if (!req(form.city)) errs.city = "Required";
-        if (!req(form.postal)) errs.postal = "Required";
+        if (!req(form.firstName)) errs.firstName = "الزامی";
+        if (!req(form.lastName)) errs.lastName = "الزامی";
+        if (!req(form.address)) errs.address = "الزامی";
+        if (!req(form.city)) errs.city = "الزامی";
+        if (!req(form.postal)) errs.postal = "الزامی";
       }
       if (s === 2) {
         const digits = form.card.replace(/\s+/g, "");
-        if (digits.length < 13 || digits.length > 19) errs.card = "Enter a valid card number.";
-        if (!/^\d{2}\/\d{2}$/.test(form.expiry)) errs.expiry = "Use MM/YY format.";
-        if (!/^\d{3,4}$/.test(form.cvc.trim())) errs.cvc = "Enter the security code.";
+        if (digits.length < 13 || digits.length > 19) errs.card = "شماره کارت معتبر وارد کنید.";
+        if (!/^\d{2}\/\d{2}$/.test(form.expiry)) errs.expiry = "فرمت MM/YY.";
+        if (!/^\d{3,4}$/.test(form.cvc.trim())) errs.cvc = "کد امنیتی را وارد کنید.";
       }
       return errs;
     },
@@ -100,34 +112,32 @@ export default function Checkout() {
   if (items.length === 0 && !placed) {
     return (
       <div className="mx-auto max-w-3xl px-6 pt-32 pb-24 text-center lg:px-10">
-        <p className="type-eyebrow text-ink-muted">Checkout</p>
+        <p className="type-eyebrow text-ink-muted">پرداخت</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">
-          Your bag is quiet.
+          سبد خرید شما خالی است.
         </h1>
         <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-ink-soft">
-          Add a piece before proceeding.
+          ابتدا محصولی به سبد خرید اضافه کنید.
         </p>
         <Link
           to="/shop"
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          Browse Catalogue
-          <ArrowRight className="h-3.5 w-3.5" />
+          مشاهده کالکسیون
+          <ArrowLeft className="h-3.5 w-3.5" />
         </Link>
       </div>
     );
   }
 
-  /** Handle "Place Order" with simulated network delay. */
   const placeOrder = async () => {
     const finalErrors = validateStep(2);
     if (Object.keys(finalErrors).length > 0) {
       setErrors(finalErrors);
       return;
     }
-    // simulated 900ms
     await new Promise((resolve) => setTimeout(resolve, 900));
-    const number = `Æ-${Math.floor(24000 + Math.random() * 9999)}`;
+    const number = formatOrderNumber(Math.floor(24000 + Math.random() * 9999));
     setOrderNumber(number);
     setPlaced(true);
     toast.placement.success(number);
@@ -140,9 +150,9 @@ export default function Checkout() {
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>
-        <p className="type-eyebrow text-ink-muted">Secure checkout</p>
+        <p className="type-eyebrow text-ink-muted">پرداخت امن</p>
         <h1 className="mt-3 flex items-center gap-3 font-display text-4xl text-ink lg:text-5xl">
-          ÆON Checkout
+          تکمیل خرید از لونا
           <Lock className="h-4 w-4 text-ink-muted" />
         </h1>
       </header>
@@ -163,7 +173,7 @@ export default function Checkout() {
                       : "hairline text-ink-soft"
                   )}
                 >
-                  {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                  {i < step ? <Check className="h-3.5 w-3.5" /> : (i + 1).toLocaleString("fa-IR")}
                 </span>
                 <span
                   className={cn(
@@ -183,33 +193,33 @@ export default function Checkout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              initial={{ opacity: 0, x: 16 }}
+              initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
+              exit={{ opacity: 0, x: 16 }}
               transition={{ duration: 0.4, ease: EASE_LUXURY }}
               className="glass mt-10 rounded-3xl p-8"
             >
               {step === 0 && (
                 <div className="grid gap-4">
-                  <Header icon={<ShoppingBag className="h-4 w-4" />} eyebrow="Step 01" title="Contact" />
-                  <Field label="Email" value={form.email} onChange={(v) => set("email", v)} placeholder="name@example.com" type="email" error={errors.email} />
-                  <Field label="Phone (optional)" value={form.phone} onChange={(v) => set("phone", v)} placeholder="+1 (555) 000-0000" type="tel" error={errors.phone} />
+                  <Header icon={<ShoppingBag className="h-4 w-4" />} eyebrow="مرحله ۰۱" title="اطلاعات تماس" />
+                  <Field label="ایمیل" value={form.email} onChange={(v) => set("email", v)} placeholder="name@example.com" type="email" error={errors.email} />
+                  <Field label="تلفن (اختیاری)" value={form.phone} onChange={(v) => set("phone", v)} placeholder="۰۹۱۲ ۰۰۰ ۰۰۰۰" type="tel" error={errors.phone} />
                 </div>
               )}
 
               {step === 1 && (
                 <div className="grid gap-4">
-                  <Header icon={<MapPin className="h-4 w-4" />} eyebrow="Step 02" title="Shipping" />
+                  <Header icon={<MapPin className="h-4 w-4" />} eyebrow="مرحله ۰۲" title="آدرس ارسال" />
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="First name" value={form.firstName} onChange={(v) => set("firstName", v)} error={errors.firstName} />
-                    <Field label="Last name" value={form.lastName} onChange={(v) => set("lastName", v)} error={errors.lastName} />
+                    <Field label="نام" value={form.firstName} onChange={(v) => set("firstName", v)} error={errors.firstName} />
+                    <Field label="نام خانوادگی" value={form.lastName} onChange={(v) => set("lastName", v)} error={errors.lastName} />
                   </div>
-                  <Field label="Address" value={form.address} onChange={(v) => set("address", v)} error={errors.address} />
+                  <Field label="آدرس" value={form.address} onChange={(v) => set("address", v)} error={errors.address} />
                   <div className="grid grid-cols-3 gap-3">
-                    <Field label="City" value={form.city} onChange={(v) => set("city", v)} error={errors.city} />
-                    <Field label="Postal" value={form.postal} onChange={(v) => set("postal", v)} error={errors.postal} />
+                    <Field label="شهر" value={form.city} onChange={(v) => set("city", v)} error={errors.city} />
+                    <Field label="کد پستی" value={form.postal} onChange={(v) => set("postal", v)} error={errors.postal} />
                     <Field
-                      label="Country"
+                      label="کشور"
                       value={form.country}
                       onChange={(v) => set("country", v)}
                     >
@@ -218,7 +228,7 @@ export default function Checkout() {
                         onChange={(e) => set("country", e.target.value)}
                         className="mt-2 w-full rounded-2xl bg-canvas/60 px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
                       >
-                        {["United States", "Italy", "Japan", "United Kingdom", "Germany", "France"].map((c) => (
+                        {["ایران", "امارات", "ترکیه", "آلمان", "فرانسه", "انگلستان"].map((c) => (
                           <option key={c}>{c}</option>
                         ))}
                       </select>
@@ -227,21 +237,21 @@ export default function Checkout() {
 
                   <div className="mt-3 grid gap-2">
                     {[
-                      { id: "std", label: "Standard · 5–8 days", price: 0 },
-                      { id: "exp", label: "Express · 2–3 days", price: 24 },
-                      { id: "white", label: "White-glove · Next-day in major cities", price: 64 },
+                      { id: "std", label: "ارسال عادی · ۵ تا ۸ روز کاری", price: 0 },
+                      { id: "exp", label: "ارسال سریع · ۲ تا ۳ روز کاری", price: 250000 },
+                      { id: "white", label: "ارسال ویژه · روز بعد در شهرهای بزرگ", price: 650000 },
                     ].map((opt) => (
                       <label
                         key={opt.id}
                         className={cn(
-                          "flex cursor-pointer items-center justify-between rounded-2xl border border-edge/70 px-4 py-3 text-sm transition hover:bg-white/60",
+                          "flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-edge/70 px-4 py-3 text-sm transition hover:bg-white/60",
                           shippingMethod === opt.id && "border-primary bg-white/60"
                         )}
                       >
                         <span className="flex items-center gap-3">
                           <span
                             className={cn(
-                              "grid h-4 w-4 place-items-center rounded-full border-2 transition",
+                              "grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 transition",
                               shippingMethod === opt.id ? "border-primary" : "border-edge"
                             )}
                           >
@@ -252,7 +262,7 @@ export default function Checkout() {
                           <span className="text-ink">{opt.label}</span>
                         </span>
                         <span className="text-ink-muted type-caption">
-                          {opt.price === 0 ? "Included" : `$${opt.price}`}
+                          {opt.price === 0 ? "رایگان" : formatPrice(opt.price, true)}
                         </span>
                         <input
                           type="radio"
@@ -272,9 +282,9 @@ export default function Checkout() {
 
               {step === 2 && (
                 <div className="grid gap-4">
-                  <Header icon={<CreditCard className="h-4 w-4" />} eyebrow="Step 03" title="Payment" />
+                  <Header icon={<CreditCard className="h-4 w-4" />} eyebrow="مرحله ۰۳" title="پرداخت" />
                   <Field
-                    label="Card number"
+                    label="شماره کارت"
                     value={form.card}
                     onChange={(v) => set("card", formatCardNumber(v))}
                     placeholder="•••• •••• •••• ••••"
@@ -282,14 +292,14 @@ export default function Checkout() {
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <Field
-                      label="Expiry"
+                      label="تاریخ انقضا"
                       value={form.expiry}
                       onChange={(v) => set("expiry", formatExpiry(v))}
                       placeholder="MM/YY"
                       error={errors.expiry}
                     />
                     <Field
-                      label="CVC"
+                      label="کد امنیتی"
                       value={form.cvc}
                       onChange={(v) => set("cvc", v.replace(/\D/g, "").slice(0, 4))}
                       placeholder="•••"
@@ -298,7 +308,7 @@ export default function Checkout() {
                   </div>
                   <p className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
                     <Lock className="h-3.5 w-3.5" />
-                    Encrypted end-to-end. We never store card numbers.
+                    رمزنگاری سرتاسری. اطلاعات کارت شما ذخیره نمی‌شود.
                   </p>
                 </div>
               )}
@@ -309,7 +319,7 @@ export default function Checkout() {
                   disabled={step === 0}
                   className="text-[11px] uppercase tracking-[0.18em] text-ink-soft disabled:opacity-30"
                 >
-                  ← Back
+                  بازگشت
                 </button>
                 <button
                   onClick={() => {
@@ -324,17 +334,16 @@ export default function Checkout() {
                       setStep((s) => Math.min(STEPS.length - 1, s + 1));
                     }
                   }}
-                  className="rounded-full bg-ink px-7 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
+                  className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
                 >
-                  {step === STEPS.length - 1 ? "Place Order" : "Continue"}
-                  <ArrowRight className="ml-2 inline h-4 w-4" />
+                  {step === STEPS.length - 1 ? "ثبت نهایی سفارش" : "ادامه"}
+                  <ArrowLeft className="h-4 w-4" />
                 </button>
               </div>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Order summary */}
         <aside className="lg:sticky lg:top-32 lg:h-fit">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -342,8 +351,8 @@ export default function Checkout() {
             transition={{ duration: 0.5, ease: EASE_LUXURY }}
             className="glass-strong rounded-3xl p-8"
           >
-            <p className="type-eyebrow text-ink-muted">Order</p>
-            <ul className="mt-6 space-y-4 scroll-luxe max-h-72 overflow-y-auto pr-2">
+            <p className="type-eyebrow text-ink-muted">سفارش شما</p>
+            <ul className="mt-6 max-h-72 space-y-4 overflow-y-auto pr-2">
               {items.map((item) => (
                 <li key={`${item.product?.id}-${item.size}-${item.color}`} className="flex items-center gap-3">
                   <div className="h-14 w-12 overflow-hidden rounded-lg">
@@ -351,29 +360,15 @@ export default function Checkout() {
                       gradient={
                         item.product?.colors.find((c) => c.name === item.color)?.gradient
                       }
-                      silhouette={
-                        item.product?.category === "outerwear"
-                          ? "coat"
-                          : item.product?.category === "knitwear"
-                          ? "knit"
-                          : item.product?.category === "dresses"
-                          ? "dress"
-                          : item.product?.category === "trousers"
-                          ? "trouser"
-                          : item.product?.category === "shirting"
-                          ? "shirt"
-                          : item.product?.category === "leather"
-                          ? "leather"
-                          : "accessory"
-                      }
+                      silhouette={silhouetteFor(item.product?.category ?? "accessories")}
                       withMark={false}
                       className="h-full w-full"
                     />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="line-clamp-1 text-sm text-ink">{item.product?.name}</p>
                     <p className="text-[11px] text-ink-muted">
-                      {item.color} · {item.size} · ×{item.quantity}
+                      {item.color} · {item.size} × {item.quantity.toLocaleString("fa-IR")}
                     </p>
                   </div>
                   <span className="text-sm type-caption text-ink">
@@ -384,7 +379,7 @@ export default function Checkout() {
             </ul>
             <dl className="mt-6 space-y-3 border-t border-edge/70 pt-6 text-sm">
               <div className="flex items-baseline justify-between">
-                <dt className="text-ink-soft">Subtotal</dt>
+                <dt className="text-ink-soft">جمع جزء</dt>
                 <dd className="type-caption text-ink">{formatPrice(subtotal, true)}</dd>
               </div>
               {applied && (
@@ -394,13 +389,13 @@ export default function Checkout() {
                 </div>
               )}
               <div className="flex items-baseline justify-between">
-                <dt className="text-ink-soft">Shipping</dt>
+                <dt className="text-ink-soft">ارسال</dt>
                 <dd className="type-caption text-ink">
-                  {shippingPrice === 0 ? "Complimentary" : formatPrice(shippingPrice, true)}
+                  {shippingPrice === 0 ? "رایگان" : formatPrice(shippingPrice, true)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between border-t border-edge/70 pt-3">
-                <dt className="font-display text-xl text-ink">Total</dt>
+                <dt className="font-display text-xl text-ink">مجموع نهایی</dt>
                 <dd className="font-display text-xl type-caption text-ink">
                   {formatPrice(total, true)}
                 </dd>
@@ -462,6 +457,7 @@ function Field({
           type={type}
           placeholder={placeholder}
           aria-invalid={Boolean(error)}
+          dir="ltr"
           className={cn(
             "mt-2 w-full rounded-2xl bg-canvas/60 px-4 py-3 text-sm text-ink placeholder:text-ink-muted transition",
             "focus:outline-none focus:ring-2",
@@ -500,28 +496,28 @@ function Success({
       >
         <Check className="h-9 w-9" />
       </motion.div>
-      <p className="type-eyebrow mt-8 text-ink-muted">Confirmed · {orderNumber}</p>
+      <p className="type-eyebrow mt-8 text-ink-muted">سفارش شما ثبت شد · شماره {orderNumber}</p>
       <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">
-        Thank you.
+        سپاس از شما.
       </h1>
       <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-ink-soft">
-        A letter is on its way to <span className="text-ink">{email || "your inbox"}</span>.
-        Your atelier will hand-set a confirmation of the makers involved. We hold your delivery in
-        our care until it is ready to be sent.
+        نامه‌ای به آدرس <span className="text-ink" dir="ltr">{email || "ایمیل شما"}</span> ارسال خواهد شد.
+        بوتیک لونا سفارش شما را با دقت آماده و ارسال می‌کند. بسته‌بندی محرمانه و ظریف، مطابق
+        استاندارد لونا.
       </p>
       <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
         <Link
-          to="/account"
+          to="/dashboard"
           className="inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          View your order
-          <ArrowRight className="h-3.5 w-3.5" />
+          پیگیری سفارش
+          <ArrowLeft className="h-3.5 w-3.5" />
         </Link>
         <button
           onClick={onContinue}
           className="rounded-full hairline bg-canvas/60 px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-soft hover:bg-white"
         >
-          Continue browsing
+          ادامه خرید
         </button>
       </div>
     </motion.div>

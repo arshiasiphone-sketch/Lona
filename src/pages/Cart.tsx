@@ -1,12 +1,12 @@
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, X, ArrowRight } from "lucide-react";
+import { Minus, Plus, X, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useCart, type CartLine } from "@/hooks/use-cart";
 import { useCoupon } from "@/hooks/use-coupon";
 import { getProductById, products, type Product } from "@/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
-import { cn } from "@/lib/glass";
+import { cn, glassClass } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -16,12 +16,14 @@ type EnrichedLine = CartLine & { product: Product };
 
 const silhouetteFor = (cat: string) => {
   switch (cat) {
-    case "outerwear": return "coat" as const;
-    case "knitwear": return "knit" as const;
-    case "trousers": return "trouser" as const;
-    case "shirting": return "shirt" as const;
-    case "dresses": return "dress" as const;
-    case "leather": return "leather" as const;
+    case "intimates-bras": return "bra" as const;
+    case "intimates-briefs": return "brief" as const;
+    case "sleepwear": return "robe" as const;
+    case "homewear": return "tee" as const;
+    case "bodysuits": return "bodysuit" as const;
+    case "shapewear": return "bodysuit" as const;
+    case "loungewear-sets": return "robe" as const;
+    case "accessories": return "accessory" as const;
     default: return "accessory" as const;
   }
 };
@@ -52,16 +54,16 @@ export default function Cart() {
     0
   );
   const discount = applied ? subtotal * applied.percentOff : 0;
-  const shipping = subtotal - discount > 300 ? 0 : 18;
+  const shipping = subtotal - discount > 5000000 ? 0 : 250000;
   const total = subtotal - discount + shipping;
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="flex items-end justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Bag</p>
+          <p className="type-eyebrow text-ink-muted">سبد خرید</p>
           <h1 className="mt-3 font-display text-4xl text-ink lg:text-6xl">
-            Your selection
+            انتخاب‌های شما
           </h1>
         </div>
         <button
@@ -70,7 +72,7 @@ export default function Cart() {
           }}
           className="text-[11px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
         >
-          Clear bag
+          خالی کردن سبد
         </button>
       </header>
 
@@ -83,9 +85,9 @@ export default function Cart() {
                 layout
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -40 }}
+                exit={{ opacity: 0, x: 40 }}
                 transition={{ duration: 0.4, ease: EASE_LUXURY }}
-                className="glass flex items-stretch gap-4 rounded-2xl p-4"
+                className={cn("glass flex items-stretch gap-4 rounded-2xl p-4")}
               >
                 <Link
                   to={`/shop/${item.product.slug}`}
@@ -113,30 +115,30 @@ export default function Cart() {
                     </Link>
                     {item.color !== item.product?.colors[0].name && (
                       <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                        Custom colorway
+                        رنگ سفارشی
                       </p>
                     )}
                   </div>
                   <div className="mt-3 flex items-center justify-between">
-                    <div className="glass flex items-center rounded-full px-1">
+                    <div className={cn(glassClass("subtle"), "flex items-center rounded-full px-1")}>
                       <button
                         onClick={() =>
                           update(item.product.id, item.size, item.color, item.quantity - 1)
                         }
                         className="grid h-8 w-8 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                        aria-label="decrease"
+                        aria-label="کاهش تعداد"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
                       <span className="min-w-[1.5rem] text-center text-xs font-medium text-ink">
-                        {item.quantity}
+                        {item.quantity.toLocaleString("fa-IR")}
                       </span>
                       <button
                         onClick={() =>
                           update(item.product.id, item.size, item.color, item.quantity + 1)
                         }
                         className="grid h-8 w-8 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                        aria-label="increase"
+                        aria-label="افزایش تعداد"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -149,10 +151,10 @@ export default function Cart() {
                 <button
                   onClick={() => {
                     remove(item.product.id, item.size, item.color);
-                    toast.removed(item.product?.name ?? "Piece");
+                    toast.removed(item.product?.name ?? "محصول");
                   }}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full hairline text-ink-soft hover:bg-white/60 hover:text-ink"
-                  aria-label="remove"
+                  aria-label="حذف از سبد"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -162,9 +164,9 @@ export default function Cart() {
 
           {/* Cross-sell */}
           <section className="mt-10 rounded-3xl glass-strong p-7">
-            <p className="type-eyebrow text-ink-muted">Worn with</p>
+            <p className="type-eyebrow text-ink-muted">پیشنهاد بوتیک</p>
             <p className="mt-2 text-sm text-ink-soft">
-              Gentle pairings our atelier suggests.
+              ترکیب‌هایی که بوتیک ما برایتان پیشنهاد می‌دهد.
             </p>
             <ul className="mt-5 grid gap-3 sm:grid-cols-3">
               {recommended.map((p) => (
@@ -185,7 +187,7 @@ export default function Cart() {
                     to={`/shop/${p.slug}`}
                     className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink"
                   >
-                    View
+                    مشاهده
                   </Link>
                 </li>
               ))}
@@ -200,11 +202,11 @@ export default function Cart() {
             transition={{ duration: 0.5, ease: EASE_LUXURY }}
             className="glass-strong rounded-3xl p-8"
           >
-            <p className="type-eyebrow text-ink-muted">Summary</p>
+            <p className="type-eyebrow text-ink-muted">خلاصه سفارش</p>
             <dl className="mt-6 space-y-3 text-sm">
               <div className="flex items-baseline justify-between">
-                <dt className="text-ink-soft">Subtotal</dt>
-                <dd className="text-ink type-caption">{formatPrice(subtotal, true)}</dd>
+                <dt className="text-ink-soft">جمع جزء</dt>
+                <dd className="type-caption text-ink">{formatPrice(subtotal, true)}</dd>
               </div>
               {applied && (
                 <motion.div
@@ -218,21 +220,21 @@ export default function Cart() {
                 </motion.div>
               )}
               <div className="flex items-baseline justify-between">
-                <dt className="text-ink-soft">Shipping</dt>
-                <dd className="text-ink type-caption">
-                  {shipping === 0 ? "Complimentary" : formatPrice(shipping, true)}
+                <dt className="text-ink-soft">ارسال</dt>
+                <dd className="type-caption text-ink">
+                  {shipping === 0 ? "رایگان" : formatPrice(shipping, true)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between">
-                <dt className="text-ink-soft">Duties</dt>
-                <dd className="text-ink-muted">At next step</dd>
+                <dt className="text-ink-soft">مالیات</dt>
+                <dd className="text-ink-muted">در مرحله بعد</dd>
               </div>
               <div className="h-px bg-edge/70" />
               <motion.div
                 layout
                 className="flex items-baseline justify-between"
               >
-                <dt className="font-display text-xl text-ink">Total</dt>
+                <dt className="font-display text-xl text-ink">مجموع</dt>
                 <dd className="font-display text-xl text-ink type-caption">
                   {formatPrice(total, true)}
                 </dd>
@@ -247,11 +249,11 @@ export default function Cart() {
               to="/checkout"
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
             >
-              Proceed to Checkout
-              <ArrowRight className="h-4 w-4" />
+              ادامه فرایند خرید
+              <ArrowLeft className="h-4 w-4" />
             </Link>
             <p className="mt-4 text-center text-xs text-ink-muted">
-              Secure checkout. Encrypted end-to-end.
+              پرداخت امن. رمزنگاری سرتاسری.
             </p>
           </motion.div>
         </aside>
@@ -266,18 +268,18 @@ function CouponInput({
   onRemove,
 }: {
   applied: ReturnType<typeof useCoupon>["applied"];
-  onApply: (code: string) => ReturnType<typeof useCoupon>["applied"];
-  onRemove: () => void;
+  onApply: ReturnType<typeof useCoupon>["apply"];
+  onRemove: ReturnType<typeof useCoupon>["remove"];
 }) {
   const [code, setCode] = useState(applied?.code ?? "");
   return (
     <div className="mt-6">
-      <p className="type-eyebrow text-ink-muted">Promo</p>
+      <p className="type-eyebrow text-ink-muted">کد تخفیف</p>
       <div className="mt-2 flex items-center gap-2 rounded-full hairline bg-canvas/60 px-3 py-2">
         {applied ? (
           <>
             <span className="flex-1 text-sm font-medium text-ink">
-              {applied.code} applied · −{Math.round(applied.percentOff * 100)}%
+              کد {applied.code} اعمال شد · {Math.round(applied.percentOff * 100)}٪ تخفیف
             </span>
             <button
               onClick={() => {
@@ -287,7 +289,7 @@ function CouponInput({
               }}
               className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink"
             >
-              Remove
+              حذف
             </button>
           </>
         ) : (
@@ -295,7 +297,8 @@ function CouponInput({
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Promo code (try WELCOME10)"
+              placeholder="کد تخفیف (مثلاً WELCOME10)"
+              dir="ltr"
               className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
             />
             <button
@@ -306,7 +309,7 @@ function CouponInput({
               }}
               className="rounded-full bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
             >
-              Apply
+              اعمال
             </button>
           </>
         )}
@@ -327,10 +330,10 @@ function GiftNoteInput({
     <div className="mt-4 rounded-2xl hairline bg-canvas/60">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-right"
       >
         <span className="text-[11px] uppercase tracking-[0.18em] text-ink">
-          Gift note
+          یادداشت هدیه
         </span>
         <span className="text-[11px] text-ink-muted">{open ? "−" : "+"}</span>
       </button>
@@ -339,7 +342,7 @@ function GiftNoteInput({
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="A short note printed on ÆON letterpress in faint graphite."
+            placeholder="یک یادداشت کوتاه که روی کارت بوتیک لونا با خط نستعلیق چاپ می‌شود."
             rows={3}
             className={cn(
               "mt-2 w-full resize-none rounded-xl bg-white/60 px-3 py-2 text-sm text-ink placeholder:text-ink-muted",
@@ -347,7 +350,7 @@ function GiftNoteInput({
             )}
           />
           <p className="mt-2 text-[11px] text-ink-muted">
-            Hand-set in our atelier. Up to 80 characters.
+            تا ۸۰ کاراکتر.
           </p>
         </div>
       )}

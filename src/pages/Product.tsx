@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
-  ChevronRight,
+  ChevronLeft,
   Heart,
   Minus,
   Plus,
@@ -38,7 +38,6 @@ export default function Product() {
   const { has, toggle } = useWishlist();
   const { track } = useRecentlyViewed();
 
-  // Track this product as recently viewed on mount.
   useEffect(() => {
     if (product) track(product.id);
   }, [product?.id, track, product]);
@@ -47,13 +46,13 @@ export default function Product() {
     return (
       <div className="mx-auto max-w-2xl px-6 pt-32 pb-24 text-center">
         <p className="font-display text-3xl text-ink">
-          This piece is no longer in rotation.
+          این محصول دیگر در دسترس نیست.
         </p>
         <Link
           to="/shop"
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          View Catalogue
+          بازگشت به کالکسیون
         </Link>
       </div>
     );
@@ -78,17 +77,17 @@ export default function Product() {
     <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
       {/* Breadcrumb */}
       <nav
-        aria-label="breadcrumb"
+        aria-label="مسیر صفحه"
         className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted"
       >
         <Link to="/" className="hover:text-ink">
-          Home
+          خانه
         </Link>
-        <ChevronRight className="h-3 w-3" />
+        <ChevronLeft className="h-3 w-3" />
         <Link to="/shop" className="hover:text-ink">
-          Shop
+          کالکسیون
         </Link>
-        <ChevronRight className="h-3 w-3" />
+        <ChevronLeft className="h-3 w-3" />
         <span className="text-ink">{product.name}</span>
       </nav>
 
@@ -101,26 +100,26 @@ export default function Product() {
           <div>
             <p className="type-eyebrow text-ink-muted">
               {product.collection.replace("-", " · ")} ·{" "}
-              {product.badges?.includes("editorial") && "Editor's pick · "}
-              {product.badges?.includes("limited") && "Limited run · "}
+              {product.badges?.includes("editorial") && "انتخاب بوتیک · "}
+              {product.badges?.includes("limited") && "تولید محدود · "}
               {product.colors.find((c) => c.id === color)?.name}
             </p>
             <h1 className="mt-4 font-display text-4xl leading-[1.05] text-ink lg:text-5xl">
               {product.name}
             </h1>
             <div className="mt-4 flex items-baseline gap-3">
-              <span className="text-xl text-ink type-caption">
+              <span className="type-caption text-xl text-ink">
                 {formatPrice(product.price)}
               </span>
               {product.compareAt && (
-                <span className="text-sm text-ink-muted line-through type-caption">
+                <span className="type-caption text-sm text-ink-muted line-through">
                   {formatPrice(product.compareAt)}
                 </span>
               )}
             </div>
             {product.rating !== undefined && (
               <p className="mt-2 text-xs text-ink-muted">
-                {product.rating.toFixed(1)} · {product.reviewCount} reviews
+                {product.rating.toFixed(1)} · {product.reviewCount?.toLocaleString("fa-IR")} بازخورد
               </p>
             )}
           </div>
@@ -157,17 +156,17 @@ export default function Product() {
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 className="grid h-9 w-9 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                aria-label="decrease quantity"
+                aria-label="کاهش تعداد"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
               <span className="min-w-[2rem] text-center text-sm font-medium text-ink">
-                {qty}
+                {qty.toLocaleString("fa-IR")}
               </span>
               <button
-                onClick={() => setQty((q) => mathSafeInc(q))}
+                onClick={() => setQty((q) => q + 1)}
                 className="grid h-9 w-9 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                aria-label="increase quantity"
+                aria-label="افزایش تعداد"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
@@ -181,7 +180,7 @@ export default function Product() {
               )}
             >
               <ShoppingBag className="h-4 w-4" />
-              Add to bag · {formatPrice(product.price * qty)}
+              افزودن به سبد · {formatPrice(product.price * qty)}
             </motion.button>
             <button
               onClick={() => {
@@ -192,7 +191,7 @@ export default function Product() {
                 "grid h-12 w-12 place-items-center rounded-full glass transition hover:bg-white/60",
                 favorite && "text-primary"
               )}
-              aria-label={favorite ? "Remove from wishlist" : "Save to wishlist"}
+              aria-label={favorite ? "حذف از علاقه‌مندی‌ها" : "افزودن به علاقه‌مندی‌ها"}
             >
               <Heart className={cn("h-4 w-4", favorite && "fill-primary")} />
             </button>
@@ -202,18 +201,18 @@ export default function Product() {
           <ul className="mt-6 grid gap-2 text-xs text-ink-muted">
             <li className="flex items-center gap-2">
               <Truck className="h-3.5 w-3.5" />
-              Complimentary express shipping over $300.
+              ارسال رایگان برای سفارش‌های بالای ۵٬۰۰۰٬۰۰۰ تومان.
             </li>
             <li className="flex items-center gap-2">
               <Repeat className="h-3.5 w-3.5" />
-              30-day easy returns. Made-to-order pieces excluded.
+              ۳۰ روز ضمانت بازگشت. بسته‌بندی محرمانه.
             </li>
           </ul>
 
           {/* Shipping estimator (collapsed by default) */}
           <details className="mt-8 group rounded-2xl hairline bg-white/45 p-1">
             <summary className="flex cursor-pointer items-center justify-between rounded-xl px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink transition hover:bg-white/60 [&::-webkit-details-marker]:hidden">
-              Estimate shipping & duties
+              برآورد ارسال و هزینه‌ها
               <span className="text-ink-muted transition group-open:rotate-45">+</span>
             </summary>
             <div className="px-4 pb-4">
@@ -224,19 +223,19 @@ export default function Product() {
           {/* Accordions */}
           <div className="mt-12 divide-y divide-edge/60 border-y border-edge/60">
             {[
-              { id: "composition", label: "Composition", body: product.composition },
-              { id: "origin", label: "Origin", body: product.origin },
+              { id: "composition", label: "جنس و ترکیب", body: product.composition },
+              { id: "origin", label: "محصول کجا دوخته شده", body: product.origin },
               {
                 id: "care",
-                label: "Garment Care",
+                label: "نگهداری از محصول",
                 body:
-                  "Dry clean only. Rest between wears on a cedar hanger. Press lightly with a damp cloth between seasons.",
+                  "شستشوی دستی با آب سرد. خشک کردن در هوای آزاد و دور از نور مستقیم خورشید. اتو با دمای پایین در صورت نیاز.",
               },
               {
                 id: "returns",
-                label: "Returns & Repairs",
+                label: "بازگشت و تعمیر",
                 body:
-                  "Ships within 48 hours from Milan or Kyoto. Returns accepted within 30 days, items unworn, in original packaging. Lifetime repair at our atelier.",
+                  "ارسال در ۴۸ ساعت از تهران یا اصفهان. بازگشت تا ۷ روز، در بسته‌بندی اصلی و بدون استفاده. تعمیر مادام‌العمر در بوتیک لونا.",
               },
             ].map((item) => (
               <div key={item.id}>
@@ -244,7 +243,7 @@ export default function Product() {
                   onClick={() =>
                     setOpen((curr) => (curr === item.id ? null : item.id))
                   }
-                  className="flex w-full items-center justify-between py-5 text-left text-sm font-medium text-ink"
+                  className="flex w-full items-center justify-between py-5 text-right text-sm font-medium text-ink"
                   aria-expanded={open === item.id}
                 >
                   {item.label}
@@ -284,33 +283,28 @@ export default function Product() {
       <Reveal as="section" className="mt-32">
         <div className="grid items-center gap-8 rounded-3xl glass-strong p-10 lg:grid-cols-[1.2fr_1fr] lg:p-14">
           <div>
-            <p className="type-eyebrow text-ink-muted">Editor's note</p>
+            <p className="type-eyebrow text-ink-muted">یادداشت بوتیک</p>
             <h3 className="mt-3 font-display text-3xl leading-tight text-ink lg:text-4xl">
-              How we put this together
+              داستان دوخت این محصول
             </h3>
             <p className="mt-4 max-w-lg text-sm leading-relaxed text-ink-soft">
-              Three weeks at the Florence mill, two with the tailor, the rest
-              with the cloth. The making of a single piece at ÆON is closer to
-              editing a manuscript than manufacturing.
+              سه هفته در کارگاه نساجی، دو هفته با خیاط، و باقی با پارچه.
+              ساخت یک محصول در لونا، بیشتر شبیه ویرایش یک دست‌نوشته است تا تولید انبوه.
             </p>
             <Link
-              to="/press/the-patination-of-leather"
+              to="/press"
               className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
             >
-              Read the journal
+              خواندن مجله لونا
             </Link>
           </div>
           <div className="gradient-oat relative aspect-[4/3] overflow-hidden rounded-2xl ring-1 ring-inset ring-white/40">
             <div className="absolute inset-0 grid place-items-center text-ink/40">
-              <p className="font-display text-3xl">From the Atelier</p>
+              <p className="font-display text-3xl">از بوتیک</p>
             </div>
           </div>
         </div>
       </Reveal>
     </div>
   );
-}
-
-function mathSafeInc(n: number): number {
-  return n + 1;
 }

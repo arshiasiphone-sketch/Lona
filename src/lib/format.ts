@@ -42,7 +42,7 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("fa-IR", {
  * Format an integer or "minor unit" amount as Persian Toman.
  * Output: "۲٬۴۸۰٬۰۰۰ تومان"
  */
-export function formatPrice(amount: number, _decimals = false): string {
+export function formatPrice(amount: number, _decimals: boolean = false): string {
   const value = Math.round(amount / 1);
   return `${TOMAN_FORMATTER.format(value)} تومان`;
 }

@@ -1,53 +1,71 @@
 /**
- * Centralized toast helpers wrapping Sonner.
- * Every variant of "added to bag / wishlist / error" lives here so copy stays consistent.
+ * Lona — Persian Sonner wrappers.
+ *
+ * All customer-visible toast strings. Currency references و تومان.
  */
 import { toast as sonner } from "sonner";
 
 export const toast = {
+  /** Added to bag confirmation. */
   added: (productName: string) =>
-    sonner.success("Added to bag", {
+    sonner.success("به سبد خرید اضافه شد", {
       description: productName,
       duration: 3500,
     }),
+  /** Removed from bag. */
   removed: (productName: string) =>
-    sonner("Removed from bag", { description: productName, duration: 3000 }),
+    sonner("از سبد خرید حذف شد", { description: productName, duration: 3000 }),
+  /** Added to wishlist. */
   wished: (productName: string) =>
-    sonner.success("Saved", {
-      description: `${productName} added to wishlist`,
+    sonner.success("به علاقه‌مندی‌ها اضافه شد", {
+      description: `${productName} ذخیره شد`,
       duration: 3000,
     }),
+  /** Removed from wishlist. */
   unwished: (productName: string) =>
-    sonner("Removed from wishlist", {
+    sonner("از علاقه‌مندی‌ها حذف شد", {
       description: productName,
       duration: 3000,
     }),
+  /** Coupon flows. */
   coupon: {
-    applied: (code: string) =>
-      sonner.success("Promo applied", {
-        description: `${code} accepted · 10% off`,
+    applied: (code: string, percent: number) =>
+      sonner.success("کوپن اعمال شد", {
+        description: `${code} · ${percent}٪ تخفیف`,
         duration: 3500,
       }),
     invalid: () =>
-      sonner.error("Promo not recognized", {
-        description: "Try WELCOME10 for first orders.",
+      sonner.error("کوپن نامعتبر است", {
+        description: "برای اولین سفارش، کد WELCOME10 را امتحان کنید.",
         duration: 3500,
       }),
-    removed: () =>
-      sonner("Promo removed", { duration: 2500 }),
+    removed: () => sonner("کوپن حذف شد", { duration: 2500 }),
   },
+  /** Checkout placement. */
   placement: {
     success: (number: string) =>
-      sonner.success("Order placed", {
-        description: `Confirmation · Order ${number}. A letter is on its way.`,
+      sonner.success("سفارش شما ثبت شد", {
+        description: `کد سفارش: ${number}. یک یادداشت تشکر برایتان ارسال می‌شود.`,
         duration: 6000,
       }),
     failure: () =>
-      sonner.error("Payment couldn't be completed", {
-        description: "Please check your details and try again.",
+      sonner.error("پرداخت تکمیل نشد", {
+        description: "لطفاً اطلاعات خود را بررسی کنید و دوباره تلاش کنید.",
         duration: 5000,
       }),
   },
+  /** Generic copy. */
   copy: (label: string) =>
-    sonner.success("Copied", { description: label, duration: 2000 }),
+    sonner.success("کپی شد", { description: label, duration: 2000 }),
+
+  /** Auth. */
+  auth: {
+    signedIn: () => sonner.success("خوش آمدید", { duration: 3500 }),
+    signedOut: () => sonner("با موفقیت خارج شدید", { duration: 2500 }),
+    otpSent: () =>
+      sonner.success("کد تأیید ارسال شد", {
+        description: "ایمیل خود را بررسی کنید.",
+        duration: 4000,
+      }),
+  },
 } as const;

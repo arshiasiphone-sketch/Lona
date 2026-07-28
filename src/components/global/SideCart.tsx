@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Minus, Plus, X, ShoppingBag, ArrowRight, Gift, Tag } from "lucide-react";
+import { Minus, Plus, X, ShoppingBag, ArrowLeft, Gift, Tag } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -84,20 +84,20 @@ export function SideCart() {
         <div className="flex items-center justify-between border-b border-edge/60 px-6 py-5">
           <div className="flex items-center gap-2">
             <ShoppingBag className="h-4 w-4 text-ink" />
-            <SheetTitle className="font-display text-2xl text-ink">
-              Your bag
+            <SheetTitle className="type-h3 text-ink">
+              سبد خرید شما
             </SheetTitle>
           </div>
           <button
             onClick={closeSideCart}
             className="grid h-9 w-9 place-items-center rounded-full hairline text-ink-soft hover:bg-white/60 hover:text-ink"
-            aria-label="Close bag"
+            aria-label="بستن سبد خرید"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <SheetDescription className="sr-only">
-          {items.length} {items.length === 1 ? "piece" : "pieces"} in your bag.
+          {items.length.toLocaleString("fa-IR")} تکه در سبد خرید شما.
         </SheetDescription>
 
         {items.length === 0 ? (
@@ -129,7 +129,7 @@ export function SideCart() {
                     <div className="flex flex-1 flex-col justify-between py-0.5">
                       <div>
                         <p className="type-eyebrow text-ink-muted">
-                          {item.color} · {item.size}
+                          {item.color} · سایز {item.size}
                         </p>
                         <Link
                           to={`/shop/${item.product?.slug}`}
@@ -146,19 +146,19 @@ export function SideCart() {
                               update(item.product.id, item.size, item.color, item.quantity - 1)
                             }
                             className="grid h-7 w-7 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                            aria-label="decrease"
+                            aria-label="کاهش تعداد"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="min-w-[1.5rem] text-center text-xs font-medium text-ink">
-                            {item.quantity}
+                            {item.quantity.toLocaleString("fa-IR")}
                           </span>
                           <button
                             onClick={() =>
                               update(item.product.id, item.size, item.color, item.quantity + 1)
                             }
                             className="grid h-7 w-7 place-items-center rounded-full text-ink-soft hover:bg-white/60"
-                            aria-label="increase"
+                            aria-label="افزایش تعداد"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
@@ -174,7 +174,7 @@ export function SideCart() {
                         toast.removed(item.product.name);
                       }}
                       className="grid h-8 w-8 shrink-0 place-items-center self-start rounded-full hairline text-ink-soft hover:bg-white/60 hover:text-ink"
-                      aria-label="remove"
+                      aria-label="حذف از سبد خرید"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -184,9 +184,9 @@ export function SideCart() {
 
               {/* Recommended upsell */}
               <div className="mt-8 rounded-2xl hairline bg-white/55 p-5">
-                <p className="type-eyebrow text-ink-muted">Worn with</p>
+                <p className="type-eyebrow text-ink-muted">پیشنهاد بوتیک</p>
                 <p className="mt-2 text-sm text-ink-soft">
-                  Three gentle pairings our atelier recommends.
+                  سه تکه‌ی هماهنگ که بوتیک پیشنهاد می‌دهد.
                 </p>
                 <ul className="mt-4 space-y-2">
                   {recommended
@@ -214,9 +214,9 @@ export function SideCart() {
                         <Link
                           to={`/shop/${p.slug}`}
                           onClick={closeSideCart}
-                          className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink"
+                          className="text-[10px] uppercase tracking-[0.04em] text-ink-soft hover:text-ink"
                         >
-                          Add
+                          افزودن
                         </Link>
                       </li>
                     ))}
@@ -235,7 +235,7 @@ export function SideCart() {
 
               <dl className="mt-5 space-y-2 text-sm">
                 <div className="flex items-baseline justify-between">
-                  <dt className="text-ink-soft">Subtotal</dt>
+                  <dt className="text-ink-soft">جمع جزء</dt>
                   <dd className="type-caption text-ink">
                     {formatPrice(subtotal, true)}
                   </dd>
@@ -247,13 +247,15 @@ export function SideCart() {
                   </div>
                 )}
                 <div className="flex items-baseline justify-between">
-                  <dt className="text-ink-soft">Shipping</dt>
+                  <dt className="text-ink-soft">ارسال</dt>
                   <dd className="type-caption text-ink">
-                    {shipping === 0 ? "Complimentary" : formatPrice(shipping, true)}
+                    {shipping === 0
+                      ? "ارسال رایگان"
+                      : formatPrice(shipping, true)}
                   </dd>
                 </div>
                 <div className="flex items-baseline justify-between border-t border-edge/60 pt-3">
-                  <dt className="font-display text-lg text-ink">Total</dt>
+                  <dt className="font-display text-lg text-ink">جمع کل</dt>
                   <dd className="font-display text-lg type-caption text-ink">
                     {formatPrice(total, true)}
                   </dd>
@@ -263,21 +265,21 @@ export function SideCart() {
                 <Link
                   to="/checkout"
                   onClick={closeSideCart}
-                  className="flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+                  className="flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.04em] text-canvas hover:bg-primary"
                 >
-                  Proceed to Checkout
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  ادامه فرایند خرید
+                  <ArrowLeft className="ms-2 h-4 w-4" />
                 </Link>
                 <Link
                   to="/cart"
                   onClick={closeSideCart}
-                  className="flex w-full items-center justify-center rounded-full hairline px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-white/60"
+                  className="flex w-full items-center justify-center rounded-full hairline px-5 py-3 text-[11px] font-medium uppercase tracking-[0.04em] text-ink hover:bg-white/60"
                 >
-                  View Full Bag
+                  مشاهده کامل سبد
                 </Link>
               </div>
               <p className="mt-2 text-center text-[11px] text-ink-muted">
-                Encrypted end-to-end. Free returns within 30 days.
+                ارسال امن، بسته‌بندی محرمانه. بازگشت رایگان تا ۳۰ روز.
               </p>
             </div>
           </>
@@ -293,17 +295,17 @@ function EmptyBag({ onClose }: { onClose: () => void }) {
       <span className="grid h-16 w-16 place-items-center rounded-full hairline bg-white/50">
         <ShoppingBag className="h-5 w-5 text-ink" />
       </span>
-      <p className="mt-6 font-display text-2xl text-ink">Quiet, for now.</p>
+      <p className="mt-6 font-display text-2xl text-ink">ساکت است، فعلاً.</p>
       <p className="mt-2 max-w-[260px] text-sm text-ink-soft">
-        Your bag is currently empty. Begin with the season's newly considered pieces.
+        سبد خریدتان خالی است. با تازه‌های فصل شروع کنید.
       </p>
       <Link
         to="/shop"
         onClick={onClose}
-        className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+        className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.04em] text-canvas hover:bg-primary"
       >
-        Browse Catalogue
-        <ArrowRight className="h-3.5 w-3.5" />
+        مرور بوتیک
+        <ArrowLeft className="h-3.5 w-3.5" />
       </Link>
     </div>
   );
@@ -325,7 +327,7 @@ function CouponForm({
       {applied ? (
         <>
           <span className="flex-1 text-sm font-medium text-ink">
-            {applied.code} · −{Math.round(applied.percentOff * 100)}%
+            {applied.code} · −{Math.round(applied.percentOff * 100)}٪
           </span>
           <button
             onClick={() => {
@@ -333,9 +335,9 @@ function CouponForm({
               toast.coupon.removed();
               setCode("");
             }}
-            className="text-[10px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink"
+            className="text-[10px] uppercase tracking-[0.04em] text-ink-soft hover:text-ink"
           >
-            Remove
+            حذف
           </button>
         </>
       ) : (
@@ -343,18 +345,23 @@ function CouponForm({
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Promo code (try WELCOME10)"
+            placeholder="کد تخفیف (مثلاً WELCOME10)"
             className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+            dir="ltr"
           />
           <button
             onClick={() => {
               const result = onApply(code);
-              if (result) toast.coupon.applied(result.code);
+              if (result)
+                toast.coupon.applied(
+                  result.code,
+                  Math.round(result.percentOff * 100)
+                );
               else toast.coupon.invalid();
             }}
-            className="rounded-full bg-ink px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+            className="rounded-full bg-ink px-3 py-1 text-[10px] font-medium uppercase tracking-[0.04em] text-canvas hover:bg-primary"
           >
-            Apply
+            اعمال
           </button>
         </>
       )}
@@ -369,11 +376,11 @@ function GiftNoteInline() {
     <div className="mt-3 rounded-2xl hairline bg-canvas/60">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-right"
       >
-        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink">
+        <span className="flex items-center gap-2 text-[11px] tracking-[0.04em] text-ink">
           <Gift className="h-3.5 w-3.5" />
-          Gift note
+          یادداشت هدیه
         </span>
         <span className="text-[11px] text-ink-muted">{open ? "−" : "+"}</span>
       </button>
@@ -382,7 +389,7 @@ function GiftNoteInline() {
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="A short note — printed on ÆON letterpress in faint graphite."
+            placeholder="یک یادداشت کوتاه — با حروف چاپ لونا روی کارت."
             rows={3}
             className={cn(
               "mt-2 w-full resize-none rounded-xl bg-white/60 px-3 py-2 text-sm text-ink placeholder:text-ink-muted",
@@ -390,7 +397,7 @@ function GiftNoteInline() {
             )}
           />
           <p className="mt-2 text-[11px] text-ink-muted">
-            Hand-set in our atelier. Single 80-character note included.
+            در بوتیک لونا با حروف دست‌نویس چاپ می‌شود. حداکثر ۸۰ کاراکتر.
           </p>
         </div>
       )}
