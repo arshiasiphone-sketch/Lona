@@ -766,7 +766,7 @@ export const LONA_PRODUCTS: LonaProductRaw[] = [
     composition: "۸۵٪ ویسکوز، ۱۵٪ سیلک.",
     origin: "دوخت در تهران.",
     basePrice: 690000,
-    colors: ["beige","white","mist"],
+    colors: ["beige","white","rose"],
     badges: ["restocked"],
     rating: 4.6, reviewCount: 84,
     secondaryGradient: "mist",
