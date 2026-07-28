@@ -4,6 +4,11 @@ import { FeaturedCollections } from "@/components/editorial/FeaturedCollections"
 import { TrendingProducts } from "@/components/editorial/TrendingProducts";
 import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { Testimonials } from "@/components/editorial/Testimonials";
+import { Lookbook } from "@/components/editorial/Lookbook";
+import { BrandManifesto } from "@/components/editorial/BrandManifesto";
+import { Recommendations } from "@/components/editorial/Recommendations";
+import { InstagramGallery } from "@/components/editorial/InstagramGallery";
+import { RecentlyViewedStrip } from "@/components/global/RecentlyViewed";
 import {
   collections,
   newArrivals,
@@ -14,6 +19,7 @@ export default function Landing() {
   return (
     <div className="relative">
       <Hero />
+
       <Marquee
         items={[
           "ÆON — Established MMXII",
@@ -25,15 +31,37 @@ export default function Landing() {
         ]}
         className="mt-2"
       />
-      <FeaturedCollections collections={collections.slice(0, 3)} title="Volume XII" eyebrow="Chapter" />
-      <TrendingProducts products={newArrivals()} title="Newly considered" eyebrow="New Arrivals" />
+
+      <FeaturedCollections
+        collections={collections.slice(0, 3)}
+        title="Volume XII"
+        eyebrow="Chapter"
+      />
+
+      <TrendingProducts
+        products={newArrivals()}
+        title="Newly considered"
+        eyebrow="New Arrivals"
+      />
+
+      <Lookbook />
+
+      <BrandManifesto />
+
+      <Recommendations />
+
+      <RecentlyViewedStrip />
+
       <EditorialStory
         eyebrow="From the Atelier"
         quote="Cloth first; line second; everything else — the buttons, the seams, the inside of a pocket — after."
         body="Our atelier in Florence works across four seasons of the year. We do not produce to the calendar. We produce to the cloth — when the mill is right, when the dye is quiet, when the wool is rested. The pieces in Volume XII have been in this conversation for two years."
         attribution="Vittorio Sala, Head Tailor"
       />
+
       <Testimonials items={testimonials} />
+
+      <InstagramGallery />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
+import { GlobalOverlays } from "@/components/global/GlobalOverlays";
 import { pageTransition } from "@/lib/motion";
 
 export function PageShell() {
@@ -21,6 +22,7 @@ export function PageShell() {
         </motion.main>
       </AnimatePresence>
       <Footer />
+      <GlobalOverlays />
     </div>
   );
 }

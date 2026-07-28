@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { motion } from "framer-motion";
 import {
   ChevronRight,
   Heart,
@@ -10,16 +9,21 @@ import {
   Truck,
   Repeat,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { getProduct } from "@/data/catalog";
-import { ProductImage } from "@/components/ui/ProductImage";
+import { ProductGallery } from "@/components/product/ProductGallery";
+import { VariantPicker } from "@/components/product/VariantPicker";
+import { BundleSuggestions } from "@/components/product/BundleSuggestions";
+import { ShippingEstimator } from "@/components/product/ShippingEstimator";
+import { RecentlyViewed } from "@/components/global/RecentlyViewed";
+import { Reveal } from "@/components/motion/Reveal";
+import { useCart } from "@/hooks/use-cart";
+import { useWishlist } from "@/hooks/use-wishlist";
+import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
-import { useCart } from "@/hooks/use-cart";
-import { useWishlist } from "@/hooks/use-wishlist";
-import { products } from "@/data/catalog";
-import { Reveal } from "@/components/motion/Reveal";
-import { ProductCard } from "@/components/product/ProductCard";
 
 export default function Product() {
   const { slug = "" } = useParams();
@@ -29,15 +33,22 @@ export default function Product() {
   const [size, setSize] = useState(product?.sizes[0].id ?? "");
   const [qty, setQty] = useState(1);
   const [open, setOpen] = useState<string | null>("composition");
-  const [added, setAdded] = useState(false);
 
   const { add } = useCart();
   const { has, toggle } = useWishlist();
+  const { track } = useRecentlyViewed();
+
+  // Track this product as recently viewed on mount.
+  useEffect(() => {
+    if (product) track(product.id);
+  }, [product?.id, track, product]);
 
   if (!product) {
     return (
       <div className="mx-auto max-w-2xl px-6 pt-32 pb-24 text-center">
-        <p className="font-display text-3xl text-ink">This piece is no longer in rotation.</p>
+        <p className="font-display text-3xl text-ink">
+          This piece is no longer in rotation.
+        </p>
         <Link
           to="/shop"
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
@@ -49,108 +60,50 @@ export default function Product() {
   }
 
   const favorite = has(product.id);
-  const currentColor = product.colors.find((c) => c.id === color) ?? product.colors[0];
-  const related = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const selectedColorGradient = product.colors.find((c) => c.id === color)?.gradient ?? "oat";
 
   const handleAdd = () => {
+    const currentColor = product.colors.find((c) => c.id === color) ?? product.colors[0];
+    const currentSize = product.sizes.find((s) => s.id === size) ?? product.sizes[0];
     add({
       productId: product.id,
-      size: product.sizes.find((s) => s.id === size)?.label ?? "",
+      size: currentSize.label,
       color: currentColor.name,
       quantity: qty,
     });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2200);
+    toast.added(`${product.name} · ${currentColor.name} · ${currentSize.label}`);
   };
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
-        <Link to="/" className="hover:text-ink">Home</Link>
+      <nav
+        aria-label="breadcrumb"
+        className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted"
+      >
+        <Link to="/" className="hover:text-ink">
+          Home
+        </Link>
         <ChevronRight className="h-3 w-3" />
-        <Link to="/shop" className="hover:text-ink">Shop</Link>
+        <Link to="/shop" className="hover:text-ink">
+          Shop
+        </Link>
         <ChevronRight className="h-3 w-3" />
         <span className="text-ink">{product.name}</span>
       </nav>
 
       {/* Layout */}
       <div className="mt-8 grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-20">
-        {/* Gallery */}
-        <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9, ease: EASE_LUXURY }}
-            className="overflow-hidden rounded-3xl"
-          >
-            <ProductImage
-              gradient={
-                currentColor.gradient === "oat"
-                  ? "gradient-oat"
-                  : currentColor.gradient === "mist"
-                  ? "gradient-mist"
-                  : currentColor.gradient === "rose"
-                  ? "gradient-rose-quartz"
-                  : "gradient-deep"
-              }
-              silhouette={
-                product.category === "outerwear"
-                  ? "coat"
-                  : product.category === "knitwear"
-                  ? "knit"
-                  : product.category === "dresses"
-                  ? "dress"
-                  : product.category === "trousers"
-                  ? "trouser"
-                  : product.category === "shirting"
-                  ? "shirt"
-                  : product.category === "leather"
-                  ? "leather"
-                  : "accessory"
-              }
-              withMark
-              className="aspect-[4/5] w-full"
-            />
-          </motion.div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="overflow-hidden rounded-2xl ring-1 ring-inset ring-edge/40">
-                <ProductImage
-                  gradient={
-                    (i % 4 === 1 ? "mist" : i % 4 === 2 ? "rose" : i % 4 === 3 ? "deep" : "oat")
-                  }
-                  silhouette={
-                    product.category === "outerwear"
-                      ? "coat"
-                      : product.category === "knitwear"
-                      ? "knit"
-                      : product.category === "dresses"
-                      ? "dress"
-                      : product.category === "trousers"
-                      ? "trouser"
-                      : product.category === "shirting"
-                      ? "shirt"
-                      : product.category === "leather"
-                      ? "leather"
-                      : "accessory"
-                  }
-                  withMark={false}
-                  className="aspect-[4/5] w-full"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+        <ProductGallery product={product} colorGradient={selectedColorGradient} />
 
-        {/* Detail panel */}
         <div className="lg:sticky lg:top-32 lg:h-fit">
           {/* Header */}
           <div>
             <p className="type-eyebrow text-ink-muted">
-              {currentColor.name} · {product.collection.replace("-", " — ")}
+              {product.collection.replace("-", " · ")} ·{" "}
+              {product.badges?.includes("editorial") && "Editor's pick · "}
+              {product.badges?.includes("limited") && "Limited run · "}
+              {product.colors.find((c) => c.id === color)?.name}
             </p>
             <h1 className="mt-4 font-display text-4xl leading-[1.05] text-ink lg:text-5xl">
               {product.name}
@@ -176,62 +129,30 @@ export default function Product() {
             {product.description}
           </p>
 
-          {/* Color */}
-          <div className="mt-10">
-            <p className="type-eyebrow text-ink-muted">Color · {currentColor.name}</p>
-            <div className="mt-3 flex gap-3">
-              {product.colors.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setColor(c.id)}
-                  className={cn(
-                    "relative h-11 w-11 rounded-full",
-                    c.gradient === "oat" && "gradient-oat",
-                    c.gradient === "mist" && "gradient-mist",
-                    c.gradient === "deep" && "gradient-deep",
-                    c.gradient === "rose" && "gradient-rose-quartz"
-                  )}
-                  aria-label={c.name}
-                >
-                  <span
-                    className={cn(
-                      "absolute inset-0 rounded-full ring-2 ring-offset-2 ring-offset-canvas transition",
-                      color === c.id ? "ring-ink" : "ring-transparent"
-                    )}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Size */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between">
-              <p className="type-eyebrow text-ink-muted">Size</p>
-              <button className="text-xs uppercase tracking-[0.18em] text-ink-soft underline-offset-4 hover:underline">
-                Size guide
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {product.sizes.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSize(s.id)}
-                  className={cn(
-                    "rounded-xl py-2.5 text-[11px] uppercase tracking-[0.18em] transition",
-                    size === s.id
-                      ? "bg-ink text-canvas"
-                      : "hairline text-ink-soft hover:bg-white/60 hover:text-ink"
-                  )}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Variants */}
+          <motion.div
+            key={`${color}-${size}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: EASE_LUXURY }}
+            className="mt-10 space-y-7"
+          >
+            <VariantPicker
+              product={product}
+              selectedColor={color}
+              selectedSize={size}
+              onColorChange={setColor}
+              onSizeChange={setSize}
+            />
+          </motion.div>
 
           {/* Quantity + CTA */}
-          <div className="mt-10 flex items-center gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: EASE_LUXURY, delay: 0.05 }}
+            className="mt-9 flex items-center gap-3"
+          >
             <div className="glass flex items-center rounded-full px-1 py-1">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -244,62 +165,67 @@ export default function Product() {
                 {qty}
               </span>
               <button
-                onClick={() => setQty((q) => q + 1)}
+                onClick={() => setQty((q) => mathSafeInc(q))}
                 className="grid h-9 w-9 place-items-center rounded-full text-ink-soft hover:bg-white/60"
                 aria-label="increase quantity"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={handleAdd}
               className={cn(
                 "flex flex-1 items-center justify-center gap-3 rounded-full px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] transition",
-                added
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-ink text-canvas hover:bg-primary"
+                "bg-ink text-canvas hover:bg-primary"
               )}
             >
               <ShoppingBag className="h-4 w-4" />
-              {added ? "Added to bag" : "Add to bag"}
-            </button>
+              Add to bag · {formatPrice(product.price * qty)}
+            </motion.button>
             <button
-              onClick={() => toggle(product.id)}
+              onClick={() => {
+                toggle(product.id);
+                favorite ? toast.unwished(product.name) : toast.wished(product.name);
+              }}
               className={cn(
                 "grid h-12 w-12 place-items-center rounded-full glass transition hover:bg-white/60",
                 favorite && "text-primary"
               )}
-              aria-label="wishlist"
+              aria-label={favorite ? "Remove from wishlist" : "Save to wishlist"}
             >
               <Heart className={cn("h-4 w-4", favorite && "fill-primary")} />
             </button>
-          </div>
+          </motion.div>
 
           {/* Trust signals */}
-          <div className="mt-6 grid gap-3 text-xs text-ink-muted">
-            <p className="flex items-center gap-2">
+          <ul className="mt-6 grid gap-2 text-xs text-ink-muted">
+            <li className="flex items-center gap-2">
               <Truck className="h-3.5 w-3.5" />
               Complimentary express shipping over $300.
-            </p>
-            <p className="flex items-center gap-2">
+            </li>
+            <li className="flex items-center gap-2">
               <Repeat className="h-3.5 w-3.5" />
               30-day easy returns. Made-to-order pieces excluded.
-            </p>
-          </div>
+            </li>
+          </ul>
+
+          {/* Shipping estimator (collapsed by default) */}
+          <details className="mt-8 group rounded-2xl hairline bg-white/45 p-1">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink transition hover:bg-white/60 [&::-webkit-details-marker]:hidden">
+              Estimate shipping & duties
+              <span className="text-ink-muted transition group-open:rotate-45">+</span>
+            </summary>
+            <div className="px-4 pb-4">
+              <ShippingEstimator />
+            </div>
+          </details>
 
           {/* Accordions */}
           <div className="mt-12 divide-y divide-edge/60 border-y border-edge/60">
             {[
-              {
-                id: "composition",
-                label: "Composition",
-                body: product.composition,
-              },
-              {
-                id: "origin",
-                label: "Origin",
-                body: product.origin,
-              },
+              { id: "composition", label: "Composition", body: product.composition },
+              { id: "origin", label: "Origin", body: product.origin },
               {
                 id: "care",
                 label: "Garment Care",
@@ -307,10 +233,10 @@ export default function Product() {
                   "Dry clean only. Rest between wears on a cedar hanger. Press lightly with a damp cloth between seasons.",
               },
               {
-                id: "shipping",
-                label: "Shipping & Returns",
+                id: "returns",
+                label: "Returns & Repairs",
                 body:
-                  "Ships within 48 hours from Milan or Kyoto. Returns accepted within 30 days, items unworn, in original packaging.",
+                  "Ships within 48 hours from Milan or Kyoto. Returns accepted within 30 days, items unworn, in original packaging. Lifetime repair at our atelier.",
               },
             ].map((item) => (
               <div key={item.id}>
@@ -319,6 +245,7 @@ export default function Product() {
                     setOpen((curr) => (curr === item.id ? null : item.id))
                   }
                   className="flex w-full items-center justify-between py-5 text-left text-sm font-medium text-ink"
+                  aria-expanded={open === item.id}
                 >
                   {item.label}
                   <Plus
@@ -330,7 +257,10 @@ export default function Product() {
                 </button>
                 <motion.div
                   initial={false}
-                  animate={{ height: open === item.id ? "auto" : 0, opacity: open === item.id ? 1 : 0 }}
+                  animate={{
+                    height: open === item.id ? "auto" : 0,
+                    opacity: open === item.id ? 1 : 0,
+                  }}
                   transition={{ duration: 0.32, ease: EASE_LUXURY }}
                   className="overflow-hidden"
                 >
@@ -344,25 +274,43 @@ export default function Product() {
         </div>
       </div>
 
-      {/* Related */}
+      {/* Bundle suggestions */}
+      <BundleSuggestions primaryId={product.id} />
+
+      {/* Recently viewed */}
+      <RecentlyViewed excludeId={product.id} />
+
+      {/* Editorial cross-promo */}
       <Reveal as="section" className="mt-32">
-        <div className="flex items-end justify-between">
-          <h2 className="font-display text-3xl text-ink lg:text-4xl">
-            Considered with
-          </h2>
-          <Link
-            to="/shop"
-            className="text-[11px] uppercase tracking-[0.18em] text-ink-soft hover:text-ink"
-          >
-            View all
-          </Link>
-        </div>
-        <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-12 sm:gap-x-8 sm:gap-y-16 lg:grid-cols-4">
-          {related.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+        <div className="grid items-center gap-8 rounded-3xl glass-strong p-10 lg:grid-cols-[1.2fr_1fr] lg:p-14">
+          <div>
+            <p className="type-eyebrow text-ink-muted">Editor's note</p>
+            <h3 className="mt-3 font-display text-3xl leading-tight text-ink lg:text-4xl">
+              How we put this together
+            </h3>
+            <p className="mt-4 max-w-lg text-sm leading-relaxed text-ink-soft">
+              Three weeks at the Florence mill, two with the tailor, the rest
+              with the cloth. The making of a single piece at ÆON is closer to
+              editing a manuscript than manufacturing.
+            </p>
+            <Link
+              to="/press/the-patination-of-leather"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+            >
+              Read the journal
+            </Link>
+          </div>
+          <div className="gradient-oat relative aspect-[4/3] overflow-hidden rounded-2xl ring-1 ring-inset ring-white/40">
+            <div className="absolute inset-0 grid place-items-center text-ink/40">
+              <p className="font-display text-3xl">From the Atelier</p>
+            </div>
+          </div>
         </div>
       </Reveal>
     </div>
   );
+}
+
+function mathSafeInc(n: number): number {
+  return n + 1;
 }

@@ -14,6 +14,7 @@ import { collections } from "@/data/catalog";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
+import { useOverlay } from "@/hooks/use-overlay";
 import { EASE_LUXURY } from "@/lib/motion";
 
 const PRIMARY_LINKS: { label: string; to: string }[] = [
@@ -27,11 +28,12 @@ export function Navbar() {
   const { itemCount } = useCart();
   const { ids: wishlistIds } = useWishlist();
   const { isAuthenticated } = useAuth();
+  const { openSideCart, openCommand } = useOverlay();
   const navigate = useNavigate();
 
   const [scrolled, setScrolled] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
 
@@ -43,11 +45,11 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (searchOpen) {
+    if (mobileSearch) {
       const t = setTimeout(() => searchRef.current?.focus(), 80);
       return () => clearTimeout(t);
     }
-  }, [searchOpen]);
+  }, [mobileSearch]);
 
   return (
     <header
@@ -62,14 +64,14 @@ export function Navbar() {
         className="relative mx-auto flex h-16 max-w-[1728px] items-center justify-between px-6 lg:px-10"
         aria-label="Primary"
       >
-        {/* Left — collection nav (desktop), menu (mobile) */}
+        {/* Left — collection nav (desktop), menu + search (mobile) */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setSearchOpen((s) => !s)}
-            className="grid h-9 w-9 place-items-center rounded-full hairline text-ink-soft transition hover:text-ink lg:hidden"
-            aria-label="Open menu"
+            onClick={() => setMobileSearch((s) => !s)}
+            className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 lg:hidden"
+            aria-label="Toggle search"
           >
-            <MenuIcon className="h-4 w-4" />
+            <Search className="h-4 w-4" />
           </button>
           <ul className="hidden items-center gap-1 lg:flex">
             {PRIMARY_LINKS.map((link, i) => (
@@ -152,11 +154,17 @@ export function Navbar() {
         {/* Right — utilities */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setSearchOpen((s) => !s)}
-            className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
-            aria-label="Open search"
+            onClick={openCommand}
+            className="flex items-center gap-2 rounded-full hairline bg-canvas/60 px-3 py-2 text-ink-soft transition hover:bg-white/80"
+            aria-label="Open command palette"
           >
             <Search className="h-4 w-4" />
+            <span className="hidden md:inline text-[11px] uppercase tracking-[0.18em]">
+              Search
+            </span>
+            <kbd className="hidden md:inline rounded bg-canvas/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted">
+              ⌘K
+            </kbd>
           </button>
           <Link
             to="/wishlist"
@@ -164,24 +172,42 @@ export function Navbar() {
             aria-label="Wishlist"
           >
             <Heart className="h-4 w-4" />
-            {wishlistIds.length > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground">
-                {wishlistIds.length}
-              </span>
-            )}
+            <AnimatePresence>
+              {wishlistIds.length > 0 && (
+                <motion.span
+                  key={`w-${wishlistIds.length}`}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: EASE_LUXURY }}
+                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
+                >
+                  {wishlistIds.length}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Link>
-          <Link
-            to="/cart"
+          <button
+            onClick={openSideCart}
             className="relative grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
-            aria-label="Cart"
+            aria-label="Open shopping bag"
           >
             <ShoppingBag className="h-4 w-4" />
-            {itemCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground">
-                {itemCount}
-              </span>
-            )}
-          </Link>
+            <AnimatePresence>
+              {itemCount > 0 && (
+                <motion.span
+                  key={`c-${itemCount}`}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: EASE_LUXURY }}
+                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
+                >
+                  {itemCount}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
           <button
             onClick={() => navigate(isAuthenticated ? "/account" : "/auth")}
             className="ml-1 grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
@@ -192,17 +218,17 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Search overlay */}
+      {/* Mobile-only quick search bar */}
       <AnimatePresence>
-        {searchOpen && (
+        {mobileSearch && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.32, ease: EASE_LUXURY }}
-            className="absolute left-0 right-0 top-full z-50 mx-auto max-w-[1728px] px-6 lg:px-10"
+            className="lg:hidden border-t border-edge/60"
           >
-            <div className="glass-strong mt-2 flex items-center gap-3 rounded-2xl px-5 py-4">
+            <div className="glass-strong flex items-center gap-3 px-6 py-3">
               <Search className="h-4 w-4 text-ink-muted" />
               <input
                 ref={searchRef}
@@ -210,23 +236,20 @@ export function Navbar() {
                 onChange={(e) => setSearchValue(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && searchValue.trim()) {
-                    navigate(`/shop?q=${encodeURIComponent(searchValue)}`);
-                    setSearchOpen(false);
+                    navigate(`/search?q=${encodeURIComponent(searchValue)}`);
+                    setMobileSearch(false);
                     setSearchValue("");
                   }
                 }}
-                placeholder="Search coats, knitwear, objects…"
-                className="flex-1 bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none"
+                placeholder="Search…"
+                className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
               />
               <button
-                onClick={() => {
-                  setSearchOpen(false);
-                  setSearchValue("");
-                }}
-                className="grid h-8 w-8 place-items-center rounded-full text-ink-muted hover:bg-white/40 hover:text-ink"
+                onClick={() => setMobileSearch(false)}
+                className="grid h-7 w-7 place-items-center rounded-full text-ink-muted hover:bg-white"
                 aria-label="Close search"
               >
-                <CloseIcon className="h-4 w-4" />
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           </motion.div>

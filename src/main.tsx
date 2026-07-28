@@ -11,6 +11,8 @@ import "./index.css";
 
 import { CartProvider } from "@/hooks/use-cart";
 import { WishlistProvider } from "@/hooks/use-wishlist";
+import { RecentlyViewedProvider } from "@/hooks/use-recently-viewed";
+import { OverlayProvider } from "@/hooks/use-overlay";
 import { PageShell } from "@/components/layout/PageShell";
 
 // Lazy load route components for better code splitting
@@ -26,6 +28,7 @@ const Collections = lazy(() => import("./pages/Collections.tsx"));
 const Collection = lazy(() => import("./pages/Collection.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Press = lazy(() => import("./pages/Press.tsx"));
+const Search = lazy(() => import("./pages/Search.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function RouteLoading() {
@@ -125,67 +128,73 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <CartProvider>
           <WishlistProvider>
-            <BrowserRouter>
-              <RouteSyncer />
-              <Suspense fallback={<RouteLoading />}>
-                <Routes>
-                  {/* Auth — standalone, no chrome */}
-                  <Route
-                    path="/auth"
-                    element={<AuthPage redirectAfterAuth="/account" />}
-                  />
+            <RecentlyViewedProvider>
+              <OverlayProvider>
+                <BrowserRouter>
+                  <RouteSyncer />
+                  <Suspense fallback={<RouteLoading />}>
+                    <Routes>
+                      {/* Auth — standalone */}
+                      <Route
+                        path="/auth"
+                        element={<AuthPage redirectAfterAuth="/account" />}
+                      />
 
-                  {/* Public shell — navbar + footer wrap all visible routes */}
-                  <Route element={<PageShell />}>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/shop" element={<Shop />} />
-                    <Route path="/shop/:slug" element={<Product />} />
-                    <Route path="/collections" element={<Collections />} />
-                    <Route path="/collections/:slug" element={<Collection />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/wishlist" element={<Wishlist />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/press" element={<Press />} />
-                  </Route>
+                      {/* Public + Authenticated via PageShell */}
+                      <Route element={<PageShell />}>
+                        <Route path="/" element={<Landing />} />
+                        <Route path="/shop" element={<Shop />} />
+                        <Route path="/shop/:slug" element={<Product />} />
+                        <Route path="/collections" element={<Collections />} />
+                        <Route
+                          path="/collections/:slug"
+                          element={<Collection />}
+                        />
+                        <Route path="/cart" element={<Cart />} />
+                        <Route path="/wishlist" element={<Wishlist />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/press" element={<Press />} />
+                        <Route path="/search" element={<Search />} />
+                      </Route>
 
-                  {/* Protected — Account workspace */}
-                  <Route
-                    path="/account"
-                    element={
-                      <RequireAuth>
-                        <PageShell />
-                      </RequireAuth>
-                    }
-                  >
-                    <Route index element={<Dashboard />} />
-                  </Route>
+                      {/* Account (protected) */}
+                      <Route
+                        path="/account"
+                        element={
+                          <RequireAuth>
+                            <Dashboard />
+                          </RequireAuth>
+                        }
+                      />
 
-                  <Route
-                    path="/checkout"
-                    element={
-                      <RequireAuth>
-                        <PageShell />
-                      </RequireAuth>
-                    }
-                  >
-                    <Route index element={<Checkout />} />
-                  </Route>
+                      {/* Checkout (protected, full route outside PageShell
+                          so the dark checkout layout owns the canvas) */}
+                      <Route
+                        path="/checkout"
+                        element={
+                          <RequireAuth>
+                            <Checkout />
+                          </RequireAuth>
+                        }
+                      />
 
-                  {/* Legacy dashboard route → account */}
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <RequireAuth>
-                        <Dashboard />
-                      </RequireAuth>
-                    }
-                  />
+                      {/* Legacy dashboard → Account */}
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <RequireAuth>
+                            <Dashboard />
+                          </RequireAuth>
+                        }
+                      />
 
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-            <Toaster />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </BrowserRouter>
+                <Toaster />
+              </OverlayProvider>
+            </RecentlyViewedProvider>
           </WishlistProvider>
         </CartProvider>
       </ConvexAuthProvider>
