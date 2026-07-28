@@ -1,111 +1,105 @@
-import { HeroChoreography } from "@/components/editorial/HeroChoreography";
-import { Marquee } from "@/components/editorial/Marquee";
-import { FeaturedCollections } from "@/components/editorial/FeaturedCollections";
+/**
+ * Lona — Landing page composition.
+ *
+ * Locked section order (do not change without consulting the spec):
+ *   1. Hero
+ *   2. New Collection
+ *   3. Categories
+ *   4. Featured Products
+ *   5. Brand Story
+ *   6. Benefits
+ *   7. Bestsellers
+ *   8. Lookbook
+ *   9. Journal
+ *   10. Instagram
+ *   (Footer + its built-in newsletter band follows via PageShell.)
+ */
+import { Hero } from "@/components/editorial/Hero";
 import { TrendingProducts } from "@/components/editorial/TrendingProducts";
-import { EditorialStory } from "@/components/editorial/EditorialStory";
-import { Testimonials } from "@/components/editorial/Testimonials";
+import { CategoryGrid } from "@/components/editorial/CategoryGrid";
+import { ProductGrid } from "@/components/product/ProductGrid";
+import { BrandStory } from "@/components/editorial/BrandStory";
+import { Benefits } from "@/components/editorial/Benefits";
+import { Bestsellers } from "@/components/editorial/Bestsellers";
 import { Lookbook } from "@/components/editorial/Lookbook";
-import { BrandManifesto } from "@/components/editorial/BrandManifesto";
-import { Recommendations } from "@/components/editorial/Recommendations";
+import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { InstagramGallery } from "@/components/editorial/InstagramGallery";
-import { RecentlyViewedStrip } from "@/components/global/RecentlyViewed";
-import { ImageMaskReveal } from "@/components/motion/ImageMaskReveal";
-import { TextReveal } from "@/components/motion/TextReveal";
-import { HoverGlow } from "@/components/motion/HoverGlow";
-import { PressScale } from "@/components/motion/PressScale";
-import { Link } from "react-router";
-import { ArrowRight } from "lucide-react";
 import {
   useCollections,
   useNewArrivals,
   staticCollections,
   staticProducts,
-  staticTestimonials,
 } from "@/lib/data/catalog";
 
 export default function Landing() {
   const collections = useCollections();
   const newItems = useNewArrivals();
-  const testimonials = staticTestimonials;
-  return (
-    <div className="relative">
-      <HeroChoreography />
+  const featured = (newItems ?? staticProducts).slice(0, 4);
+  const bestsellers = (newItems ?? staticProducts).slice(2, 6);
 
-      {/* Quick-access CTA pills */}
-      <section className="mx-auto -mt-8 max-w-[1728px] px-6 lg:px-10">
-        <div className="glass-strong mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 rounded-3xl px-6 py-4 lg:px-8">
+  return (
+    <div className="relative bg-canvas text-ink">
+      {/* 1 · Hero */}
+      <Hero />
+
+      {/* 2 · New Collection */}
+      <TrendingProducts
+        products={newItems ?? staticProducts}
+        eyebrow="تازه‌ها"
+        title="کالکسیون جدید"
+        ctaLabel="مشاهده همه"
+        ctaTo="/shop"
+      />
+
+      {/* 3 · Categories */}
+      <CategoryGrid />
+
+      {/* 4 · Featured Products */}
+      <section
+        className="mx-auto mt-36 max-w-[1728px] px-6 lg:px-10"
+        aria-label="محصولات منتخب"
+      >
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="type-eyebrow text-ink-muted">Skip ahead</p>
-            <p className="mt-1 font-display text-base text-ink">
-              <TextReveal asRoot="span" as="words" stagger={0.02}>
-                Begin a quiet browse.
-              </TextReveal>
-            </p>
+            <p className="type-eyebrow text-ink-muted">انتخاب سردبیر</p>
+            <h2 className="mt-3 font-display text-4xl font-light leading-[1.08] text-ink lg:text-5xl">
+              محصولات منتخب
+            </h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <PressScale>
-              <Link
-                to="/shop"
-                className="group inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
-              >
-                New Arrivals
-                <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-              </Link>
-            </PressScale>
-            <PressScale>
-              <Link
-                to="/collections/autumn-winter"
-                className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/60 px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-white"
-                data-cursor="image"
-              >
-                Volume XII editorial
-              </Link>
-            </PressScale>
-          </div>
+          <p className="max-w-md font-sans text-sm font-light leading-relaxed text-ink-muted md:text-start">
+            چهار تکه‌ی ظریف که تیم لونا این فصل بیشتر پوشیده است.
+          </p>
+        </div>
+        <div className="mt-12">
+          <ProductGrid products={featured} columns={4} priority />
         </div>
       </section>
 
-      <Marquee
-        items={[
-          "ÆON — Established MMXII",
-          "Cut in Florence",
-          "Knit in Como",
-          "Tailored in Naples",
-          "Eyewear in Cadore",
-          "Quietly distinguished",
-        ]}
-        className="mt-12"
+      {/* 5 · Brand Story */}
+      <BrandStory />
+
+      {/* 6 · Benefits */}
+      <Benefits />
+
+      {/* 7 · Bestsellers */}
+      <Bestsellers
+        products={bestsellers}
+        eyebrow="پرفروش‌ها"
+        title="آنچه مشتریان ما بیشتر سفارش داده‌اند"
       />
 
-      <FeaturedCollections
-        collections={(collections ?? staticCollections).slice(0, 3)}
-        title="Volume XII"
-        eyebrow="Chapter"
-      />
-
-      <TrendingProducts
-        products={newItems ?? staticProducts}
-        title="Newly considered"
-        eyebrow="New Arrivals"
-      />
-
+      {/* 8 · Lookbook */}
       <Lookbook />
 
-      <BrandManifesto />
-
-      <Recommendations />
-
-      <RecentlyViewedStrip />
-
+      {/* 9 · Journal */}
       <EditorialStory
-        eyebrow="From the Atelier"
-        quote="Cloth first; line second; everything else — the buttons, the seams, the inside of a pocket — after."
-        body="Our atelier in Florence works across four seasons of the year. We do not produce to the calendar. We produce to the cloth — when the mill is right, when the dye is quiet, when the wool is rested. The pieces in Volume XII have been in this conversation for two years."
-        attribution="Vittorio Sala, Head Tailor"
+        eyebrow="مجله لونا"
+        quote="لباس زیر زنانه، اگر درست انتخاب شود، کمتر دیده می‌شود اما بیشتر حس می‌شود."
+        body="ما در لونا هر فصل با چند مزون ایتالیایی و دو کارگاه ایرانی کار می‌کنیم تا پارچه‌ای انتخاب کنیم که هم لطیف باشد، هم ماندگار. طراحی ما از سادگی شروع می‌شود و در جزئیات تمام می‌شود؛ از دوخت‌های نامرئی تا لبه‌های دست‌دوز."
+        attribution="تحریریه لونا"
       />
 
-      <Testimonials items={testimonials} />
-
+      {/* 10 · Instagram */}
       <InstagramGallery />
     </div>
   );
