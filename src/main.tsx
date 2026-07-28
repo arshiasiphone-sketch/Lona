@@ -31,6 +31,25 @@ const Press = lazy(() => import("./pages/Press.tsx"));
 const Search = lazy(() => import("./pages/Search.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
+// Admin (Phase 5) — kept in their own lazy chunk so the storefront
+// bundle doesn't pay for them.
+const AdminShell = lazy(() =>
+  import("./components/admin").then((m) => ({ default: m.AdminShell })),
+);
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
+const ProductList = lazy(() =>
+  import("./pages/admin/products/ProductList.tsx"),
+);
+const ProductWizard = lazy(() =>
+  import("./pages/admin/products/ProductWizard.tsx"),
+);
+const AdminStub = lazy(() => import("./pages/admin/_Stub.tsx"));
+const RequireRole = lazy(() =>
+  import("./components/admin/RequireRole.tsx").then((m) => ({
+    default: m.RequireRole,
+  })),
+);
+
 function RouteLoading() {
   return (
     <div className="min-h-screen grid place-items-center">
@@ -187,6 +206,69 @@ createRoot(document.getElementById("root")!).render(
                           </RequireAuth>
                         }
                       />
+
+                      {/* Admin (Phase 5) — every /admin/* route is gated
+                          behind RequireRole; the AdminShell layout owns
+                          the sidebar + topbar chrome for everything
+                          beneath it. Each domain uses AdminStub until its
+                          own depth is built. */}
+                      <Route
+                        path="/admin"
+                        element={
+                          <Suspense fallback={<RouteLoading />}>
+                            <RequireRole permission="view_reports" />
+                          </Suspense>
+                        }
+                      >
+                        <Route
+                          element={
+                            <Suspense fallback={<RouteLoading />}>
+                              <AdminShell />
+                            </Suspense>
+                          }
+                        >
+                          <Route
+                            index
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <AdminDashboard />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="products"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <ProductList />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="products/new"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <ProductWizard />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="products/:id"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <ProductWizard />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path=":domain"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <AdminStub />
+                              </Suspense>
+                            }
+                          />
+                        </Route>
+                      </Route>
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>

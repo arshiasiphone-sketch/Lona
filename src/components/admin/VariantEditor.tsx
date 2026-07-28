@@ -1,0 +1,351 @@
+/**
+ * Phase 5.1 — VariantEditor.
+ *
+ * A flat size × colour table view. One row per (size, colour)
+ * combination. Calls `api.admin_products.syncVariants` to reconcile
+ * its in-memory state with the database:
+ *
+ *   • Rows the user keeps in the table → upsert.
+ *   • Rows removed with `stock === 0 && reserved === 0` → deleted.
+ *   • Rows removed with stock > 0 → flagged `available: false`
+ *     (NEVER hard-deleted if there's stock, per the Phase-5 brief).
+ *
+ * The wizard renders a soft-disable warning so the admin can
+ * confirm before publishing.
+ */
+import * as React from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Trash2, AlertCircle, Check, Save, RotateCcw } from "lucide-react";
+import { EASE_LUXURY } from "@/lib/motion";
+import { cn } from "@/lib/glass";
+import type { Doc } from "@/convex/_generated/dataModel";
+
+interface VariantEditorProps {
+  productId: Id<"products">;
+  /** Color labels seeded by the parent product's color picker. */
+  colorIds: string[];
+  /** Size labels seeded by the parent product's size picker. */
+  sizeLabels: string[];
+}
+
+type Row = {
+  size: string;
+  color: string;
+  sku: string;
+  stock: number;
+  priceCentsOverride?: number;
+  available: boolean;
+};
+
+function buildKey(size: string, color: string) {
+  return `${size}::${color}`;
+}
+
+export function VariantEditor({
+  productId,
+  colorIds,
+  sizeLabels,
+}: VariantEditorProps) {
+  const live = useQuery(api.admin_products.listVariants, { productId });
+  const sync = useMutation(api.admin_products.syncVariants);
+  const [rows, setRows] = React.useState<Row[]>([]);
+  const [dirty, setDirty] = React.useState(false);
+  const [lastResult, setLastResult] = React.useState<{
+    rows: number;
+    softWarned: number;
+  } | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!live) return;
+    setRows(
+      live.map((v: Doc<"variants">) => ({
+        size: v.size,
+        color: v.color,
+        sku: v.sku,
+        stock: v.stock,
+        priceCentsOverride: v.priceCentsOverride,
+        available: v.available,
+      })),
+    );
+    setDirty(false);
+  }, [live]);
+
+  const presentKeys = React.useMemo(
+    () => new Set(rows.map((r) => buildKey(r.size, r.color))),
+    [rows],
+  );
+
+  const toggle = (size: string, color: string, on: boolean) => {
+    if (!colorIds.includes(color) || !sizeLabels.includes(size)) return;
+    setRows((prev) => {
+      const key = buildKey(size, color);
+      if (on) {
+        if (prev.some((r) => buildKey(r.size, r.color) === key)) return prev;
+        return [
+          ...prev,
+          {
+            size,
+            color,
+            sku: `${size.toUpperCase()}-${color.toUpperCase()}-${prev.length + 1}`,
+            stock: 0,
+            available: true,
+          },
+        ];
+      }
+      return prev.filter((r) => buildKey(r.size, r.color) !== key);
+    });
+    setDirty(true);
+  };
+
+  const update = (index: number, patch: Partial<Row>) => {
+    setRows((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+    setDirty(true);
+  };
+
+  const reset = () => {
+    if (!live) return;
+    setRows(
+      live.map((v: Doc<"variants">) => ({
+        size: v.size,
+        color: v.color,
+        sku: v.sku,
+        stock: v.stock,
+        priceCentsOverride: v.priceCentsOverride,
+        available: v.available,
+      })),
+    );
+    setDirty(false);
+  };
+
+  const handleSave = async () => {
+    setBusy(true);
+    try {
+      const result = await sync({
+        productId,
+        rows: rows.map((r) => ({
+          size: r.size,
+          color: r.color,
+          sku: r.sku,
+          stock: r.stock,
+          priceCentsOverride: r.priceCentsOverride,
+          available: r.available,
+        })),
+      });
+      setLastResult(result);
+      setDirty(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-edge bg-white/85 p-5">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <p className="type-eyebrow text-ink-muted">Step 5 / 9 · Variants</p>
+            <h3 className="mt-2 font-display text-2xl text-ink">
+              Sizes × Colours matrix
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={reset}
+              disabled={!dirty || busy}
+              className="inline-flex items-center gap-1.5 rounded-full hairline px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-soft transition hover:bg-white disabled:opacity-40"
+            >
+              <RotateCcw className="h-3 w-3" /> Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!dirty || busy}
+              className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary disabled:opacity-40"
+            >
+              <Save className="h-3 w-3" /> Save variants
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {lastResult && (
+            <motion.div
+              key={`r-${lastResult.rows}-${lastResult.softWarned}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.35, ease: EASE_LUXURY }}
+              className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Saved: {lastResult.rows} variants.
+              {lastResult.softWarned > 0
+                ? ` ${lastResult.softWarned} kept in stock but flagged unavailable — review before publishing.`
+                : ""}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {colorIds.length === 0 || sizeLabels.length === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-edge bg-canvas-soft px-5 py-8 text-center text-sm text-ink-muted">
+            Pick at least one colour and one size in <strong>Step 1 · Basic Info</strong>{" "}
+            to enable the variant matrix.
+          </div>
+        ) : (
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-edge bg-white">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-canvas-soft text-ink-muted">
+                <tr>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Size</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Colour</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">SKU</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Stock</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Price Δ¢</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Available</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-right">Manage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sizeLabels.flatMap((size) =>
+                  colorIds.map((color) => {
+                    const key = buildKey(size, color);
+                    const on = presentKeys.has(key);
+                    const rowIdx = rows.findIndex(
+                      (r) => buildKey(r.size, r.color) === key,
+                    );
+                    const row = rowIdx >= 0 ? rows[rowIdx] : null;
+                    return (
+                      <tr
+                        key={key}
+                        className={cn(
+                          "border-t border-edge/60",
+                          row && !row.available && "bg-rose-50/60",
+                        )}
+                      >
+                        <td className="px-3 py-2 font-medium text-ink">{size}</td>
+                        <td className="px-3 py-2 text-ink-soft">{color}</td>
+                        <td className="px-3 py-2">
+                          {on ? (
+                            <input
+                              type="text"
+                              value={row?.sku ?? ""}
+                              onChange={(e) =>
+                                rowIdx >= 0 && update(rowIdx, { sku: e.target.value })
+                              }
+                              className="w-32 rounded-lg hairline bg-canvas-soft px-2 py-1 text-[12px] text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                          ) : (
+                            <span className="text-ink-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {on ? (
+                            <input
+                              type="number"
+                              min={0}
+                              value={row?.stock ?? 0}
+                              onChange={(e) =>
+                                rowIdx >= 0 &&
+                                update(rowIdx, { stock: Number(e.target.value) || 0 })
+                              }
+                              className="w-20 rounded-lg hairline bg-canvas-soft px-2 py-1 text-[12px] text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                          ) : (
+                            <span className="text-ink-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {on ? (
+                            <input
+                              type="number"
+                              value={
+                                row?.priceCentsOverride === undefined ? "" : row.priceCentsOverride
+                              }
+                              placeholder="optional"
+                              onChange={(e) =>
+                                rowIdx >= 0 &&
+                                update(rowIdx, {
+                                  priceCentsOverride:
+                                    e.target.value === "" ? undefined : Number(e.target.value) || 0,
+                                })
+                              }
+                              className="w-24 rounded-lg hairline bg-canvas-soft px-2 py-1 text-[12px] text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                          ) : (
+                            <span className="text-ink-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {on ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                rowIdx >= 0 && update(rowIdx, { available: !(row?.available ?? true) })
+                              }
+                              className={cn(
+                                "inline-flex h-6 w-11 items-center rounded-full p-1 transition",
+                                row?.available ? "bg-emerald-500" : "bg-zinc-300",
+                              )}
+                              aria-label={`Toggle available: ${row?.available ? "on" : "off"}`}
+                            >
+                              <span
+                                className={cn(
+                                  "h-4 w-4 rounded-full bg-white transition-transform",
+                                  row?.available && "translate-x-5",
+                                )}
+                              />
+                            </button>
+                          ) : (
+                            <span className="text-ink-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggle(size, color, !on)}
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.16em]",
+                              on
+                                ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                                : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200",
+                            )}
+                          >
+                            {on ? (
+                              <>
+                                <Trash2 className="h-3 w-3" /> Remove
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3 w-3" /> Add
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }),
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {rows.some((r) => !r.available && r.stock > 0) && (
+          <div className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Some variants still hold stock but are flagged unavailable. They
+            will be removed from storefront filters but stay reserved for order
+            refunds and reissue.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

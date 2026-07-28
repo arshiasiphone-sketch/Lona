@@ -362,7 +362,7 @@ export function useSearchProducts({
 export function useCollections(): Collection[] | undefined {
   const remote = useQuery(api.collections.list, {});
   return useMemo(
-    () => (remote ? remote.map(adaptCollection).sort((a, b) => a.slug.localeCompare(b.slug)) : undefined),
+    () => (remote ? remote.map(adaptCollection).sort((a: Collection, b: Collection) => a.slug.localeCompare(b.slug)) : undefined),
     [remote]
   );
 }
@@ -421,7 +421,7 @@ export function useEditorials(): Editorial[] | undefined {
       remote
         ? remote
             .map(adaptEditorial)
-            .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+            .sort((a: Editorial, b: Editorial) => (a.publishedAt < b.publishedAt ? 1 : -1))
         : undefined,
     [remote]
   );

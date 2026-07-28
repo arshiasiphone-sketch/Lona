@@ -23,6 +23,7 @@ import {
   useEffect,
   useMemo,
 } from "react";
+import type { Doc } from "@/convex/_generated/dataModel";
 import { useDeviceSession } from "@/lib/data/session";
 
 /** Same shape every locked consumer expects. */
@@ -63,7 +64,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const lines: CartLine[] = useMemo(() => {
     if (!remoteCart) return [];
-    return remoteCart.lines.map((l) => ({
+    return remoteCart.lines.map((l: Doc<"carts">["lines"][number]) => ({
       productId: l.productId,
       size: l.size,
       color: l.color,

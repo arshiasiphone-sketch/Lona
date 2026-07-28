@@ -330,8 +330,6 @@ export const duplicate = mutation({
       featured: false,
       trending: false,
       editorial: false,
-      _id: undefined as unknown as Doc<"products">["_id"],
-      _creationTime: undefined as unknown as Doc<"products">["_creationTime"],
     });
     await audit(ctx, user, "product.duplicate", "products", id, { newId });
     return newId;
@@ -570,7 +568,10 @@ export const reconcileInventory = action({
  */
 export const previewBySlug = query({
   args: { slug: v.string() },
-  handler: async (_ctx, { slug }) => {
+  handler: async (
+    _ctx,
+    { slug },
+  ): Promise<Doc<"products"> | null> => {
     // Permissive: admins can preview any product state, so we side-step
     // the visibility filter by calling into the public query directly.
     return await _ctx.runQuery(api.products.getBySlug, { slug });
