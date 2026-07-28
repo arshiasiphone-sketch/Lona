@@ -26,6 +26,7 @@ export function PageShell() {
             initial="initial"
             animate="animate"
             exit="exit"
+            aria-label="محتوای اصلی"
           >
             <Outlet />
           </motion.main>

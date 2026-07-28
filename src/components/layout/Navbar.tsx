@@ -15,12 +15,13 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
 import { useOverlay } from "@/hooks/use-overlay";
 import { EASE_LUXURY, SPRING_GENTLE, SPRING_SNAP } from "@/lib/motion";
+import { LonaLogo, LonaMark } from "@/components/brand/LonaLogo";
 
 const PRIMARY_LINKS: { label: string; to: string }[] = [
-  { label: "Shop", to: "/shop" },
-  { label: "Collections", to: "/collections" },
-  { label: "Journal", to: "/press" },
-  { label: "Atelier", to: "/about" },
+  { label: "بوتیک", to: "/shop" },
+  { label: "کالکسیون‌ها", to: "/collections" },
+  { label: "مجله", to: "/press" },
+  { label: "درباره لونا", to: "/about" },
 ];
 
 export function Navbar() {
@@ -61,14 +62,14 @@ export function Navbar() {
     >
       <nav
         className="relative mx-auto flex h-16 max-w-[1728px] items-center justify-between px-6 lg:px-10"
-        aria-label="Primary"
+        aria-label="ناوبری اصلی"
       >
-        {/* Left — collection nav (desktop) + mobile search toggle */}
+        {/* Right (in RTL the visual right is the start) — primary links */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMobileSearch((s) => !s)}
             className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 lg:hidden"
-            aria-label="Toggle search"
+            aria-label="جست‌وجو"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -84,7 +85,7 @@ export function Navbar() {
                   to={link.to}
                   className={({ isActive }) =>
                     cn(
-                      "type-caption px-3 py-2 text-[12px] font-medium uppercase tracking-[0.18em] transition-colors",
+                      "type-caption px-3 py-2 text-[12px] font-medium tracking-[0.04em] transition-colors",
                       isActive ? "text-ink" : "text-ink-soft hover:text-ink"
                     )
                   }
@@ -92,7 +93,7 @@ export function Navbar() {
                   {link.label}
                 </NavLink>
                 <AnimatePresence>
-                  {hoverIndex === i && link.label === "Collections" && (
+                  {hoverIndex === i && link.label === "کالکسیون‌ها" && (
                     <motion.div
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -141,36 +142,55 @@ export function Navbar() {
           </ul>
         </div>
 
-        {/* Center — wordmark */}
+        {/* Center — Lona mark + wordmark in a serif block */}
         <Link
           to="/"
-          className="absolute left-1/2 -translate-x-1/2 font-display text-[22px] font-light tracking-[0.36em] text-ink"
-          aria-label="ÆON home"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
+          aria-label="لونا — خانه"
         >
-          ÆON
+          <LonaMark size={28} />
+          <span className="font-latin-display text-[18px] uppercase tracking-[0.32em] text-ink">
+            LONA
+          </span>
         </Link>
 
-        {/* Right — utilities */}
+        {/* Left — utilities */}
         <div className="flex items-center gap-1">
           <motion.button
             whileTap={{ scale: 0.97 }}
             transition={SPRING_SNAP}
             onClick={openCommand}
             className="flex items-center gap-2 rounded-full hairline bg-canvas/60 px-3 py-2 text-ink-soft transition hover:bg-white/80"
-            aria-label="Open command palette"
+            aria-label="جست‌وجوی فرمان"
           >
             <Search className="h-4 w-4" />
-            <span className="hidden md:inline text-[11px] uppercase tracking-[0.18em]">
-              Search
+            <span className="hidden md:inline text-[11px] tracking-[0.04em]">
+              جست‌وجو
             </span>
-            <kbd className="hidden md:inline rounded bg-canvas/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted">
+            <kbd className="hidden md:inline rounded bg-canvas/80 px-1.5 py-0.5 text-[10px] font-medium tracking-[0.04em] text-ink-muted">
               ⌘K
             </kbd>
           </motion.button>
+          {isAuthenticated ? (
+            <Link
+              to="/account"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
+              aria-label="حساب کاربری"
+            >
+              <UserIcon className="h-4 w-4" />
+            </Link>
+          ) : (
+            <Link
+              to="/auth"
+              className="hidden md:inline-flex h-9 items-center rounded-full hairline bg-canvas/60 px-3 text-[11px] font-medium tracking-[0.04em] text-ink-soft transition hover:bg-white/80"
+            >
+              ورود
+            </Link>
+          )}
           <Link
             to="/wishlist"
             className="relative grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
-            aria-label="Wishlist"
+            aria-label="علاقه‌مندی‌ها"
           >
             <Heart className="h-4 w-4" />
             <AnimatePresence>
@@ -181,14 +201,13 @@ export function Navbar() {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
                   transition={{ duration: 0.4, ease: EASE_LUXURY }}
-                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
+                  className="absolute -left-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
                 >
                   {wishlistIds.length}
                 </motion.span>
               )}
             </AnimatePresence>
           </Link>
-          {/* Bag — animated bounce on count change */}
           <BagButton />
         </div>
       </nav>
@@ -216,13 +235,14 @@ export function Navbar() {
                     setSearchValue("");
                   }
                 }}
-                placeholder="Search…"
+                placeholder="جست‌وجو در لونا…"
                 className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+                dir="rtl"
               />
               <button
                 onClick={() => setMobileSearch(false)}
                 className="grid h-7 w-7 place-items-center rounded-full text-ink-muted hover:bg-white"
-                aria-label="Close search"
+                aria-label="بستن جست‌وجو"
               >
                 <CloseIcon className="h-3.5 w-3.5" />
               </button>
@@ -234,10 +254,6 @@ export function Navbar() {
   );
 }
 
-/**
- * Bag icon button. Animates a gentle spring bump when `itemCount` changes
- * and reveals an AnimatePresence count badge.
- */
 function BagButton() {
   const { itemCount } = useCart();
   const { openSideCart, toggleSideCart } = useOverlay();
@@ -246,11 +262,10 @@ function BagButton() {
     <motion.button
       onClick={() => {
         openSideCart();
-        // Avoid 'unused' lint warning while keeping nav available for future cross-route
         nav("/cart");
         toggleSideCart();
       }}
-      aria-label="Open shopping bag"
+      aria-label="سبد خرید"
       animate={itemCount > 0 ? { scale: [1, 1.18, 1] } : { scale: 1 }}
       transition={SPRING_GENTLE}
       whileTap={{ scale: 0.94 }}
@@ -267,7 +282,7 @@ function BagButton() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.4, opacity: 0, y: -4 }}
             transition={SPRING_SNAP}
-            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
+            className="absolute -left-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
           >
             {itemCount}
           </motion.span>

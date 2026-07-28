@@ -68,19 +68,20 @@ export function isAdminRole(role: AdminRole | null | undefined): boolean {
 export const ADMIN_NAV: Array<{
   href: string;
   label: string;
+  labelFa: string;
   permission: AdminPermission;
   group: "Catalogue" | "Operations" | "Content" | "Settings";
 }> = [
-  { href: "/admin", label: "Overview", permission: "view_reports", group: "Catalogue" },
-  { href: "/admin/products", label: "Products", permission: "manage_products", group: "Catalogue" },
-  { href: "/admin/categories", label: "Categories", permission: "manage_products", group: "Catalogue" },
-  { href: "/admin/collections", label: "Collections", permission: "manage_products", group: "Catalogue" },
-  { href: "/admin/inventory", label: "Inventory", permission: "manage_inventory", group: "Catalogue" },
-  { href: "/admin/media", label: "Media Library", permission: "manage_media", group: "Catalogue" },
-  { href: "/admin/orders", label: "Orders", permission: "manage_orders", group: "Operations" },
-  { href: "/admin/customers", label: "Customers", permission: "manage_customers", group: "Operations" },
-  { href: "/admin/reviews", label: "Reviews", permission: "manage_content", group: "Operations" },
-  { href: "/admin/coupons", label: "Coupons", permission: "manage_coupons", group: "Content" },
-  { href: "/admin/editorial", label: "Editorial", permission: "manage_content", group: "Content" },
-  { href: "/admin/settings", label: "Settings", permission: "manage_settings", group: "Settings" },
+  { href: "/admin", label: "Overview", labelFa: "نمای کلی", permission: "view_reports", group: "Catalogue" },
+  { href: "/admin/products", label: "Products", labelFa: "محصولات", permission: "manage_products", group: "Catalogue" },
+  { href: "/admin/categories", label: "Categories", labelFa: "دسته‌ها", permission: "manage_products", group: "Catalogue" },
+  { href: "/admin/collections", label: "Collections", labelFa: "کالکسیون‌ها", permission: "manage_products", group: "Catalogue" },
+  { href: "/admin/inventory", label: "Inventory", labelFa: "موجودی", permission: "manage_inventory", group: "Catalogue" },
+  { href: "/admin/media", label: "Media Library", labelFa: "کتابخانه رسانه", permission: "manage_media", group: "Catalogue" },
+  { href: "/admin/orders", label: "Orders", labelFa: "سفارش‌ها", permission: "manage_orders", group: "Operations" },
+  { href: "/admin/customers", label: "Customers", labelFa: "مشتریان", permission: "manage_customers", group: "Operations" },
+  { href: "/admin/reviews", label: "Reviews", labelFa: "نظرات", permission: "manage_content", group: "Operations" },
+  { href: "/admin/coupons", label: "Coupons", labelFa: "کوپن‌ها", permission: "manage_coupons", group: "Content" },
+  { href: "/admin/editorial", label: "Editorial", labelFa: "محتوا", permission: "manage_content", group: "Content" },
+  { href: "/admin/settings", label: "Settings", labelFa: "تنظیمات", permission: "manage_settings", group: "Settings" },
 ];

@@ -1,6 +1,5 @@
 /**
- * Glass surface variants and class helpers.
- * Compose with the .glass / .glass-strong / .glass-subtle utilities in CSS.
+ * Glass surface variants and class helpers — Lona theme.
  */
 import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
@@ -23,13 +22,16 @@ export const glassClass = (tier: "subtle" | "default" | "strong") => {
 
 /**
  * CSS gradient class strings for product placeholder imagery.
- * Each title maps to a refined hue family for the mock catalog.
+ * Lona-aligned palette: pearl / oat / rose / blush / noir / ivory.
  */
 export const PRODUCT_GRADIENTS = {
   mist: "gradient-mist",
   oat: "gradient-oat",
   rose: "gradient-rose-quartz",
+  blush: "gradient-lona-rose",
+  pearl: "gradient-lona-pearl",
   deep: "gradient-deep",
+  noir: "gradient-lona-noir",
 } as const;
 
 export type GradientKey = keyof typeof PRODUCT_GRADIENTS;

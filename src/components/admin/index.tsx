@@ -22,7 +22,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { motion } from "framer-motion";
 import {
   Bell,
-  ChevronRight,
+  ChevronLeft,
   LogOut,
   Search,
   Sparkles,
@@ -39,6 +39,14 @@ import {
   type AdminPermission,
   type AdminRole,
 } from "@/lib/data/permissions";
+import { LonaMark } from "@/components/brand/LonaLogo";
+
+const GROUP_LABEL_FA: Record<string, string> = {
+  Catalogue: "کاتالوگ",
+  Operations: "عملیات",
+  Content: "محتوا",
+  Settings: "تنظیمات",
+};
 
 /* ─────────────────────────────────────────────────────────────
  *  AdminShell
@@ -95,17 +103,22 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
   }
   return (
     <aside className="sticky top-0 hidden h-screen border-r border-edge bg-canvas/95 backdrop-blur-xl lg:block">
-      <div className="flex h-16 items-center gap-2 border-b border-edge px-5">
-        <Link to="/admin" className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="font-display text-base text-ink">ÆON — Admin</span>
+      <div className="flex h-16 items-center gap-3 border-b border-edge px-5">
+        <Link to="/admin" className="flex items-center gap-3">
+          <LonaMark size={28} />
+          <span className="font-latin-display text-base tracking-[0.32em] text-ink">
+            LONA
+          </span>
+          <span className="text-ink-muted">— مدیریت</span>
         </Link>
       </div>
       <nav className="h-[calc(100vh-4rem)] overflow-y-auto p-4">
         {(Object.keys(groups) as Array<keyof AdminGroup>).map((group) =>
           groups[group].length === 0 ? null : (
             <div key={group} className="mb-6">
-              <p className="type-eyebrow mb-2 px-2 text-ink-muted">{group}</p>
+              <p className="type-eyebrow mb-2 px-2 text-ink-muted">
+                {GROUP_LABEL_FA[group] ?? group}
+              </p>
               <ul className="space-y-0.5">
                 {groups[group].map((item) => (
                   <li key={item.href}>
@@ -121,8 +134,8 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
                         )
                       }
                     >
-                      <span className="flex-1">{item.label}</span>
-                      <ChevronRight className="h-3 w-3 opacity-40" />
+                      <span className="flex-1">{item.labelFa ?? item.label}</span>
+                      <ChevronLeft className="h-3 w-3 opacity-40" />
                     </NavLink>
                   </li>
                 ))}
@@ -132,10 +145,9 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
         )}
         <div className="mt-12 rounded-2xl border border-edge bg-white/60 p-4 text-xs leading-relaxed text-ink-soft">
           <Stethoscope className="h-4 w-4 text-primary" />
-          <p className="mt-2 text-ink">You're in production.</p>
+          <p className="mt-2 text-ink">شما در حالت عملیاتی هستید.</p>
           <p className="mt-1">
-            Every admin write is logged in <code>activity_logs</code> with the
-            actor's role + timestamp.
+            هر نوشتن ادمین در <code>activity_logs</code> با نقش و زمان ثبت می‌شود.
           </p>
         </div>
       </nav>
@@ -145,7 +157,7 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
 
 type AdminGroup = Record<
   "Catalogue" | "Operations" | "Content" | "Settings",
-  Array<{ href: string; label: string; permission: AdminPermission; group: string }>
+  Array<{ href: string; label: string; labelFa: string; permission: AdminPermission; group: string }>
 >;
 
 /* ─────────────────────────────────────────────────────────────
@@ -174,34 +186,35 @@ function AdminTopBar({
         <Search className="h-3.5 w-3.5 text-ink-muted" />
         <input
           type="search"
-          placeholder="Search catalogue, orders, customers…"
+          placeholder="جست‌وجوی کاتالوگ، سفارش، مشتری…"
           className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+          dir="rtl"
         />
-        <kbd className="hidden text-[10px] uppercase tracking-[0.16em] text-ink-muted lg:inline">
+        <kbd className="hidden text-[10px] tracking-[0.04em] text-ink-muted lg:inline">
           ⌘ K
         </kbd>
       </form>
       <button
         type="button"
         className="grid h-9 w-9 place-items-center rounded-full hairline hover:bg-white"
-        aria-label="Notifications"
+        aria-label="اعلان‌ها"
       >
         <Bell className="h-3.5 w-3.5 text-ink" />
       </button>
       <div className="hidden items-center gap-3 lg:flex">
         <div className="text-right">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <p className="text-[11px] font-medium tracking-[0.04em] text-ink-muted">
             {roleLabel}
           </p>
           <p className="text-sm text-ink" title={userEmail}>
-            {userName || userEmail || "Admin"}
+            {userName || userEmail || "ادمین"}
           </p>
         </div>
         <button
           type="button"
           onClick={onSignOut}
           className="grid h-9 w-9 place-items-center rounded-full hairline text-ink-soft hover:bg-white hover:text-ink"
-          aria-label="Sign out"
+          aria-label="خروج"
         >
           <LogOut className="h-3.5 w-3.5" />
         </button>
@@ -220,15 +233,15 @@ function AdminBreadcrumb() {
   if (segments.length === 0) return null;
   return (
     <nav
-      aria-label="breadcrumb"
-      className="flex items-center gap-1 text-[11px] uppercase tracking-[0.16em] text-ink-muted"
+      aria-label="مسیر"
+      className="flex items-center gap-1 text-[11px] tracking-[0.04em] text-ink-muted"
     >
       <Link to="/admin" className="hover:text-ink">
-        Admin
+        مدیریت
       </Link>
       {segments.map((seg, i) => (
         <span key={`${seg}-${i}`} className="flex items-center gap-1">
-          <ChevronRight className="h-3 w-3" />
+          <ChevronLeft className="h-3 w-3" />
           <Link
             to={`/${segments.slice(0, i + 1).join("/")}`}
             className={cn(
@@ -236,7 +249,7 @@ function AdminBreadcrumb() {
               i === segments.length - 1 && "text-ink",
             )}
           >
-            {prettySegment(seg)}
+            {prettySegmentFa(seg)}
           </Link>
         </span>
       ))}
@@ -244,10 +257,26 @@ function AdminBreadcrumb() {
   );
 }
 
-function prettySegment(segment: string) {
-  if (segment.length === 0) return "";
-  if (/^[a-f0-9]{24,}$/i.test(segment)) return "Detail";
-  return segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function prettySegmentFa(segment: string) {
+  if (!segment) return "";
+  if (/^[a-f0-9]{24,}$/i.test(segment)) return "جزئیات";
+  const fa: Record<string, string> = {
+    products: "محصولات",
+    categories: "دسته‌ها",
+    collections: "کالکسیون‌ها",
+    media: "رسانه",
+    inventory: "موجودی",
+    orders: "سفارش‌ها",
+    customers: "مشتریان",
+    reviews: "نظرات",
+    coupons: "کوپن‌ها",
+    editorial: "محتوای ادبی",
+    settings: "تنظیمات",
+    new: "جدید",
+    permissions: "دسترسی‌ها",
+  };
+  if (fa[segment]) return fa[segment];
+  return segment.replace(/-/g, " ");
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -281,25 +310,41 @@ const STATUS_TONE: Record<StatusKind, { dot: string; ink: string; bg: string }> 
   inactive: { dot: "bg-ink-muted", ink: "text-ink-muted", bg: "bg-white/70" },
 };
 
+const STATUS_LABEL_FA: Record<StatusKind, string> = {
+  draft: "پیش‌نویس",
+  published: "منتشر شده",
+  archived: "آرشیو",
+  pending: "در انتظار",
+  processing: "در حال پردازش",
+  shipped: "ارسال شده",
+  delivered: "تحویل شده",
+  returning: "در حال بازگشت",
+  cancelled: "لغو شده",
+  active: "فعال",
+  inactive: "غیرفعال",
+};
+
 export function StatusBadge({
   status,
   className,
+  label,
 }: {
   status: StatusKind;
   className?: string;
+  label?: string;
 }) {
   const tone = STATUS_TONE[status] ?? STATUS_TONE.draft;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em]",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium tracking-[0.04em]",
         tone.bg,
         tone.ink,
         className,
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
-      {status}
+      {label ?? STATUS_LABEL_FA[status] ?? status}
     </span>
   );
 }

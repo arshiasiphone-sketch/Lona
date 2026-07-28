@@ -1,12 +1,11 @@
 /* ============================================================
-   ÆON — Luxury Fashion Frontend Foundation
-   Light glassmorphism design system.
-   DO NOT REMOVE — Tailwind directives and core tokens required.
+   لونا — Luxury Lingerie Frontend Foundation
+   Persian / RTL · Light Glassmorphism
    ============================================================ */
 
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -54,17 +53,26 @@
   --color-glass-border: var(--glass-border);
   --color-glass-highlight: var(--glass-highlight);
 
-  --font-display: "Fraunces";
-  --font-sans: "Inter";
+  --color-lona-rose: var(--lona-rose);
+  --color-lona-rose-soft: var(--lona-rose-soft);
+  --color-lona-pearl: var(--lona-pearl);
+  --color-lona-pearl-deep: var(--lona-pearl-deep);
+  --color-lona-noir: var(--lona-noir);
+  --color-lona-gold: var(--lona-gold);
+  --color-lona-blush: var(--lona-blush);
+
+  --font-display: "Cormorant Garamond", "Vazirmatn", "Fraunces", serif;
+  --font-sans: "Vazirmatn", "Inter", system-ui, sans-serif;
+  --font-latin-display: "Cormorant Garamond", serif;
 
   --shadow-soft: var(--shadow-soft-value);
   --shadow-float: var(--shadow-float-value);
   --shadow-glass: var(--shadow-glass-value);
   --shadow-hero: var(--shadow-hero-value);
 
-  --tracking-display: -0.022em;
-  --tracking-tight: -0.012em;
-  --tracking-normal: -0.005em;
+  --tracking-display: -0.012em;
+  --tracking-tight: -0.008em;
+  --tracking-normal: 0;
 
   --animate-marquee: marquee 60s linear infinite;
   --animate-marquee-slow: marquee 90s linear infinite;
@@ -74,50 +82,49 @@
 }
 
 /* ============================================================
-   DESIGN TOKENS — light glassmorphism, restrained cool
+   DESIGN TOKENS — Lona · pearl + rose + champagne
    ============================================================ */
 :root {
   --radius: 0.875rem;
 
-  /* Base canvas — warm ivory */
-  --background: oklch(0.985 0.008 90);
-  --foreground: oklch(0.22 0.018 245);
+  /* Base canvas — warm ivory, slightly cooler than before */
+  --background: oklch(0.985 0.012 75);
+  --foreground: oklch(0.22 0.03 30);
 
-  /* Card — slightly lighter than background, reads as glass */
-  --card: oklch(0.995 0.004 90);
-  --card-foreground: oklch(0.22 0.018 245);
+  --card: oklch(0.995 0.008 75);
+  --card-foreground: oklch(0.22 0.03 30);
 
-  --popover: oklch(0.995 0.004 90);
-  --popover-foreground: oklch(0.22 0.018 245);
+  --popover: oklch(0.995 0.008 75);
+  --popover-foreground: oklch(0.22 0.03 30);
 
-  /* Primary — restrained slate-teal */
-  --primary: oklch(0.42 0.045 232);
-  --primary-foreground: oklch(0.985 0.008 90);
+  /* Primary — Lona rose quartz */
+  --primary: oklch(0.5 0.08 25);
+  --primary-foreground: oklch(0.985 0.012 75);
 
   /* Secondary — cream */
-  --secondary: oklch(0.96 0.012 80);
-  --secondary-foreground: oklch(0.22 0.018 245);
+  --secondary: oklch(0.96 0.018 70);
+  --secondary-foreground: oklch(0.22 0.03 30);
 
-  --muted: oklch(0.95 0.012 80);
-  --muted-foreground: oklch(0.5 0.018 240);
+  --muted: oklch(0.95 0.018 70);
+  --muted-foreground: oklch(0.5 0.025 35);
 
-  /* Accent — ice cool */
-  --accent: oklch(0.94 0.025 220);
-  --accent-foreground: oklch(0.32 0.05 235);
+  /* Accent — pearl cream */
+  --accent: oklch(0.94 0.03 60);
+  --accent-foreground: oklch(0.35 0.06 25);
 
   --destructive: oklch(0.62 0.2 25);
 
-  --border: oklch(0.88 0.012 90);
-  --input: oklch(0.9 0.012 90);
-  --ring: oklch(0.55 0.04 230);
+  --border: oklch(0.88 0.018 75);
+  --input: oklch(0.9 0.018 75);
+  --ring: oklch(0.5 0.08 25);
 
-  /* Extended palette — ink to canvas */
-  --ink: oklch(0.22 0.018 245);
-  --ink-soft: oklch(0.36 0.02 240);
-  --ink-muted: oklch(0.55 0.015 240);
-  --canvas: oklch(0.985 0.008 90);
-  --canvas-soft: oklch(0.96 0.012 80);
-  --canvas-deep: oklch(0.93 0.018 80);
+  /* Extended palette — ink + canvas */
+  --ink: oklch(0.22 0.03 30);
+  --ink-soft: oklch(0.36 0.03 30);
+  --ink-muted: oklch(0.55 0.025 35);
+  --canvas: oklch(0.985 0.012 75);
+  --canvas-soft: oklch(0.96 0.018 70);
+  --canvas-deep: oklch(0.93 0.022 65);
   --edge: oklch(1 0 0 / 0.55);
   --edge-bright: oklch(1 0 0 / 0.85);
 
@@ -127,65 +134,54 @@
   --glass-border: oklch(1 0 0 / 0.6);
   --glass-highlight: oklch(1 0 0 / 0.95);
 
-  /* Shadows — soft, layered, no pure black */
-  --shadow-soft-value: 0 1px 2px oklch(0.35 0.02 245 / 0.04),
-    0 6px 18px oklch(0.35 0.02 245 / 0.05);
-  --shadow-float-value: 0 2px 4px oklch(0.35 0.02 245 / 0.05),
-    0 18px 40px oklch(0.35 0.02 245 / 0.08);
-  --shadow-glass-value: inset 0 1px 0 oklch(1 0 0 / 0.6),
-    0 1px 2px oklch(0.35 0.02 245 / 0.04),
-    0 12px 32px oklch(0.35 0.02 245 / 0.06);
-  --shadow-hero-value: 0 24px 60px oklch(0.35 0.02 245 / 0.1),
-    0 4px 12px oklch(0.35 0.02 245 / 0.05);
+  /* Brand tokens — Lona */
+  --lona-rose: oklch(0.62 0.13 18);
+  --lona-rose-soft: oklch(0.86 0.06 25);
+  --lona-pearl: oklch(0.95 0.02 80);
+  --lona-pearl-deep: oklch(0.86 0.04 60);
+  --lona-noir: oklch(0.22 0.03 30);
+  --lona-gold: oklch(0.78 0.08 75);
+  --lona-blush: oklch(0.92 0.04 20);
 
-  /* Easings — luxury feel */
+  /* Shadows — soft, layered, no pure black */
+  --shadow-soft-value: 0 1px 2px oklch(0.35 0.03 30 / 0.04),
+    0 6px 18px oklch(0.35 0.03 30 / 0.05);
+  --shadow-float-value: 0 2px 4px oklch(0.35 0.03 30 / 0.05),
+    0 18px 40px oklch(0.35 0.03 30 / 0.08);
+  --shadow-glass-value: inset 0 1px 0 oklch(1 0 0 / 0.6),
+    0 1px 2px oklch(0.35 0.03 30 / 0.04),
+    0 12px 32px oklch(0.35 0.03 30 / 0.06);
+  --shadow-hero-value: 0 24px 60px oklch(0.35 0.03 30 / 0.1),
+    0 4px 12px oklch(0.35 0.03 30 / 0.05);
+
+  /* Easings */
   --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-precise: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================================
-   GLOBAL KEYFRAMES — motion vocabulary
+   GLOBAL KEYFRAMES
    ============================================================ */
 @keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 @keyframes shimmer {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.75;
-  }
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.75; }
 }
 @keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 @keyframes fadeUp {
-  0% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* ============================================================
-   BASE LAYER
+   BASE LAYER — Persian RTL typography
    ============================================================ */
 @layer base {
   *,
@@ -197,23 +193,30 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "ss01", "kern", "calt", "liga";
+    font-language-override: "DAN";
+  }
+  html[lang="fa"] body {
+    font-feature-settings: "ss02", "ss03";
+    font-variant-numeric: tabular-nums;
+    /* fa-IR locale flips digits to Persian on Intl.NumberFormat output.
+       For raw user typed content we keep Western digits for legibility. */
   }
   body {
     @apply bg-background text-foreground font-sans;
     background-image: radial-gradient(
-        ellipse 80% 50% at 20% -10%,
-        oklch(0.94 0.025 220 / 0.6),
+        ellipse 80% 50% at 80% -10%,
+        oklch(0.94 0.04 35 / 0.55),
         transparent 60%
       ),
       radial-gradient(
-        ellipse 70% 50% at 100% 20%,
-        oklch(0.95 0.025 200 / 0.5),
+        ellipse 70% 50% at 0% 20%,
+        oklch(0.95 0.04 65 / 0.5),
         transparent 60%
       ),
       radial-gradient(
         ellipse 60% 40% at 50% 110%,
-        oklch(0.94 0.02 240 / 0.45),
+        oklch(0.94 0.04 50 / 0.45),
         transparent 70%
       );
     background-attachment: fixed;
@@ -224,23 +227,29 @@
     cursor: pointer;
   }
   ::selection {
-    background: oklch(0.42 0.045 232 / 0.16);
-    color: oklch(0.22 0.018 245);
+    background: oklch(0.62 0.13 18 / 0.22);
+    color: oklch(0.22 0.03 30);
   }
   h1,
   h2,
   h3,
   h4 {
-    @apply font-display;
+    font-family: var(--font-display);
+    font-weight: 500;
     letter-spacing: var(--tracking-display);
+  }
+  /* Brand mark + serif headlines stay Latin-styled for composure. */
+  .font-latin-display {
+    font-family: var(--font-latin-display);
+    font-weight: 400;
+    letter-spacing: 0.04em;
   }
 }
 
 /* ============================================================
-   UTILITY LAYER — glass surfaces, type ramps, motion helpers
+   UTILITY LAYER — glass, type ramps, brand gradients, RTL-safe marquee
    ============================================================ */
 @layer utilities {
-  /* Glass surface tiers — light glassmorphism only */
   .glass-subtle {
     background: var(--glass-fill);
     border: 1px solid var(--glass-border);
@@ -261,7 +270,6 @@
     -webkit-backdrop-filter: blur(28px) saturate(160%);
   }
 
-  /* Edge highlight — top white hairline */
   .edge-highlight {
     position: relative;
   }
@@ -286,131 +294,143 @@
     mask-composite: exclude;
   }
 
-  /* Faint hairline border using edge */
-  .hairline {
-    border: 1px solid var(--edge);
-  }
-  .hairline-strong {
-    border: 1px solid oklch(1 0 0 / 0.85);
-  }
+  .hairline { border: 1px solid var(--edge); }
+  .hairline-strong { border: 1px solid oklch(1 0 0 / 0.85); }
 
-  /* Type ramps */
+  /* Persian-aware type ramps */
   .type-display {
     font-family: var(--font-display);
     font-weight: 400;
-    line-height: 0.98;
-    letter-spacing: var(--tracking-display);
+    line-height: 1.05;
+    letter-spacing: 0;
   }
   .type-display-light {
     font-family: var(--font-display);
     font-weight: 300;
-    line-height: 1;
-    letter-spacing: var(--tracking-display);
+    line-height: 1.05;
   }
   .type-eyebrow {
     font-family: var(--font-sans);
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    font-size: 0.72rem;
   }
   .type-caption {
     font-feature-settings: "tnum";
-    letter-spacing: var(--tracking-normal);
+    letter-spacing: 0;
   }
 
-  /* Gradient backdrops for product imagery */
+  /* Brand-aligned product placeholder gradients */
   .gradient-mist {
     background-image: radial-gradient(
-        ellipse 60% 75% at 30% 25%,
-        oklch(0.97 0.015 90),
+        ellipse 60% 75% at 70% 25%,
+        oklch(0.97 0.018 75),
         transparent 70%
       ),
-      linear-gradient(135deg, oklch(0.94 0.025 220), oklch(0.96 0.02 200));
+      linear-gradient(135deg, oklch(0.94 0.03 200), oklch(0.96 0.02 65));
   }
   .gradient-oat {
     background-image: radial-gradient(
-        ellipse 60% 75% at 70% 30%,
-        oklch(0.96 0.02 90),
+        ellipse 60% 75% at 30% 30%,
+        oklch(0.97 0.03 80),
         transparent 70%
       ),
-      linear-gradient(160deg, oklch(0.95 0.02 85), oklch(0.93 0.02 110));
+      linear-gradient(160deg, oklch(0.95 0.04 75), oklch(0.93 0.04 50));
   }
   .gradient-rose-quartz {
     background-image: radial-gradient(
-        ellipse 70% 80% at 35% 20%,
-        oklch(0.95 0.025 25),
+        ellipse 70% 80% at 65% 20%,
+        oklch(0.95 0.04 25),
         transparent 60%
       ),
-      linear-gradient(135deg, oklch(0.92 0.025 15), oklch(0.94 0.025 45));
+      linear-gradient(135deg, oklch(0.92 0.05 15), oklch(0.94 0.04 45));
   }
   .gradient-deep {
     background-image: radial-gradient(
-        ellipse 70% 80% at 30% 20%,
-        oklch(0.32 0.045 240),
-        oklch(0.22 0.05 250)
+        ellipse 70% 80% at 70% 20%,
+        oklch(0.32 0.05 30),
+        oklch(0.22 0.05 30)
       ),
-      linear-gradient(160deg, oklch(0.28 0.04 235), oklch(0.18 0.04 260));
+      linear-gradient(160deg, oklch(0.28 0.04 30), oklch(0.18 0.04 30));
+  }
+  /* Lona-specific gradients */
+  .gradient-lona-pearl {
+    background-image: radial-gradient(
+        ellipse 70% 80% at 35% 25%,
+        oklch(0.97 0.03 75),
+        transparent 60%
+      ),
+      linear-gradient(160deg, oklch(0.94 0.03 60), oklch(0.88 0.05 40));
+  }
+  .gradient-lona-rose {
+    background-image: radial-gradient(
+        ellipse 70% 80% at 30% 20%,
+        oklch(0.96 0.05 25),
+        transparent 60%
+      ),
+      linear-gradient(135deg, oklch(0.88 0.08 18), oklch(0.78 0.1 12));
+  }
+  .gradient-lona-noir {
+    background-image: radial-gradient(
+        ellipse 70% 80% at 30% 20%,
+        oklch(0.32 0.05 30),
+        oklch(0.22 0.05 30)
+      ),
+      linear-gradient(160deg, oklch(0.28 0.04 30), oklch(0.16 0.04 25));
   }
 
-  /* Animated subtle border for hover states */
   .ring-luxury {
     box-shadow: 0 0 0 1px var(--edge-bright),
-      0 0 0 4px oklch(0.42 0.045 232 / 0.08);
+      0 0 0 4px oklch(0.5 0.08 25 / 0.1);
   }
-
-  /* Focus ring tuned for glassmorphism */
   .focus-luxury:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px oklch(0.985 0.008 90),
-      0 0 0 4px oklch(0.42 0.045 232 / 0.45);
+    box-shadow: 0 0 0 2px oklch(0.985 0.012 75),
+      0 0 0 4px oklch(0.5 0.08 25 / 0.45);
     border-radius: var(--radius);
   }
 
-  /* Scrollbar — restrained */
-  .scroll-luxe::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .scroll-luxe::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  .scroll-luxe::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scroll-luxe::-webkit-scrollbar-track { background: transparent; }
   .scroll-luxe::-webkit-scrollbar-thumb {
-    background: oklch(0.88 0.012 90 / 0.6);
+    background: oklch(0.88 0.018 75 / 0.6);
     border-radius: 3px;
   }
   .scroll-luxe::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.55 0.04 230 / 0.4);
+    background: oklch(0.5 0.08 25 / 0.45);
+  }
+
+  /* Marquee — RTL-safe translation (slides LTR regardless of dir,
+     so Persian reads continuously without visual jumps). */
+  .marquee-track {
+    display: inline-flex;
+    flex-direction: row;
+    animation: marquee 60s linear infinite;
+    will-change: transform;
+  }
+  .marquee-track-slow {
+    animation-duration: 90s;
+  }
+  /* RTL override: keep translateX negative, the track content is
+     doubled so the seam is invisible at any width. */
+  [dir="rtl"] .marquee-track {
+    animation-name: marquee;
   }
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.001s !important;
     transition-duration: 0.001s !important;
   }
 }
 
-/* ============================================================
-   PHASE 3 — Premium motion utilities
-   ============================================================ */
 @layer utilities {
-  /* Native smooth scroll — applied via .scroll-smooth-luxe on root */
-  .scroll-smooth-luxe {
-    scroll-behavior: smooth;
-  }
+  .scroll-smooth-luxe { scroll-behavior: smooth; }
 
-  /* Hide OS cursor so the custom Cursor component owns pointer focus.
-     The Cursor component adds .cursor-luxe on root when active. */
   html.cursor-luxe,
-  html.cursor-luxe * {
-    cursor: none !important;
-  }
+  html.cursor-luxe * { cursor: none !important; }
   html.cursor-luxe-system,
-  html.cursor-luxe-system * {
-    cursor: auto !important;
-  }
+  html.cursor-luxe-system * { cursor: auto !important; }
 }

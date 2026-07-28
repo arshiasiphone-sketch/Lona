@@ -1,17 +1,19 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
+  "name": "لونا — بوتیک لباس زیر زنانه",
+  "short_name": "لونا",
+  "description": "بوتیک لباس زیر زنانه با طراحی ظریف و دوخت دست.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#F5E9DA",
+  "theme_color": "#F5E9DA",
+  "lang": "fa",
+  "dir": "rtl",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
       "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
