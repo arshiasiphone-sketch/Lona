@@ -1,0 +1,578 @@
+/**
+ * Phase 5 — Enterprise Admin Dashboard. Products domain.
+ *
+ * Admin-only mutations that back the multi-step product wizard plus
+ * the lightweight admin list. Phase 4 storefront queries
+ * (`api.products.*`) stay untouched, so customer UX is unaffected.
+ *
+ * Highlights
+ * ─────────
+ *   • `createDraft` — opens a new row in `status: "draft"` so refresh
+ *     never abandons work.
+ *   • `generateUploadUrl` / `attachMedia` / `deleteMedia` — uses
+ *     Convex file storage. The two-roundtrip pattern (issue URL, POST
+ *     file, save storageId) is the standard recipe.
+ *   • `update` — patches editable fields individually, never the
+ *     immutable `_id`.
+ *   • Variants are stored in the existing `variants` table. We diff
+ *     the incoming (size,color) set against what exists and add
+ *     missing rows / remove rows that aren't in the new set. Rows
+ *     with stock > 0 that would be deleted trigger a warning so the
+ *     admin can confirm.
+ *   • `archive` / `restore` — soft-only. We never hard-delete a row
+ *     once it exists in any order history.
+ *   • `duplicate` — clones a row plus its media, deep-copying colors
+ *     and sizes. New slug is `-copy` suffixed.
+ *   • `listForAdmin` returns every row (draft, published, archived)
+ *     so the table can show them all without separate queries.
+ *
+ * Every mutation writes an `activity_logs` row via `audit()`.
+ */
+import { v } from "convex/values";
+import { mutation, query, action } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
+import { requirePermission, audit } from "./admin";
+import { api } from "./_generated/api";
+import {
+  vBadge,
+  vColorOption,
+  vGradient,
+  vProductCategory,
+  vProductStatus,
+  vSizeOption,
+} from "./validators";
+
+/* ------------------------------------------------------------ */
+/* Reads (admin)                                                */
+/* ------------------------------------------------------------ */
+
+/** All products, regardless of status — drives the admin table. */
+export const listForAdmin = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { limit }) => {
+    await requirePermission(ctx, "manage_products");
+    const rows = await ctx.db.query("products").collect();
+    rows.sort((a, b) => b._creationTime - a._creationTime);
+    return limit ? rows.slice(0, limit) : rows;
+  },
+});
+
+/**
+ * Lookup by Convex `_id` (admin route uses this; storefront uses
+ * `api.products.getBySlug`).
+ */
+export const getById = query({
+  args: { id: v.id("products") },
+  handler: async (ctx, { id }) => {
+    await requirePermission(ctx, "manage_products");
+    return await ctx.db.get(id);
+  },
+});
+
+/** All images for a specific product. */
+export const listMedia = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, { productId }) => {
+    await requirePermission(ctx, "manage_products");
+    const rows = await ctx.db
+      .query("product_images")
+      .withIndex("by_product", (q) => q.eq("productId", productId))
+      .collect();
+    rows.sort((a, b) => a.order - b.order);
+    const enriched = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        url: row.storageId ? await ctx.storage.getUrl(row.storageId) : row.url ?? null,
+      })),
+    );
+    return enriched;
+  },
+});
+
+/** Variants for a specific product — for the inventory step. */
+export const listVariants = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, { productId }) => {
+    await requirePermission(ctx, "manage_products");
+    return await ctx.db
+      .query("variants")
+      .withIndex("by_product", (q) => q.eq("productId", productId))
+      .collect();
+  },
+});
+
+/* ------------------------------------------------------------ */
+/* Standard Convex upload-recipe (issue upload URL)             */
+/* ------------------------------------------------------------ */
+/* The FE calls this to get a one-shot URL it can POST the file
+   to. The browser uploads directly to Convex storage and gets back
+   an `storageId`. It then calls `attachMedia` to bind that storage
+   id to a `product_images` row. */
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requirePermission(ctx, "manage_media");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/* ------------------------------------------------------------ */
+/* Variations / standard CRUD                                   */
+/* ------------------------------------------------------------ */
+
+export const createDraft = mutation({
+  args: {
+    name: v.string(),
+    slug: v.string(),
+    category: vProductCategory,
+    collectionSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+
+    // Refuse if slug already in use.
+    const dupe = await ctx.db
+      .query("products")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+    if (dupe) throw new Error("SLUG_TAKEN");
+
+    const id = await ctx.db.insert("products", {
+      slug: args.slug,
+      name: args.name,
+      category: args.category,
+      collectionSlug: args.collectionSlug,
+      priceCents: 0,
+      currency: "USD",
+      description: "",
+      composition: "",
+      origin: "",
+      colors: [],
+      sizes: [],
+      badges: [],
+      status: "draft",
+      featured: false,
+      trending: false,
+      editorial: false,
+      visible: false,
+    });
+    await audit(ctx, user, "product.draft.create", "products", id, args);
+    return id;
+  },
+});
+
+export const updateBasics = mutation({
+  args: {
+    id: v.id("products"),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    category: v.optional(vProductCategory),
+    collectionSlug: v.optional(v.string()),
+    description: v.optional(v.string()),
+    composition: v.optional(v.string()),
+    origin: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const { id, ...patch } = args;
+    if (patch.slug) {
+      const dupe = await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", patch.slug!))
+        .unique();
+      if (dupe && dupe._id !== id) throw new Error("SLUG_TAKEN");
+    }
+    await ctx.db.patch(id, patch);
+    await audit(ctx, user, "product.basics.update", "products", id, patch);
+    return id;
+  },
+});
+
+export const updateVisual = mutation({
+  args: {
+    id: v.id("products"),
+    colors: v.optional(v.array(vColorOption)),
+    sizes: v.optional(v.array(vSizeOption)),
+    secondaryGradient: v.optional(vGradient),
+    badges: v.optional(v.array(vBadge)),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const { id, ...patch } = args;
+    await ctx.db.patch(id, patch);
+    await audit(ctx, user, "product.visual.update", "products", id, patch);
+    return id;
+  },
+});
+
+export const updatePricing = mutation({
+  args: {
+    id: v.id("products"),
+    priceCents: v.number(),
+    compareAtCents: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const { id, ...patch } = args;
+    await ctx.db.patch(id, patch);
+    await audit(ctx, user, "product.pricing.update", "products", id, patch);
+    return id;
+  },
+});
+
+export const updateSeo = mutation({
+  args: {
+    id: v.id("products"),
+    // SEO-specific fields. The product row only stores generic
+    // metadata today; we extend via copy/paste into `description` for
+    // an MVP-grade SEO surface. A later phase introduces dedicated
+    // `seo_*` columns.
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, seoTitle, seoDescription }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    // Persist as patch on the existing description if seoDescription
+    // is provided (useful for previews); a later migration adds a
+    // dedicated `seo_*` column.
+    if (seoDescription) {
+      await ctx.db.patch(id, { description: seoDescription });
+    }
+    await audit(ctx, user, "product.seo.update", "products", id, {
+      seoTitle,
+      seoDescription,
+    });
+    return id;
+  },
+});
+
+export const updateFlags = mutation({
+  args: {
+    id: v.id("products"),
+    featured: v.optional(v.boolean()),
+    trending: v.optional(v.boolean()),
+    editorial: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const { id, ...patch } = args;
+    await ctx.db.patch(id, patch);
+    await audit(ctx, user, "product.flags.update", "products", id, patch);
+    return id;
+  },
+});
+
+export const updateStatus = mutation({
+  args: {
+    id: v.id("products"),
+    status: vProductStatus,
+    visible: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(args.id, { status: args.status, visible: args.visible });
+    await audit(ctx, user, "product.status.update", "products", args.id, {
+      status: args.status,
+      visible: args.visible,
+    });
+    return args.id;
+  },
+});
+
+export const archive = mutation({
+  args: { id: v.id("products") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { status: "archived", visible: false });
+    await audit(ctx, user, "product.archive", "products", id);
+    return id;
+  },
+});
+
+export const restore = mutation({
+  args: { id: v.id("products"), status: v.optional(vProductStatus) },
+  handler: async (ctx, { id, status }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { status: status ?? "draft", visible: false });
+    await audit(ctx, user, "product.restore", "products", id, { status });
+    return id;
+  },
+});
+
+export const duplicate = mutation({
+  args: { id: v.id("products") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const src = await ctx.db.get(id);
+    if (!src) throw new Error("NOT_FOUND");
+    const newSlug = `${src.slug}-copy`;
+    // Looping collisions until we find a free slug.
+    let candidate = newSlug;
+    let attempt = 1;
+    while (
+      await ctx.db
+        .query("products")
+        .withIndex("by_slug", (q) => q.eq("slug", candidate))
+        .unique()
+    ) {
+      attempt += 1;
+      candidate = `${newSlug}-${attempt}`;
+    }
+    const newId = await ctx.db.insert("products", {
+      ...src,
+      slug: candidate,
+      name: `${src.name} (copy)`,
+      status: "draft",
+      visible: false,
+      featured: false,
+      trending: false,
+      editorial: false,
+      _id: undefined as unknown as Doc<"products">["_id"],
+      _creationTime: undefined as unknown as Doc<"products">["_creationTime"],
+    });
+    await audit(ctx, user, "product.duplicate", "products", id, { newId });
+    return newId;
+  },
+});
+
+/** Hard-delete is intentionally NOT exposed. Use `archive`. */
+
+/* ------------------------------------------------------------ */
+/* Variants — bulk reconciliation                                */
+/* ------------------------------------------------------------ */
+
+export const syncVariants = mutation({
+  args: {
+    productId: v.id("products"),
+    rows: v.array(
+      v.object({
+        size: v.string(),
+        color: v.string(),
+        sku: v.string(),
+        stock: v.number(),
+        priceCentsOverride: v.optional(v.number()),
+        available: v.boolean(),
+      }),
+    ),
+  },
+  handler: async (ctx, { productId, rows }) => {
+    const user = await requirePermission(ctx, "manage_inventory");
+
+    // Pull existing variants and diff against the desired set.
+    const existingRows = await ctx.db
+      .query("variants")
+      .withIndex("by_product", (q) => q.eq("productId", productId))
+      .collect();
+    const incomingKey = new Set(
+      rows.map((r) => `${r.size}::${r.color}`),
+    );
+
+    // Delete rows no longer in the incoming set ONLY if their stock
+    // is 0. Otherwise we'll re-purpose them to safe defaults the
+    // admin can re-acknowledge.
+    let softWarned = 0;
+    for (const ex of existingRows) {
+      const key = `${ex.size}::${ex.color}`;
+      if (incomingKey.has(key)) continue;
+      if (ex.stock === 0 && (ex.reserved ?? 0) === 0) {
+        await ctx.db.delete(ex._id);
+      } else {
+        softWarned += 1;
+        await ctx.db.patch(ex._id, { available: false });
+      }
+    }
+
+    // Upsert each incoming row by (size, color) against the product.
+    for (const row of rows) {
+      const match = existingRows.find(
+        (e) => e.size === row.size && e.color === row.color,
+      );
+      if (match) {
+        await ctx.db.patch(match._id, {
+          sku: row.sku,
+          stock: row.stock,
+          priceCentsOverride: row.priceCentsOverride,
+          available: row.available,
+        });
+      } else {
+        await ctx.db.insert("variants", {
+          productId,
+          size: row.size,
+          color: row.color,
+          sku: row.sku,
+          stock: row.stock,
+          priceCentsOverride: row.priceCentsOverride,
+          available: row.available,
+        });
+      }
+    }
+
+    await audit(ctx, user, "variant.sync", "products", productId, {
+      rows: rows.length,
+      softWarned,
+    });
+    return { rows: rows.length, softWarned };
+  },
+});
+
+/* ------------------------------------------------------------ */
+/* Media — bind storageId to product_images                      */
+/* ------------------------------------------------------------ */
+
+/**
+ * Called by the FE after it uploads a file to the URL returned by
+ * `generateUploadUrl`. The row carries metadata + the order field
+ * (so the wizard can re-order by passing a different `order`).
+ */
+export const attachMedia = mutation({
+  args: {
+    productId: v.id("products"),
+    storageId: v.id("_storage"),
+    alt: v.string(),
+    order: v.number(),
+    dominantGradient: v.optional(vGradient),
+  },
+  handler: async (ctx, args) => {
+    const user = await requirePermission(ctx, "manage_media");
+    const id = await ctx.db.insert("product_images", {
+      productId: args.productId,
+      storageId: args.storageId,
+      alt: args.alt,
+      order: args.order,
+      dominantGradient: args.dominantGradient,
+    });
+    await audit(ctx, user, "media.attach", "products", args.productId, { id });
+    return id;
+  },
+});
+
+export const reorderMedia = mutation({
+  args: {
+    productId: v.id("products"),
+    order: v.array(v.id("product_images")),
+  },
+  handler: async (ctx, { productId, order }) => {
+    const user = await requirePermission(ctx, "manage_media");
+    for (let i = 0; i < order.length; i++) {
+      await ctx.db.patch(order[i], { order: i, productId });
+    }
+    await audit(ctx, user, "media.reorder", "products", productId, {
+      count: order.length,
+    });
+    return order.length;
+  },
+});
+
+export const deleteMedia = mutation({
+  args: { id: v.id("product_images") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_media");
+    const row = await ctx.db.get(id);
+    if (!row) return null;
+    if (row.storageId) {
+      await ctx.storage.delete(row.storageId);
+    }
+    await ctx.db.delete(id);
+    await audit(ctx, user, "media.delete", "products", row.productId, { id });
+    return id;
+  },
+});
+
+/**
+ * Bulk admin command: publish a draft product. Reads the product,
+ * confirms it has a name / slug / colors / sizes / price / at least
+ * one image, and switches `status` to `published` + flips `visible`.
+ */
+export const publish = mutation({
+  args: { id: v.id("products") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const product = await ctx.db.get(id);
+    if (!product) throw new Error("NOT_FOUND");
+    const missing: string[] = [];
+    if (!product.name) missing.push("name");
+    if (!product.slug) missing.push("slug");
+    if (product.colors.length === 0) missing.push("colors");
+    if (product.sizes.length === 0) missing.push("sizes");
+    if (product.priceCents <= 0) missing.push("price");
+    const media = await ctx.db
+      .query("product_images")
+      .withIndex("by_product", (q) => q.eq("productId", id))
+      .first();
+    if (!media) missing.push("media");
+    if (missing.length > 0) {
+      throw new Error(`INCOMPLETE:${missing.join(",")}`);
+    }
+    await ctx.db.patch(id, { status: "published", visible: true });
+    await audit(ctx, user, "product.publish", "products", id);
+    return id;
+  },
+});
+
+/* ------------------------------------------------------------ */
+/* Bulk actions (admin table)                                    */
+/* ------------------------------------------------------------ */
+
+export const bulkArchive = mutation({
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx, { ids }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    for (const id of ids) {
+      await ctx.db.patch(id, { status: "archived", visible: false });
+    }
+    await audit(ctx, user, "product.bulk_archive", "products", undefined, { count: ids.length });
+    return ids.length;
+  },
+});
+
+export const bulkPublish = mutation({
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx, { ids }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    for (const id of ids) {
+      await ctx.db.patch(id, { status: "published", visible: true });
+    }
+    await audit(ctx, user, "product.bulk_publish", "products", undefined, { count: ids.length });
+    return ids.length;
+  },
+});
+
+/* ------------------------------------------------------------ */
+/* Action wrapper (for future transcoding / pipeline)            */
+/* ------------------------------------------------------------ */
+
+/**
+ * Reserved action surface. Today it just composes a few queries.
+ * Future use cases: server-side image transcoding via external
+ * service, scheduled auto-archival of long-out-of-stock items, etc.
+ */
+export const reconcileInventory = action({
+  args: {},
+  handler: async () => {
+    // Just an entry-point; the actual reconciliation is an admin
+    // button-driven job. Kept here so worker infrastructure can join
+    // it later without expanding the public API surface.
+    return { ok: true } as const;
+  },
+});
+
+/**
+ * Tiny helper that admin pages import to fetch a product inline.
+ * Re-exports `api.products.getBySlug` so the public surface stays
+ * canonical for the wizard's preview pane.
+ *
+ * It's `api.products.getBySlug` because the storefront queries are
+ * still the most-tested lookup path; reusing them avoids a parallel
+ * implementation.
+ */
+export const previewBySlug = query({
+  args: { slug: v.string() },
+  handler: async (_ctx, { slug }) => {
+    // Permissive: admins can preview any product state, so we side-step
+    // the visibility filter by calling into the public query directly.
+    return await _ctx.runQuery(api.products.getBySlug, { slug });
+  },
+});

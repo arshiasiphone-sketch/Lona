@@ -237,7 +237,8 @@ const schema = defineSchema(
 
     product_images: defineTable({
       productId: v.id("products"),
-      url: v.string(),
+      url: v.optional(v.string()),
+      storageId: v.optional(v.id("_storage")),
       alt: v.string(),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
