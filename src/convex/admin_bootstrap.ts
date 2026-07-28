@@ -87,3 +87,57 @@ export const status = mutation({
     };
   },
 });
+
+/**
+ * Promote the most recently created user to admin. Convenient for
+ * the first-time bootstrapping flow when the developer hits
+ * `bun convex run admin_bootstrap:promoteLatest '{}'` straight from
+ * the Freebuff iframe — whoever signed in last lands in admin.
+ *
+ * Same self-locking rule as `promote`: if any admin/owner already
+ * exists, this throws `BOOTSTRAPPED`.
+ */
+export const promoteLatest = mutation({
+  args: {
+    role: v.optional(vRole),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admins = await ctx.db
+      .query("users")
+      .filter((q) =>
+        q.or(q.eq(q.field("role"), "admin"), q.eq(q.field("role"), "owner")),
+      )
+      .collect();
+    if (admins.length > 0) {
+      throw new Error("BOOTSTRAPPED");
+    }
+
+    const role = args.role ?? "admin";
+    const all = await ctx.db.query("users").collect();
+    if (all.length === 0) {
+      // No signed-in users yet — seed a placeholder so we can hand
+      // the developer an email to claim at `/auth` right away.
+      const email = (args.email ?? "admin@aeon.store").trim().toLowerCase();
+      const id = await ctx.db.insert("users", {
+        email,
+        name: args.name ?? "Atelier Admin",
+        role,
+        isAnonymous: false,
+      });
+      return { id, email, name: args.name ?? "Atelier Admin", role, created: true };
+    }
+
+    all.sort((a, b) => b._creationTime - a._creationTime);
+    const target = all[0];
+    await ctx.db.patch(target._id, { role });
+    return {
+      id: target._id,
+      email: target.email ?? null,
+      name: target.name ?? null,
+      role,
+      created: false,
+    };
+  },
+});
