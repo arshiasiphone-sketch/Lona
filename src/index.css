@@ -1,0 +1,395 @@
+/* ============================================================
+   ÆON — Luxury Fashion Frontend Foundation
+   Light glassmorphism design system.
+   DO NOT REMOVE — Tailwind directives and core tokens required.
+   ============================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap");
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   TOKEN MAPPING — surface Tailwind theme variables
+   ============================================================ */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 14px);
+  --radius-3xl: calc(var(--radius) + 22px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-deep: var(--canvas-deep);
+  --color-edge: var(--edge);
+  --color-edge-bright: var(--edge-bright);
+
+  --color-glass-fill: var(--glass-fill);
+  --color-glass-fill-strong: var(--glass-fill-strong);
+  --color-glass-border: var(--glass-border);
+  --color-glass-highlight: var(--glass-highlight);
+
+  --font-display: "Fraunces";
+  --font-sans: "Inter";
+
+  --shadow-soft: var(--shadow-soft-value);
+  --shadow-float: var(--shadow-float-value);
+  --shadow-glass: var(--shadow-glass-value);
+  --shadow-hero: var(--shadow-hero-value);
+
+  --tracking-display: -0.022em;
+  --tracking-tight: -0.012em;
+  --tracking-normal: -0.005em;
+
+  --animate-marquee: marquee 60s linear infinite;
+  --animate-marquee-slow: marquee 90s linear infinite;
+  --animate-shimmer: shimmer 2.6s ease-in-out infinite;
+  --animate-float: float 9s ease-in-out infinite;
+  --animate-fade-up: fadeUp 0.9s var(--ease-luxury) both;
+}
+
+/* ============================================================
+   DESIGN TOKENS — light glassmorphism, restrained cool
+   ============================================================ */
+:root {
+  --radius: 0.875rem;
+
+  /* Base canvas — warm ivory */
+  --background: oklch(0.985 0.008 90);
+  --foreground: oklch(0.22 0.018 245);
+
+  /* Card — slightly lighter than background, reads as glass */
+  --card: oklch(0.995 0.004 90);
+  --card-foreground: oklch(0.22 0.018 245);
+
+  --popover: oklch(0.995 0.004 90);
+  --popover-foreground: oklch(0.22 0.018 245);
+
+  /* Primary — restrained slate-teal */
+  --primary: oklch(0.42 0.045 232);
+  --primary-foreground: oklch(0.985 0.008 90);
+
+  /* Secondary — cream */
+  --secondary: oklch(0.96 0.012 80);
+  --secondary-foreground: oklch(0.22 0.018 245);
+
+  --muted: oklch(0.95 0.012 80);
+  --muted-foreground: oklch(0.5 0.018 240);
+
+  /* Accent — ice cool */
+  --accent: oklch(0.94 0.025 220);
+  --accent-foreground: oklch(0.32 0.05 235);
+
+  --destructive: oklch(0.62 0.2 25);
+
+  --border: oklch(0.88 0.012 90);
+  --input: oklch(0.9 0.012 90);
+  --ring: oklch(0.55 0.04 230);
+
+  /* Extended palette — ink to canvas */
+  --ink: oklch(0.22 0.018 245);
+  --ink-soft: oklch(0.36 0.02 240);
+  --ink-muted: oklch(0.55 0.015 240);
+  --canvas: oklch(0.985 0.008 90);
+  --canvas-soft: oklch(0.96 0.012 80);
+  --canvas-deep: oklch(0.93 0.018 80);
+  --edge: oklch(1 0 0 / 0.55);
+  --edge-bright: oklch(1 0 0 / 0.85);
+
+  /* Glass tokens */
+  --glass-fill: oklch(1 0 0 / 0.5);
+  --glass-fill-strong: oklch(1 0 0 / 0.78);
+  --glass-border: oklch(1 0 0 / 0.6);
+  --glass-highlight: oklch(1 0 0 / 0.95);
+
+  /* Shadows — soft, layered, no pure black */
+  --shadow-soft-value: 0 1px 2px oklch(0.35 0.02 245 / 0.04),
+    0 6px 18px oklch(0.35 0.02 245 / 0.05);
+  --shadow-float-value: 0 2px 4px oklch(0.35 0.02 245 / 0.05),
+    0 18px 40px oklch(0.35 0.02 245 / 0.08);
+  --shadow-glass-value: inset 0 1px 0 oklch(1 0 0 / 0.6),
+    0 1px 2px oklch(0.35 0.02 245 / 0.04),
+    0 12px 32px oklch(0.35 0.02 245 / 0.06);
+  --shadow-hero-value: 0 24px 60px oklch(0.35 0.02 245 / 0.1),
+    0 4px 12px oklch(0.35 0.02 245 / 0.05);
+
+  /* Easings — luxury feel */
+  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-precise: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   GLOBAL KEYFRAMES — motion vocabulary
+   ============================================================ */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   BASE LAYER
+   ============================================================ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    background-image: radial-gradient(
+        ellipse 80% 50% at 20% -10%,
+        oklch(0.94 0.025 220 / 0.6),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 70% 50% at 100% 20%,
+        oklch(0.95 0.025 200 / 0.5),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 50% 110%,
+        oklch(0.94 0.02 240 / 0.45),
+        transparent 70%
+      );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: oklch(0.42 0.045 232 / 0.16);
+    color: oklch(0.22 0.018 245);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+    letter-spacing: var(--tracking-display);
+  }
+}
+
+/* ============================================================
+   UTILITY LAYER — glass surfaces, type ramps, motion helpers
+   ============================================================ */
+@layer utilities {
+  /* Glass surface tiers — light glassmorphism only */
+  .glass-subtle {
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+  }
+  .glass {
+    background: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+  .glass-strong {
+    background: var(--glass-fill-strong);
+    border: 1px solid var(--glass-highlight);
+    box-shadow: var(--shadow-glass-value);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+  }
+
+  /* Edge highlight — top white hairline */
+  .edge-highlight {
+    position: relative;
+  }
+  .edge-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      180deg,
+      var(--edge-bright) 0%,
+      transparent 30%,
+      transparent 100%
+    );
+    -webkit-mask: linear-gradient(#000, #000) content-box,
+      linear-gradient(#000, #000);
+    mask: linear-gradient(#000, #000) content-box,
+      linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+
+  /* Faint hairline border using edge */
+  .hairline {
+    border: 1px solid var(--edge);
+  }
+  .hairline-strong {
+    border: 1px solid oklch(1 0 0 / 0.85);
+  }
+
+  /* Type ramps */
+  .type-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 0.98;
+    letter-spacing: var(--tracking-display);
+  }
+  .type-display-light {
+    font-family: var(--font-display);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: var(--tracking-display);
+  }
+  .type-eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.7rem;
+  }
+  .type-caption {
+    font-feature-settings: "tnum";
+    letter-spacing: var(--tracking-normal);
+  }
+
+  /* Gradient backdrops for product imagery */
+  .gradient-mist {
+    background-image: radial-gradient(
+        ellipse 60% 75% at 30% 25%,
+        oklch(0.97 0.015 90),
+        transparent 70%
+      ),
+      linear-gradient(135deg, oklch(0.94 0.025 220), oklch(0.96 0.02 200));
+  }
+  .gradient-oat {
+    background-image: radial-gradient(
+        ellipse 60% 75% at 70% 30%,
+        oklch(0.96 0.02 90),
+        transparent 70%
+      ),
+      linear-gradient(160deg, oklch(0.95 0.02 85), oklch(0.93 0.02 110));
+  }
+  .gradient-rose-quartz {
+    background-image: radial-gradient(
+        ellipse 70% 80% at 35% 20%,
+        oklch(0.95 0.025 25),
+        transparent 60%
+      ),
+      linear-gradient(135deg, oklch(0.92 0.025 15), oklch(0.94 0.025 45));
+  }
+  .gradient-deep {
+    background-image: radial-gradient(
+        ellipse 70% 80% at 30% 20%,
+        oklch(0.32 0.045 240),
+        oklch(0.22 0.05 250)
+      ),
+      linear-gradient(160deg, oklch(0.28 0.04 235), oklch(0.18 0.04 260));
+  }
+
+  /* Animated subtle border for hover states */
+  .ring-luxury {
+    box-shadow: 0 0 0 1px var(--edge-bright),
+      0 0 0 4px oklch(0.42 0.045 232 / 0.08);
+  }
+
+  /* Focus ring tuned for glassmorphism */
+  .focus-luxury:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px oklch(0.985 0.008 90),
+      0 0 0 4px oklch(0.42 0.045 232 / 0.45);
+    border-radius: var(--radius);
+  }
+
+  /* Scrollbar — restrained */
+  .scroll-luxe::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scroll-luxe::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-luxe::-webkit-scrollbar-thumb {
+    background: oklch(0.88 0.012 90 / 0.6);
+    border-radius: 3px;
+  }
+  .scroll-luxe::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.55 0.04 230 / 0.4);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
+}
