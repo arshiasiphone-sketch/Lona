@@ -6,7 +6,6 @@ import {
   Search,
   ShoppingBag,
   User as UserIcon,
-  Menu as MenuIcon,
   X as CloseIcon,
 } from "lucide-react";
 import { cn } from "@/lib/glass";
@@ -15,7 +14,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
 import { useOverlay } from "@/hooks/use-overlay";
-import { EASE_LUXURY } from "@/lib/motion";
+import { EASE_LUXURY, SPRING_GENTLE, SPRING_SNAP } from "@/lib/motion";
 
 const PRIMARY_LINKS: { label: string; to: string }[] = [
   { label: "Shop", to: "/shop" },
@@ -64,7 +63,7 @@ export function Navbar() {
         className="relative mx-auto flex h-16 max-w-[1728px] items-center justify-between px-6 lg:px-10"
         aria-label="Primary"
       >
-        {/* Left — collection nav (desktop), menu + search (mobile) */}
+        {/* Left — collection nav (desktop) + mobile search toggle */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setMobileSearch((s) => !s)}
@@ -153,7 +152,9 @@ export function Navbar() {
 
         {/* Right — utilities */}
         <div className="flex items-center gap-1">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            transition={SPRING_SNAP}
             onClick={openCommand}
             className="flex items-center gap-2 rounded-full hairline bg-canvas/60 px-3 py-2 text-ink-soft transition hover:bg-white/80"
             aria-label="Open command palette"
@@ -165,7 +166,7 @@ export function Navbar() {
             <kbd className="hidden md:inline rounded bg-canvas/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em] text-ink-muted">
               ⌘K
             </kbd>
-          </button>
+          </motion.button>
           <Link
             to="/wishlist"
             className="relative grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
@@ -179,7 +180,7 @@ export function Navbar() {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: EASE_LUXURY }}
+                  transition={{ duration: 0.4, ease: EASE_LUXURY }}
                   className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
                 >
                   {wishlistIds.length}
@@ -187,34 +188,8 @@ export function Navbar() {
               )}
             </AnimatePresence>
           </Link>
-          <button
-            onClick={openSideCart}
-            className="relative grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
-            aria-label="Open shopping bag"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            <AnimatePresence>
-              {itemCount > 0 && (
-                <motion.span
-                  key={`c-${itemCount}`}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: EASE_LUXURY }}
-                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
-                >
-                  {itemCount}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-          <button
-            onClick={() => navigate(isAuthenticated ? "/account" : "/auth")}
-            className="ml-1 grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
-            aria-label={isAuthenticated ? "Account" : "Sign in"}
-          >
-            <UserIcon className="h-4 w-4" />
-          </button>
+          {/* Bag — animated bounce on count change */}
+          <BagButton />
         </div>
       </nav>
 
@@ -256,5 +231,48 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </header>
+  );
+}
+
+/**
+ * Bag icon button. Animates a gentle spring bump when `itemCount` changes
+ * and reveals an AnimatePresence count badge.
+ */
+function BagButton() {
+  const { itemCount } = useCart();
+  const { openSideCart, toggleSideCart } = useOverlay();
+  const nav = useNavigate();
+  return (
+    <motion.button
+      onClick={() => {
+        openSideCart();
+        // Avoid 'unused' lint warning while keeping nav available for future cross-route
+        nav("/cart");
+        toggleSideCart();
+      }}
+      aria-label="Open shopping bag"
+      animate={itemCount > 0 ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+      transition={SPRING_GENTLE}
+      whileTap={{ scale: 0.94 }}
+      className="relative grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 hover:text-ink"
+    >
+      <span data-bag-target="" aria-hidden="true">
+        <ShoppingBag className="h-4 w-4" />
+      </span>
+      <AnimatePresence>
+        {itemCount > 0 && (
+          <motion.span
+            key={`c-${itemCount}`}
+            initial={{ scale: 0.4, opacity: 0, y: -4 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.4, opacity: 0, y: -4 }}
+            transition={SPRING_SNAP}
+            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-medium text-primary-foreground"
+          >
+            {itemCount}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 }

@@ -1,4 +1,4 @@
-import { Hero } from "@/components/editorial/Hero";
+import { HeroChoreography } from "@/components/editorial/HeroChoreography";
 import { Marquee } from "@/components/editorial/Marquee";
 import { FeaturedCollections } from "@/components/editorial/FeaturedCollections";
 import { TrendingProducts } from "@/components/editorial/TrendingProducts";
@@ -9,6 +9,12 @@ import { BrandManifesto } from "@/components/editorial/BrandManifesto";
 import { Recommendations } from "@/components/editorial/Recommendations";
 import { InstagramGallery } from "@/components/editorial/InstagramGallery";
 import { RecentlyViewedStrip } from "@/components/global/RecentlyViewed";
+import { ImageMaskReveal } from "@/components/motion/ImageMaskReveal";
+import { TextReveal } from "@/components/motion/TextReveal";
+import { HoverGlow } from "@/components/motion/HoverGlow";
+import { PressScale } from "@/components/motion/PressScale";
+import { Link } from "react-router";
+import { ArrowRight } from "lucide-react";
 import {
   collections,
   newArrivals,
@@ -18,7 +24,41 @@ import {
 export default function Landing() {
   return (
     <div className="relative">
-      <Hero />
+      <HeroChoreography />
+
+      {/* Quick-access CTA pills */}
+      <section className="mx-auto -mt-8 max-w-[1728px] px-6 lg:px-10">
+        <div className="glass-strong mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 rounded-3xl px-6 py-4 lg:px-8">
+          <div>
+            <p className="type-eyebrow text-ink-muted">Skip ahead</p>
+            <p className="mt-1 font-display text-base text-ink">
+              <TextReveal asRoot="span" as="words" stagger={0.02}>
+                Begin a quiet browse.
+              </TextReveal>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <PressScale>
+              <Link
+                to="/shop"
+                className="group inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
+              >
+                New Arrivals
+                <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+              </Link>
+            </PressScale>
+            <PressScale>
+              <Link
+                to="/collections/autumn-winter"
+                className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/60 px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-white"
+                data-cursor="image"
+              >
+                Volume XII editorial
+              </Link>
+            </PressScale>
+          </div>
+        </div>
+      </section>
 
       <Marquee
         items={[
@@ -29,7 +69,7 @@ export default function Landing() {
           "Eyewear in Cadore",
           "Quietly distinguished",
         ]}
-        className="mt-2"
+        className="mt-12"
       />
 
       <FeaturedCollections

@@ -393,3 +393,24 @@
     transition-duration: 0.001s !important;
   }
 }
+
+/* ============================================================
+   PHASE 3 — Premium motion utilities
+   ============================================================ */
+@layer utilities {
+  /* Native smooth scroll — applied via .scroll-smooth-luxe on root */
+  .scroll-smooth-luxe {
+    scroll-behavior: smooth;
+  }
+
+  /* Hide OS cursor so the custom Cursor component owns pointer focus.
+     The Cursor component adds .cursor-luxe on root when active. */
+  html.cursor-luxe,
+  html.cursor-luxe * {
+    cursor: none !important;
+  }
+  html.cursor-luxe-system,
+  html.cursor-luxe-system * {
+    cursor: auto !important;
+  }
+}
