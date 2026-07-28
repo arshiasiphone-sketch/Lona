@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { motion } from "framer-motion";
 import { Search as SearchIcon, Sparkles, ArrowUpRight, History, X } from "lucide-react";
-import { products, collections, newArrivals } from "@/data/catalog";
+import {
+  useProducts,
+  useCollections,
+  useNewArrivals,
+  useSearchProducts,
+  staticProducts,
+  staticCollections,
+} from "@/lib/data/catalog";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { EmptySearch } from "@/components/customer/EmptyStates";
 import { ProductImage } from "@/components/ui/ProductImage";
@@ -51,20 +58,12 @@ export default function Search() {
     }
   }, []);
 
-  const results = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return [];
-    return products
-      .filter((p) =>
-        [p.name, p.description, p.collection, p.category]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle)
-      )
-      .slice(0, 24);
-  }, [q]);
-
-  const trending = useMemo(() => newArrivals().slice(0, 4), []);
+  const liveProducts = useProducts();
+  const liveCollections = useCollections();
+  const products = liveProducts ?? staticProducts;
+  const collections = liveCollections ?? staticCollections;
+  const results = useSearchProducts({ query: q, limit: 24 }) ?? [];
+  const trending = useNewArrivals(4) ?? products.slice(0, 4);
 
   const submit = (value: string) => {
     const trimmed = value.trim();

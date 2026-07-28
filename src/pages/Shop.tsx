@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router";
 import { motion } from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
-import { products as allProducts, type Product } from "@/data/catalog";
+import { type Product, useProducts, staticProducts } from "@/lib/data/catalog";
 import {
   FiltersPanel,
   FILTER_DEFAULTS,
@@ -109,6 +109,9 @@ export default function Shop() {
   const [drawer, setDrawer] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(!isServer);
+
+  const liveProducts = useProducts();
+  const allProducts = liveProducts ?? staticProducts;
 
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
   const sort = (searchParams.get("sort") as ShopSort) ?? "featured";

@@ -10,7 +10,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { getProduct } from "@/data/catalog";
+import { useProduct } from "@/lib/data/catalog";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { VariantPicker } from "@/components/product/VariantPicker";
 import { BundleSuggestions } from "@/components/product/BundleSuggestions";
@@ -27,7 +27,7 @@ import { formatPrice } from "@/lib/format";
 
 export default function Product() {
   const { slug = "" } = useParams();
-  const product = getProduct(slug);
+  const product = useProduct(slug) ?? null;
 
   const [color, setColor] = useState(product?.colors[0].id ?? "");
   const [size, setSize] = useState(product?.sizes[0].id ?? "");

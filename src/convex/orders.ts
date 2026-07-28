@@ -30,6 +30,35 @@ export const listMine = query({
   },
 });
 
+/**
+ * Account home variant — joins each order with its line items so the
+ * FE can render the order summary list without an N+1 lookup. The
+ * shape is intentionally `{ order, items }[]` so the page can render
+ * either piece independently.
+ */
+export const listMineWithItems = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const items = await ctx.db
+          .query("order_items")
+          .withIndex("by_order", (q) => q.eq("orderId", order._id))
+          .collect();
+        return { order, items };
+      })
+    );
+    // Newest first.
+    enriched.sort((a, b) => b.order.placedAt - a.order.placedAt);
+    return enriched;
+  },
+});
+
 export const getByNumber = query({
   args: { number: v.string() },
   handler: async (ctx, { number }) => {

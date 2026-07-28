@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useCart } from "@/hooks/use-cart";
-import { products } from "@/data/catalog";
+import { useProducts, getProductByIdFromList } from "@/lib/data/catalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
@@ -11,9 +11,10 @@ import { EASE_LUXURY } from "@/lib/motion";
 export default function Wishlist() {
   const { ids, remove, clear } = useWishlist();
   const { add } = useCart();
+  const liveProducts = useProducts();
 
   const items = ids
-    .map((id) => products.find((p) => p.id === id))
+    .map((id) => getProductByIdFromList(liveProducts, id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (

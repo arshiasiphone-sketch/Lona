@@ -12,7 +12,11 @@ import { ProductImage } from "@/components/ui/ProductImage";
 import { useCart } from "@/hooks/use-cart";
 import { useOverlay } from "@/hooks/use-overlay";
 import { useCoupon } from "@/hooks/use-coupon";
-import { getProductById, type Product } from "@/data/catalog";
+import {
+  useProducts,
+  getProductByIdFromList,
+  type Product,
+} from "@/lib/data/catalog";
 import type { CartLine } from "@/hooks/use-cart";
 import { formatPrice } from "@/lib/format";
 import { EASE_LUXURY } from "@/lib/motion";
@@ -55,9 +59,10 @@ export function SideCart() {
   const { lines, update, remove } = useCart();
   const { sideCartOpen, closeSideCart } = useOverlay();
   const { applied, apply, remove: removeCoupon } = useCoupon();
+  const liveProducts = useProducts();
 
   const items: EnrichedLine[] = lines.flatMap((line) => {
-    const product = getProductById(line.productId);
+    const product = getProductByIdFromList(liveProducts, line.productId);
     return product ? [{ ...line, product }] : [];
   });
 
@@ -185,7 +190,7 @@ export function SideCart() {
                 </p>
                 <ul className="mt-4 space-y-2">
                   {recommended
-                    .map((id) => getProductById(id))
+                    .map((id) => getProductByIdFromList(liveProducts, id))
                     .filter((p): p is NonNullable<typeof p> => Boolean(p))
                     .map((p) => (
                       <li

@@ -16,7 +16,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
-import { mockOrders, getProductById, products } from "@/data/catalog";
+import {
+  useProducts,
+  useOrdersByUser,
+  staticMockOrders,
+  getProductByIdFromList,
+} from "@/lib/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
@@ -57,8 +62,16 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [active, setActive] = useState<TabKey>("overview");
 
-  const saved = wishlistIds.map((id) => products.find((p) => p.id === id)).filter((p): p is NonNullable<typeof p> => Boolean(p));
-  const recent = recentIds.map((id) => products.find((p) => p.id === id)).filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const liveProducts = useProducts();
+  const liveOrders = useOrdersByUser();
+  const orders = liveOrders ?? staticMockOrders;
+
+  const saved = wishlistIds
+    .map((id) => getProductByIdFromList(liveProducts, id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const recent = recentIds
+    .map((id) => getProductByIdFromList(liveProducts, id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
@@ -111,7 +124,7 @@ export default function Dashboard() {
       >
         {active === "overview" && (
           <div className="grid gap-5 md:grid-cols-4">
-            <StatCard label="Active Orders" value={String(mockOrders.filter((o) => o.status === "shipped" || o.status === "processing").length)} icon={<Package className="h-3.5 w-3.5" />} />
+            <StatCard label="Active Orders" value={String(orders.filter((o) => o.status === "shipped" || o.status === "processing").length)} icon={<Package className="h-3.5 w-3.5" />} />
             <StatCard label="Saved Pieces" value={String(saved.length)} icon={<Heart className="h-3.5 w-3.5" />} />
             <StatCard label="In Bag" value={String(itemCount)} icon={<Plus className="h-3.5 w-3.5" />} />
             <StatCard label="Patron Since" value="MMXXIV" icon={<Settings className="h-3.5 w-3.5" />} />
@@ -120,14 +133,14 @@ export default function Dashboard() {
 
         {active === "orders" && (
           <div className="space-y-4">
-            {mockOrders.length === 0 ? (
+            {orders.length === 0 ? (
               <p className="glass rounded-3xl px-8 py-12 text-center text-sm text-ink-muted">
                 No orders yet. Begin a piece from the catalogue.
               </p>
             ) : (
-              mockOrders.map((order) => {
+              orders.map((order) => {
                 const first = order.items[0];
-                const product = first ? getProductById(first.productId) : undefined;
+                const product = first ? getProductByIdFromList(liveProducts, first.productId) : undefined;
                 return (
                   <motion.div
                     key={order.id}

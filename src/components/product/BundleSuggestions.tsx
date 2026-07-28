@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Check } from "lucide-react";
 import { ProductImage } from "@/components/ui/ProductImage";
-import { getProductById } from "@/data/catalog";
+import { useProducts, getProductByIdFromList } from "@/lib/data/catalog";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/glass";
 import { toast } from "@/lib/toast";
@@ -52,8 +52,9 @@ interface BundleSuggestionsProps {
 
 export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
   const ids = CO_OCCURRENCES[primaryId] ?? ["p-002", "p-004"];
+  const liveProducts = useProducts();
   const items = [primaryId, ...ids]
-    .map((id) => getProductById(id))
+    .map((id) => getProductByIdFromList(liveProducts, id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
   const [picked, setPicked] = useState<Set<string>>(
     () => new Set<string>([primaryId, ...ids])

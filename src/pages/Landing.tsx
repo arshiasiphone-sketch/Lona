@@ -16,12 +16,17 @@ import { PressScale } from "@/components/motion/PressScale";
 import { Link } from "react-router";
 import { ArrowRight } from "lucide-react";
 import {
-  collections,
-  newArrivals,
-  testimonials,
-} from "@/data/catalog";
+  useCollections,
+  useNewArrivals,
+  staticCollections,
+  staticProducts,
+  staticTestimonials,
+} from "@/lib/data/catalog";
 
 export default function Landing() {
+  const collections = useCollections();
+  const newItems = useNewArrivals();
+  const testimonials = staticTestimonials;
   return (
     <div className="relative">
       <HeroChoreography />
@@ -73,13 +78,13 @@ export default function Landing() {
       />
 
       <FeaturedCollections
-        collections={collections.slice(0, 3)}
+        collections={(collections ?? staticCollections).slice(0, 3)}
         title="Volume XII"
         eyebrow="Chapter"
       />
 
       <TrendingProducts
-        products={newArrivals()}
+        products={newItems ?? staticProducts}
         title="Newly considered"
         eyebrow="New Arrivals"
       />

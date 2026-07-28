@@ -1,14 +1,14 @@
 import { Link, useParams } from "react-router";
 import { ChevronRight } from "lucide-react";
-import { getCollection, getCollectionProducts } from "@/data/catalog";
+import { useCollection, useCollectionProducts } from "@/lib/data/catalog";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { Marquee } from "@/components/editorial/Marquee";
 import { cn } from "@/lib/glass";
 
 export default function Collection() {
   const { slug = "" } = useParams();
-  const collection = getCollection(slug);
-  const items = getCollectionProducts(slug);
+  const collection = useCollection(slug);
+  const items = useCollectionProducts(slug) ?? [];
 
   if (!collection) {
     return (
