@@ -5,7 +5,7 @@
 
 /* Fonts — preconnect to GStatic, then load. `display=swap` keeps
    render time low. Each weights tuple covers the type ramp. */
-@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=Estedad:wght@300;400;500;600;700&family=Lalezar:wght@400&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Estedad:wght@300;400;500;600;700&family=Lalezar:wght@400&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -66,10 +66,10 @@
 
   /* Font stack — Vazirmatn (UI + body), Estedad (editorial display),
      Lalezar (decorative campaign only), Cormorant Garamond (Latin wordmark) */
-  --font-display: "Estedad", "Vazirmatn", serif;
-  --font-sans: "Vazirmatn", "IRANSansX", "Inter", system-ui, sans-serif;
+  --font-display: "Estedad", serif;
+  --font-sans: "Estedad", "Inter", system-ui, sans-serif;
   --font-latin-display: "Cormorant Garamond", serif;
-  --font-decorative: "Lalezar", "Vazirmatn", serif;
+  --font-decorative: "Lalezar", "Estedad", serif;
 
   --shadow-soft: var(--shadow-soft-value);
   --shadow-float: var(--shadow-float-value);
