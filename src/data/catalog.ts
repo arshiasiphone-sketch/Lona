@@ -1,17 +1,44 @@
 /**
- * Mock luxury fashion catalog.
- * Shape mirrors a future Convex collection so swapping to live data is one-line.
+ * Phase 5.8 — FE static fallback mirror.
+ *
+ * Thin adapter over `src/data/lona-catalog.ts`. Re-exposes the
+ * legacy `Product | Collection | Editorial | Order | Testimonial`
+ * shape so the locked Phase 1–3 UI keeps working, while the actual
+ * data lives in the single source-of-truth file.
+ *
+ * Used by:
+ *   • `src/lib/data/catalog.ts` (useProducts fallback) — primary
+ *   • `src/data/catalog.ts` direct consumers (legacy filter panel,
+ *     legacy mockorders, legacy testimonials) — kept for
+ *     backwards compatibility until those migrate to Convex.
  */
 import type { GradientKey } from "@/lib/glass";
+import {
+  LONA_PRODUCTS,
+  LONA_COLLECTIONS,
+  LONA_EDITORIALS,
+  LONA_CATEGORIES,
+  LINGERIE_SIZES,
+  ACCESSORY_SIZES,
+  LONA_COLOR_OPTIONS,
+  type LonaProductRaw,
+} from "@/data/lona-catalog";
 
+// ──────────────────────────────────────────────────────────────
+// CATEGORY UNION — Phase 5.8 lingerie taxonomy supersedes the
+// generic fashion taxonomy that existed through Phase 5.5.
+// ──────────────────────────────────────────────────────────────
 export type ProductCategory =
-  | "outerwear"
-  | "knitwear"
-  | "shirting"
-  | "trousers"
-  | "dresses"
-  | "leather"
-  | "accessories";
+  | "bras"
+  | "briefs"
+  | "sets"
+  | "sleepwear"
+  | "loungewear"
+  | "bodysuits"
+  | "shapewear"
+  | "sportswear"
+  | "accessories"
+  | "bridal";
 
 export interface ProductColor {
   id: string;
@@ -41,8 +68,9 @@ export interface Product {
   badges?: ("new" | "restocked" | "limited" | "editorial")[];
   rating?: number;
   reviewCount?: number;
-  /** Optional secondary gradient for hover swap. */
   secondaryGradient?: GradientKey;
+  /** Optional — Phase 5.8 image URLs (live data uses Convex). */
+  imageUrls?: string[];
 }
 
 export interface Collection {
@@ -61,10 +89,17 @@ export interface Editorial {
   slug: string;
   title: string;
   excerpt: string;
-  category: "journal" | "atelier" | "campaign";
+  category: "journal" | "atelier" | "campaign" | "blog";
   author: string;
   publishedAt: string;
   cover: string;
+}
+
+export interface Testimonial {
+  id: string;
+  quote: string;
+  author: string;
+  role: string;
 }
 
 export interface Order {
@@ -77,543 +112,179 @@ export interface Order {
   trackingNumber?: string;
 }
 
-export interface Testimonial {
-  id: string;
-  quote: string;
-  author: string;
-  role: string;
+// ──────────────────────────────────────────────────────────────
+// ADAPTER — LonaProductRaw → legacy Product
+// ──────────────────────────────────────────────────────────────
+
+function colorFromId(id: string): ProductColor | null {
+  const def = LONA_COLOR_OPTIONS.find((c) => c.id === id);
+  if (!def) return null;
+  return { id: def.id, name: def.name, gradient: def.gradient };
 }
 
-/* ------------------------------------------------------------ */
-/* Catalog                                                        */
-/* ------------------------------------------------------------ */
+function sizeFromId(id: string): ProductSize | null {
+  const def =
+    [...LINGERIE_SIZES, ...ACCESSORY_SIZES].find((s) => s.id === id) ?? null;
+  if (!def) return null;
+  return { id: def.id, label: def.label };
+}
 
-export const products: Product[] = [
-  {
-    id: "p-001",
-    slug: "merino-overcoat-paragon",
-    name: "Paragon Merino Overcoat",
-    category: "outerwear",
-    collection: "autumn-winter",
-    price: 2480,
-    compareAt: 2680,
+function adaptProduct(p: LonaProductRaw): Product {
+  return {
+    id: p.slug,
+    slug: p.slug,
+    name: p.name,
+    category: p.category as ProductCategory,
+    collection: p.collectionSlug,
+    price: p.price,
+    compareAt: p.compareAt,
     currency: "USD",
-    description:
-      "An unlined overcoat cut from a 16-micron Italian merino, finished by hand in our Tuscan atelier. The shoulder is dropped by a half-inch for a quiet, considered line.",
-    composition: "100% Italian merino wool. Horn buttons. Cupro lining.",
-    origin: "Cut and sewn in Italy.",
-    colors: [
-      { id: "oat", name: "Oat Melange", gradient: "oat" },
-      { id: "mist", name: "Pale Mist", gradient: "mist" },
-      { id: "deep", name: "Midnight", gradient: "deep" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-      { id: "xl", label: "XL" },
-    ],
-    badges: ["new", "editorial"],
-    rating: 4.9,
-    reviewCount: 64,
-    secondaryGradient: "mist",
-  },
-  {
-    id: "p-002",
-    slug: "silk-cashmere-turtleneck",
-    name: "Aria Silk-Cashmere Turtleneck",
-    category: "knitwear",
-    collection: "essentials",
-    price: 690,
-    currency: "USD",
-    description:
-      "A close-knit sweater drawn together from Mongolian cashmere and mulberry silk. A clean funnel collar and a structural rib at the cuff.",
-    composition: "70% cashmere, 30% silk.",
-    origin: "Knitted in Northern Italy.",
-    colors: [
-      { id: "oat", name: "Raw Ivory", gradient: "oat" },
-      { id: "rose", name: "Rose Quartz", gradient: "rose" },
-      { id: "mist", name: "Polar Mist", gradient: "mist" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["restocked"],
-    rating: 4.8,
-    reviewCount: 142,
-    secondaryGradient: "rose",
-  },
-  {
-    id: "p-003",
-    slug: "wide-leg-trouser-monolith",
-    name: "Monolith Wide-Leg Trouser",
-    category: "trousers",
-    collection: "essentials",
-    price: 720,
-    currency: "USD",
-    description:
-      "A high-rise trouser pressed from a dry Japanese gabardine. The leg opens from the knee; the waist stays close. A single forward pleat sets the line.",
-    composition: "100% Japanese cotton gabardine.",
-    origin: "Tailored in Portugal.",
-    colors: [
-      { id: "oat", name: "Bone", gradient: "oat" },
-      { id: "deep", name: "Carbon", gradient: "deep" },
-    ],
-    sizes: [
-      { id: "24", label: "24" },
-      { id: "26", label: "26" },
-      { id: "28", label: "28" },
-      { id: "30", label: "30" },
-      { id: "32", label: "32" },
-    ],
-    badges: ["editorial"],
-    rating: 4.7,
-    reviewCount: 88,
-    secondaryGradient: "deep",
-  },
-  {
-    id: "p-004",
-    slug: "poplin-shirt-constellation",
-    name: "Constellation Poplin Shirt",
-    category: "shirting",
-    collection: "essentials",
-    price: 420,
-    currency: "USD",
-    description:
-      "A long-staple Egyptian cotton poplin, mother-of-pearl buttons, an unfused collar that holds its line after a full day's wear.",
-    composition: "100% Egyptian cotton.",
-    origin: "Sewn in Como.",
-    colors: [
-      { id: "mist", name: "Quartz White", gradient: "mist" },
-      { id: "rose", name: "Blush", gradient: "rose" },
-      { id: "oat", name: "Sand", gradient: "oat" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-      { id: "xl", label: "XL" },
-    ],
-    badges: ["new"],
-    rating: 4.9,
-    reviewCount: 211,
-    secondaryGradient: "mist",
-  },
-  {
-    id: "p-005",
-    slug: "leather-tote-glycine",
-    name: "Glycine Leather Tote",
-    category: "leather",
-    collection: "objects",
-    price: 1850,
-    currency: "USD",
-    description:
-      "A tote formed from a single hide of vegetable-tanned Tuscan calfskin. Will develop a quiet patina with years of wear. Saddle-stitched by hand.",
-    composition: "Vegetable-tanned calfskin. Brass hardware. Unlined.",
-    origin: "Hand-finished in Florence.",
-    colors: [
-      { id: "oat", name: "Saddle", gradient: "oat" },
-      { id: "deep", name: "Ink", gradient: "deep" },
-      { id: "rose", name: "Coral Skin", gradient: "rose" },
-    ],
-    sizes: [{ id: "one", label: "One Size" }],
-    badges: ["limited", "editorial"],
-    rating: 5.0,
-    reviewCount: 38,
-    secondaryGradient: "oat",
-  },
-  {
-    id: "p-006",
-    slug: "wool-crepe-slip-dress",
-    name: "Whitehaven Wool-Crepe Slip Dress",
-    category: "dresses",
-    collection: "evening",
-    price: 1280,
-    compareAt: 1480,
-    currency: "USD",
-    description:
-      "A weightless column drawn in a closely-woven Italian wool crepe. Adjustable straps finished with a hand-rolled hem.",
-    composition: "100% Italian wool crepe.",
-    origin: "Atelier in Milan.",
-    colors: [
-      { id: "mist", name: "Pearl", gradient: "mist" },
-      { id: "deep", name: "Noir", gradient: "deep" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new"],
-    rating: 4.8,
-    reviewCount: 56,
-    secondaryGradient: "rose",
-  },
-  {
-    id: "p-007",
-    slug: "cashmere-scarf-soren",
-    name: "Sorén Cashmere Scarf",
-    category: "accessories",
-    collection: "objects",
-    price: 420,
-    currency: "USD",
-    description:
-      "A long, gently-weighted scarf drawn from a single 200-needle cashmere. Woven on a quiet loom in northern Scotland.",
-    composition: "100% Inner Mongolian cashmere.",
-    origin: "Woven in Scotland.",
-    colors: [
-      { id: "oat", name: "Champagne", gradient: "oat" },
-      { id: "mist", name: "Glacier", gradient: "mist" },
-      { id: "rose", name: "Petal", gradient: "rose" },
-    ],
-    sizes: [{ id: "one", label: "180 × 50 cm" }],
-    badges: ["restocked"],
-    rating: 4.9,
-    reviewCount: 124,
-    secondaryGradient: "mist",
-  },
-  {
-    id: "p-008",
-    slug: "berlino-derby-vegetal",
-    name: "Berlino Vegetal Derby",
-    category: "leather",
-    collection: "objects",
-    price: 980,
-    currency: "USD",
-    description:
-      "A blake-stitched derby with a vegetal-tanned upper and a hand-burnished toe. Built on a soft last with a low, considered waist.",
-    composition: "Vegetal-tanned calfskin. Leather sole.",
-    origin: "Made in Marche, Italy.",
-    colors: [
-      { id: "oat", name: "Saddle", gradient: "oat" },
-      { id: "deep", name: "Espresso", gradient: "deep" },
-    ],
-    sizes: [
-      { id: "39", label: "39" },
-      { id: "40", label: "40" },
-      { id: "41", label: "41" },
-      { id: "42", label: "42" },
-      { id: "43", label: "43" },
-    ],
-    badges: ["editorial"],
-    rating: 4.7,
-    reviewCount: 47,
-    secondaryGradient: "deep",
-  },
-  {
-    id: "p-009",
-    slug: "structured-blazer-canon",
-    name: "Canon Structured Blazer",
-    category: "outerwear",
-    collection: "essentials",
-    price: 1480,
-    currency: "USD",
-    description:
-      "A precise single-breasted blazer with a half-canvas chest and a low button stance. The shoulder is unpadded; the line is clean.",
-    composition: "100% Italian wool.",
-    origin: "Tailored in Naples.",
-    colors: [
-      { id: "oat", name: "Ecru", gradient: "oat" },
-      { id: "mist", name: "Pale Slate", gradient: "mist" },
-      { id: "deep", name: "Slate", gradient: "deep" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new", "limited"],
-    rating: 4.8,
-    reviewCount: 73,
-    secondaryGradient: "mist",
-  },
-  {
-    id: "p-010",
-    slug: "linen-trouser-callisto",
-    name: "Callisto Linen Trouser",
-    category: "trousers",
-    collection: "resort",
-    price: 540,
-    currency: "USD",
-    description:
-      "A relaxed trouser in a Belgian heavyweight linen. Garment-washed for an immediate, lived-in hand.",
-    composition: "100% Belgian linen.",
-    origin: "Sewn in Portugal.",
-    colors: [
-      { id: "oat", name: "Sand", gradient: "oat" },
-      { id: "mist", name: "Sea", gradient: "mist" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new"],
-    rating: 4.6,
-    reviewCount: 61,
-    secondaryGradient: "oat",
-  },
-  {
-    id: "p-011",
-    slug: "tortoise-eyewear-athena",
-    name: "Athena Tortoise Eyewear",
-    category: "accessories",
-    collection: "objects",
-    price: 380,
-    currency: "USD",
-    description:
-      "An acetate frame with a soft square lens. Cut, polished and assembled by hand in Cadore, Italy.",
-    composition: "Italian Mazzucchelli acetate.",
-    origin: "Made in Cadore, Italy.",
-    colors: [
-      { id: "oat", name: "Champagne Tortoise", gradient: "oat" },
-      { id: "deep", name: "Midnight Tortoise", gradient: "deep" },
-    ],
-    sizes: [{ id: "one", label: "One Size" }],
-    badges: ["restocked"],
-    rating: 4.8,
-    reviewCount: 92,
-    secondaryGradient: "deep",
-  },
-  {
-    id: "p-012",
-    slug: "ponte-knit-skirt-aria",
-    name: "Aria Ponte Pencil Skirt",
-    category: "knitwear",
-    collection: "essentials",
-    price: 480,
-    currency: "USD",
-    description:
-      "A knee-length pencil cut from a tightly-knit Italian ponte. Holds its narrow line through the day.",
-    composition: "68% viscose, 28% nylon, 4% elastane.",
-    origin: "Knitted in Italy.",
-    colors: [
-      { id: "deep", name: "Onyx", gradient: "deep" },
-      { id: "mist", name: "Pearl", gradient: "mist" },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["editorial"],
-    rating: 4.7,
-    reviewCount: 53,
-    secondaryGradient: "mist",
-  },
-];
+    description: p.description,
+    composition: p.composition,
+    origin: p.origin,
+    colors: p.colors.map(colorFromId).filter((c): c is ProductColor => c !== null),
+    sizes: p.sizes.map(sizeFromId).filter((s): s is ProductSize => s !== null),
+    badges: p.badges.length > 0 ? (p.badges as Product["badges"]) : undefined,
+    rating: p.rating,
+    reviewCount: p.reviewCount,
+    secondaryGradient: p.secondaryGradient,
+    imageUrls: p.imageUrls,
+  };
+}
 
-/* ------------------------------------------------------------ */
-/* Collections                                                   */
-/* ------------------------------------------------------------ */
-export const collections: Collection[] = [
-  {
-    id: "c-aw",
-    slug: "autumn-winter",
-    name: "Autumn — Winter",
-    eyebrow: "Volume XII",
-    description:
-      "Long coats, dense knits, considered evenings. The season in pieces designed to last past it.",
-    productIds: ["p-001", "p-002", "p-003", "p-004", "p-009"],
-    gradient: "oat",
-  },
-  {
-    id: "c-ess",
-    slug: "essentials",
-    name: "The Essentials",
-    eyebrow: "Permanent",
-    description:
-      "Pieces that hold the wardrobe together. Refined twice a year, then left alone.",
-    productIds: ["p-002", "p-003", "p-004", "p-009", "p-012"],
-    gradient: "mist",
-  },
-  {
-    id: "c-evening",
-    slug: "evening",
-    name: "Evening",
-    eyebrow: "After Six",
-    description: "Low light, high whisper. Pieces for rooms where points are made quietly.",
-    productIds: ["p-006", "p-001", "p-005", "p-011"],
-    gradient: "deep",
-  },
-  {
-    id: "c-objects",
-    slug: "objects",
-    name: "Objects",
-    eyebrow: "Carry With You",
-    description:
-      "Leather, eyewear, fragrance. The companions you reach for daily, made to age beautifully.",
-    productIds: ["p-005", "p-007", "p-008", "p-011"],
-    gradient: "rose",
-  },
-];
+function adaptCollection(c: (typeof LONA_COLLECTIONS)[number]): Collection {
+  return {
+    id: c.slug,
+    slug: c.slug,
+    name: c.name,
+    eyebrow: c.eyebrow,
+    description: c.description,
+    productIds: LONA_PRODUCTS.filter((p) => p.collectionSlug === c.slug).map((p) => p.slug),
+    gradient: c.gradient,
+    cover: undefined,
+  };
+}
 
-/* ------------------------------------------------------------ */
-/* Editorials — Journal                                          */
-/* ------------------------------------------------------------ */
-export const editorials: Editorial[] = [
-  {
-    id: "e-001",
-    slug: "in-the-quiet-room",
-    title: "In The Quiet Room",
-    excerpt:
-      "A study in low light and long shadows — photographed at our Tuscan atelier over three November afternoons.",
-    category: "campaign",
-    author: "Editorial Office",
-    publishedAt: "2026-01-12",
-    cover: "mist",
-  },
-  {
-    id: "e-002",
-    slug: "the-patination-of-leather",
-    title: "The Patination of Leather",
-    excerpt:
-      "How vegetable-tanned calfskin reads sunlight, rain, and the corner of a well-stacked shelf.",
-    category: "atelier",
-    author: "Maria Venturi",
-    publishedAt: "2025-12-04",
-    cover: "oat",
-  },
-  {
-    id: "e-003",
-    slug: "a-conversation-with-the-tailor",
-    title: "A Conversation With The Tailor",
-    excerpt:
-      "Our head tailor, Vittorio Sala, on half-canvas construction, the dropped shoulder, and the room left for the wearer.",
-    category: "atelier",
-    author: "Editorial Office",
-    publishedAt: "2025-11-18",
-    cover: "deep",
-  },
-  {
-    id: "e-004",
-    slug: "the-permanent-wardrobe",
-    title: "The Permanent Wardrobe",
-    excerpt:
-      "Why we list the same five pieces twice a year, and only refine them.",
-    category: "journal",
-    author: "Lou Bertrand",
-    publishedAt: "2025-10-22",
-    cover: "mist",
-  },
-];
+function adaptEditorial(e: (typeof LONA_EDITORIALS)[number]): Editorial {
+  return {
+    id: e.slug,
+    slug: e.slug,
+    title: e.title,
+    excerpt: e.excerpt,
+    category: e.kind as Editorial["category"],
+    author: e.author,
+    publishedAt: new Date(e.publishedAt).toISOString().slice(0, 10),
+    cover: e.coverGradient,
+  };
+}
 
-/* ------------------------------------------------------------ */
-/* Testimonials                                                  */
-/* ------------------------------------------------------------ */
+// ──────────────────────────────────────────────────────────────
+// PUBLIC SURFACE — mirror the legacy static catalog
+// ──────────────────────────────────────────────────────────────
+
+export const products: Product[] = LONA_PRODUCTS.map(adaptProduct);
+export const collections: Collection[] = LONA_COLLECTIONS.map(adaptCollection);
+export const editorials: Editorial[] = LONA_EDITORIALS.map(adaptEditorial);
+
+// Categories array — used by Phase 5 legacy filter consumers that haven't
+// migrated to the lingerie taxonomy yet. Each entry is a slimmer shape.
+export const categories = LONA_CATEGORIES.map((c) => ({
+  slug: c.slug,
+  name: c.name,
+  description: c.description,
+  order: c.order,
+  visible: c.visible,
+}));
+
+// ──────────────────────────────────────────────────────────────
+// HELPERS (legacy API)
+// ──────────────────────────────────────────────────────────────
+
+export function getProduct(slug: string): Product | undefined {
+  return products.find((p) => p.slug === slug);
+}
+
+export function getProductById(id: string): Product | undefined {
+  return products.find((p) => p.id === id || p.slug === id);
+}
+
+export function getCollection(slug: string): Collection | undefined {
+  return collections.find((c) => c.slug === slug);
+}
+
+export function getCollectionProducts(slug: string): Product[] {
+  const coll = getCollection(slug);
+  if (!coll) return [];
+  if (coll.productIds.length === 0) return products;
+  const byId = new Map(products.map((p) => [p.id, p]));
+  return coll.productIds.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
+}
+
+export function newArrivals(limit?: number): Product[] {
+  const filtered = products.filter((p) => p.badges?.includes("new"));
+  return typeof limit === "number" ? filtered.slice(0, limit) : filtered;
+}
+
+export function featuredProducts(limit?: number): Product[] {
+  const featured = LONA_PRODUCTS.filter((p) => p.featured).map((p) => p.slug);
+  const list = products.filter((p) => featured.includes(p.slug));
+  return typeof limit === "number" ? list.slice(0, limit) : list;
+}
+
+export function trendingProducts(limit?: number): Product[] {
+  const trending = LONA_PRODUCTS.filter((p) => p.trending).map((p) => p.slug);
+  const list = products.filter((p) => trending.includes(p.slug));
+  return typeof limit === "number" ? list.slice(0, limit) : list;
+}
+
+export function bestSellers(limit?: number): Product[] {
+  // Best sellers ≈ highest reviewCount × rating.
+  const sorted = [...products].sort(
+    (a, b) => (b.reviewCount ?? 0) * (b.rating ?? 0) - (a.reviewCount ?? 0) * (a.rating ?? 0)
+  );
+  return typeof limit === "number" ? sorted.slice(0, limit) : sorted;
+}
+
+// Lightweight testimonial pool — five curated Persian quotes for the
+// home-page Testimonials section. Authors are seed placeholders.
 export const testimonials: Testimonial[] = [
-  {
-    id: "t-001",
-    quote:
-      "The Paragon coat is the first piece that has held my attention through a whole season. The cut, the cloth, the way it moves.",
-    author: "Naomi K.",
-    role: "Architect · London",
-  },
-  {
-    id: "t-002",
-    quote:
-      "We've owned the Glycine tote for nearly four years. It looks, somehow, more itself than when it arrived.",
-    author: "Hiro S.",
-    role: "Publisher · Kyoto",
-  },
-  {
-    id: "t-003",
-    quote:
-      "Customer service wrote me back twice, by hand, about a single button. I'll be back.",
-    author: "Frédérique M.",
-    role: "Curator · Paris",
-  },
+  { id: "t-1", quote: "کیفیت پارچه و دوخت لونا از هر برند دیگری که تجربه کردم بالاتره. بسته‌بندی محرمانه هم برای من مهم بود.", author: "مریم احمدی",     role: "مشتری وفادار" },
+  { id: "t-2", quote: "سایزبندی‌ها دقیقاً مطابق جدول سایز لونا هست. تیم پشتیبانی هم در انتخاب سایز کمک کرد.",                              author: "زهرا کریمی",     role: "مشتری تازه" },
+  { id: "t-3", quote: "برای شب عروسی دنبال یک ست خاص بودم. ست رویای لونا را انتخاب کردم و شب فراموش‌نشدنی شد.",                                author: "نگار رضایی",    role: "عروس" },
+  { id: "t-4", quote: "راحتی روزانه‌ی محصولات نرم لونا واقعاً با‌کیفیته. از خریدم هیچ‌وقت پشیمان نشدم.",                                            author: "مونا فلاحی",    role: "مشتری ماهانه" },
+  { id: "t-5", quote: "ارسال سریع، بسته‌بندی شیک و محرمانه، و کیفیتی که از یک برند لوکس انتظار دارید.",                                              author: "رویا شفیعی",    role: "مشتری وفادار" },
 ];
 
-/* ------------------------------------------------------------ */
-/* Mock orders for the account workspace                          */
-/* ------------------------------------------------------------ */
+// Mock order history — used only in the dashboard / admin seeder path.
+// Each entry references one product by slug. Kept tiny on purpose.
 export const mockOrders: Order[] = [
   {
-    id: "o-001",
-    number: "Æ-24102",
-    placedAt: "2026-01-04",
+    id: "MO-2401",
+    number: "LN-00001",
+    placedAt: "2025-12-04",
+    status: "delivered",
+    total: 1_290_000,
+    items: [{ productId: products[0]!.slug, quantity: 1, size: "m", color: "beige" }],
+    trackingNumber: "LN-241220-0041",
+  },
+  {
+    id: "MO-2402",
+    number: "LN-00002",
+    placedAt: "2025-12-18",
     status: "shipped",
-    total: 2880,
+    total: 2_490_000,
     items: [
-      {
-        productId: "p-001",
-        quantity: 1,
-        size: "M",
-        color: "Pale Mist",
-      },
-      {
-        productId: "p-002",
-        quantity: 1,
-        size: "S",
-        color: "Rose Quartz",
-      },
+      { productId: products[0]!.slug, quantity: 1, size: "s", color: "black" },
+      { productId: products[1]!.slug, quantity: 1, size: "one", color: "rose" },
     ],
-    trackingNumber: "DH-7820-1140",
+    trackingNumber: "LN-241230-0093",
   },
   {
-    id: "o-002",
-    number: "Æ-23874",
-    placedAt: "2025-11-19",
-    status: "delivered",
-    total: 1480,
-    items: [
-      {
-        productId: "p-009",
-        quantity: 1,
-        size: "M",
-        color: "Pale Slate",
-      },
-    ],
-  },
-  {
-    id: "o-003",
-    number: "Æ-23620",
-    placedAt: "2025-09-02",
-    status: "delivered",
-    total: 1850,
-    items: [
-      {
-        productId: "p-005",
-        quantity: 1,
-        size: "One Size",
-        color: "Saddle",
-      },
-    ],
+    id: "MO-2403",
+    number: "LN-00003",
+    placedAt: "2026-01-02",
+    status: "processing",
+    total: 1_690_000,
+    items: [{ productId: products[2]!.slug, quantity: 1, size: "l", color: "navy" }],
   },
 ];
-
-/* ------------------------------------------------------------ */
-/* Lookup helpers                                                */
-/* ------------------------------------------------------------ */
-export const getProduct = (slug: string): Product | undefined =>
-  products.find((p) => p.slug === slug);
-
-export const getProductById = (id: string): Product | undefined =>
-  products.find((p) => p.id === id);
-
-export const getCollection = (slug: string): Collection | undefined =>
-  collections.find((c) => c.slug === slug);
-
-export const getCollectionProducts = (slug: string): Product[] => {
-  const c = getCollection(slug);
-  if (!c) return [];
-  return c.productIds
-    .map((id) => getProductById(id))
-    .filter((p): p is Product => Boolean(p));
-};
-
-export const newArrivals = (): Product[] =>
-  products.filter((p) => p.badges?.includes("new"));
-
-export const editorialPicks = (): Product[] =>
-  products.filter((p) => p.badges?.includes("editorial"));

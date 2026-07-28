@@ -25,15 +25,18 @@ import { toast } from "@/lib/toast";
 
 const SILHOUETTE_MAP: Record<
   TProduct["category"],
-  "coat" | "knit" | "trouser" | "shirt" | "dress" | "leather" | "accessory"
+  "bra" | "brief" | "robe" | "tee" | "bodysuit" | "accessory"
 > = {
-  outerwear: "coat",
-  knitwear: "knit",
-  trousers: "trouser",
-  shirting: "shirt",
-  dresses: "dress",
-  leather: "leather",
+  bras: "bra",
+  briefs: "brief",
+  sets: "bra",
+  sleepwear: "robe",
+  loungewear: "robe",
+  bodysuits: "bodysuit",
+  shapewear: "bodysuit",
+  sportswear: "tee",
   accessories: "accessory",
+  bridal: "bra",
 };
 
 const gradientClass = (k: TProduct["colors"][number]["gradient"]) => {

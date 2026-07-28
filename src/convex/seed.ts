@@ -1,206 +1,256 @@
 /**
- * Idempotent seed action.
+ * Phase 5.8 — Idempotent seed action.
  *
- * Mirrors the front-end mock catalog (`src/data/catalog.ts`) into Convex
- * so that:
- *   1. admins see real rows in the dashboard
- *   2. the FE can migrate to live queries without losing data
- *   3. reviews / orders can be tied to real `_id`s
+ * Reads the full LONA catalogue from `src/data/lona-catalog.ts`
+ * (the single source-of-truth created in Phase 5.8) and upserts
+ * it into Convex. Variant and review seeding is batched to keep
+ * the action from timing out.
  *
- * Safe to re-run — every entity is upserted by its unique key (slug
- * for products / collections / editorials, code for coupons, sku for
- * variants). Stock variants are recreated only if missing.
+ * Invoke via the Convex dashboard ("Run action" → `seed:runAll`)
+ * or via:
+ *     bun convex run seed:runAll '{}'
  *
- * Invoke from the Convex dashboard ("Run action" → `seed:runAll`) or
- * via:
- *     bun convex run seed:runAll '{"triggeredBy":"manual"}'
+ * Safe to re-run — every entity is upserted by its unique key
+ * (slug / code / sku). Historical orders remain valid because
+ * product IDs are opaque string refs (the slug).
  */
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v as convV } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import {
+  LONA_CATEGORIES,
+  LONA_COLLECTIONS,
+  LONA_PRODUCTS,
+  LONA_EDITORIALS,
+  LONA_COUPONS,
+  LONA_REVIEWS,
+  LINGERIE_SIZES,
+  ACCESSORY_SIZES,
+  type LonaCategorySlug,
+} from "@/data/lona-catalog";
 
 interface SeedResult {
+  categories: number;
   products: number;
+  variants: number;
   collections: number;
   editorials: number;
+  reviews: number;
   coupons: number;
-  variants: number;
-  categories: number;
   warehouses: number;
   startedAt: number;
   finishedAt: number;
 }
 
 /**
- * Run the full seed. Returns a tally.
+ * Deterministic stock distribution per variant. Used to spread
+ * inventory realistically across the catalog (high / medium / low
+ * / out-of-stock) without an external RNG.
  *
- * `replaceMode` is intentionally omitted as a parameter — we strictly
- * upsert, never delete, so historical orders still resolve.
+ * @param pIdx product index in LONA_PRODUCTS
+ * @param cIdx color index within the product's color list
+ * @param sIdx size index within the product's size list
+ */
+function stockFor(pIdx: number, _cIdx: number, _sIdx: number): number {
+  const h = (pIdx * 31 + 7) % 13;
+  if (h === 0) return 0;                 // out of stock
+  if (h < 3)  return 1 + (h % 4);        // 1-4 (limited)
+  if (h < 7)  return 8 + (h % 4);        // 8-11 (low)
+  if (h < 11) return 12 + (h % 6);       // 12-17 (medium)
+  return 18 + (h % 7);                   // 18-24 (high)
+}
+
+/**
+ * Run the full Phase 5.8 seed. Returns a tally.
  */
 export const runAll = action({
   args: {},
   handler: async (ctx): Promise<SeedResult> => {
     const startedAt = Date.now();
 
-    // ------------------------------------------------------------
-    // 1) Categories
-    // ------------------------------------------------------------
-    const CATEGORIES = [
-      {
-        slug: "outerwear",
-        name: "Outerwear",
-        description: "Coats, blazers, toppers in considered cloth.",
-        order: 1,
-        visible: true,
-        seo: { title: "Outerwear — ÆON", description: "Long coats and tailored toppers." },
-      },
-      {
-        slug: "knitwear",
-        name: "Knitwear",
-        description: "Cashmere, silk-blends and tightly knit jersey.",
-        order: 2,
-        visible: true,
-        seo: { title: "Knitwear — ÆON", description: "Quiet-knit layers." },
-      },
-      {
-        slug: "shirting",
-        name: "Shirting",
-        description: "Egyptian cotton poplin, gauze, oxford.",
-        order: 3,
-        visible: true,
-        seo: { title: "Shirts — ÆON", description: "Fine shirting cloth." },
-      },
-      {
-        slug: "trousers",
-        name: "Trousers",
-        description: "Pleated, wide-leg and classic trouser shapes.",
-        order: 4,
-        visible: true,
-        seo: { title: "Trousers — ÆON", description: "Tailored trousers." },
-      },
-      {
-        slug: "dresses",
-        name: "Dresses",
-        description: "Evening columns, slip dresses and knit dresses.",
-        order: 5,
-        visible: true,
-        seo: { title: "Dresses — ÆON", description: "Considered dress forms." },
-      },
-      {
-        slug: "leather",
-        name: "Leather",
-        description: "Vegetable-tanned leather goods and footwear.",
-        order: 6,
-        visible: true,
-        seo: { title: "Leather — ÆON", description: "Saddle-stitched leather." },
-      },
-      {
-        slug: "accessories",
-        name: "Accessories",
-        description: "Eyewear, scarves, fragrance.",
-        order: 7,
-        visible: true,
-        seo: { title: "Accessories — ÆON", description: "Companions for daily use." },
-      },
-    ];
-
+    // ── 1) Categories ─────────────────────────────────────
     let categoryCount = 0;
-    for (const c of CATEGORIES) {
-      await ctx.runMutation(internal.seed.upsertCategory, c);
+    for (const c of LONA_CATEGORIES) {
+      await ctx.runMutation(internal.seed.upsertCategory, {
+        slug: c.slug,
+        name: c.name,
+        description: c.description,
+        order: c.order,
+        visible: c.visible,
+        seo: c.seo,
+      });
       categoryCount++;
     }
 
-    // ------------------------------------------------------------
-    // 2) Products
-    // ------------------------------------------------------------
-    const PRODUCTS = PRODUCTS_DATA;
-
-    // Map slug → _id (returned per upsert) for later cross-references.
-    const productIdBySlug = new Map<string, import("./_generated/dataModel").Id<"products">>();
-    for (const p of PRODUCTS) {
+    // ── 2) Products (id → slug map for variant FK) ────────
+    const productIdBySlug = new Map<string, Id<"products">>();
+    for (const p of LONA_PRODUCTS) {
       const id = await ctx.runMutation(internal.seed.upsertProduct, {
-        ...p,
-        badges: [...p.badges],
+        slug: p.slug,
+        name: p.name,
+        category: p.category as LonaCategorySlug,
+        collectionSlug: p.collectionSlug,
+        priceCents: p.price,
+        compareAtCents: p.compareAt,
+        currency: "USD",
+        description: p.description,
+        composition: p.composition,
+        origin: p.origin,
+        colors: p.colors.map((cid, idx) => {
+          const def = p.colors[idx]!;
+          // We only stored color ids on the product; resolve to gradient from the
+          // color-options table by reading the LONA_COLOR_OPTIONS implicitly here.
+          // (The seed-time color row carries id+name+gradient back into Convex.)
+          return {
+            id: cid,
+            name: lookupColorName(cid),
+            gradient: lookupColorGradient(cid) as
+              | "mist" | "oat" | "rose" | "deep" | "ivory",
+          };
+        }),
+        sizes: p.sizes.map((sid) => {
+          const primary = p.sizes.length === 1 ? ACCESSORY_SIZES : LINGERIE_SIZES;
+          const fallback = p.sizes.length === 1 ? LINGERIE_SIZES : ACCESSORY_SIZES;
+          const found =
+            primary.find((s) => s.id === sid) ??
+            fallback.find((s) => s.id === sid);
+          if (!found) throw new Error(`Unknown size id: ${sid} in product ${p.slug}`);
+          return { id: found.id, label: found.label };
+        }),
+        badges: p.badges,
+        rating: p.rating,
+        reviewCount: p.reviewCount,
+        secondaryGradient: p.secondaryGradient as
+          | "mist" | "oat" | "rose" | "deep" | "ivory",
+        imageUrls: p.imageUrls,
+        status: "published",
+        featured: !!p.featured,
+        trending: !!p.trending,
+        editorial: !!p.editorial,
+        visible: true,
       });
-      productIdBySlug.set(
-        p.slug,
-        id as import("./_generated/dataModel").Id<"products">
-      );
+      productIdBySlug.set(p.slug, id);
     }
 
-    // ------------------------------------------------------------
-    // 3) Variants — derived from each product's colors × sizes.
-    // ------------------------------------------------------------
-    const variantSkuRows: {
-      productId: import("./_generated/dataModel").Id<"products">;
+    // ── 3) Variants (batched per product) ─────────────────
+    type VariantRow = {
+      productId: Id<"products">;
       sku: string;
       size: string;
       color: string;
       stock: number;
       available: boolean;
-    }[] = [];
-
-    for (const p of PRODUCTS) {
+    };
+    const allRows: VariantRow[] = [];
+    LONA_PRODUCTS.forEach((p, pIdx) => {
       const productId = productIdBySlug.get(p.slug);
-      if (!productId) continue;
-      for (const color of p.colors) {
-        for (const size of p.sizes) {
-          variantSkuRows.push({
+      if (!productId) return;
+      p.colors.forEach((colorId, cIdx) => {
+        p.sizes.forEach((sizeId, sIdx) => {
+          const stock = stockFor(pIdx, cIdx, sIdx);
+          allRows.push({
             productId,
-            sku: `${p.slug.toUpperCase()}-${color.id.toUpperCase()}-${size.id.toUpperCase()}`,
-            size: size.id,
-            color: color.id,
-            stock: 24, // luxury reality: small-batch replenishment
-            available: true,
+            sku: `${p.slug.toUpperCase().replace(/[^A-Z0-9]/g, "-")}-${colorId.toUpperCase()}-${sizeId.toUpperCase()}`,
+            size: sizeId,
+            color: colorId,
+            stock,
+            available: stock > 0,
           });
-        }
-      }
-    }
-    for (const v of variantSkuRows) {
-      await ctx.runMutation(internal.seed.upsertVariant, v);
+        });
+      });
+    });
+
+    // Bulk insert variants — pass chunks of 400 to stay well under
+    // the 16kB arg cap and the 1k-AST-node soft cap.
+    const CHUNK = 400;
+    let variantCount = 0;
+    for (let i = 0; i < allRows.length; i += CHUNK) {
+      const chunk = allRows.slice(i, i + CHUNK);
+      await ctx.runMutation(internal.seed.upsertVariantsBulk, { rows: chunk });
+      variantCount += chunk.length;
     }
 
-    // ------------------------------------------------------------
-    // 4) Collections
-    // ------------------------------------------------------------
-    const COLLECTIONS = COLLECTIONS_DATA;
-    for (const c of COLLECTIONS) {
-      await ctx.runMutation(internal.seed.upsertCollection, c);
+    // ── 4) Collections ────────────────────────────────────
+    for (const c of LONA_COLLECTIONS) {
+      const productSlugs = LONA_PRODUCTS
+        .filter((p) => p.collectionSlug === c.slug)
+        .map((p) => p.slug);
+      await ctx.runMutation(internal.seed.upsertCollection, {
+        slug: c.slug,
+        name: c.name,
+        eyebrow: c.eyebrow,
+        description: c.description,
+        productSlugs,
+        gradient: c.gradient as "mist" | "oat" | "rose" | "deep" | "ivory",
+        coverGradient: undefined,
+        kind: c.kind,
+        season: c.season,
+        order: LONA_COLLECTIONS.indexOf(c) + 1,
+        visible: true,
+      });
     }
 
-    // ------------------------------------------------------------
-    // 5) Editorials
-    // ------------------------------------------------------------
-    for (const e of EDITORIALS_DATA) {
-      await ctx.runMutation(internal.seed.upsertEditorial, e);
+    // ── 5) Editorials ──────────────────────────────────────
+    for (const e of LONA_EDITORIALS) {
+      await ctx.runMutation(internal.seed.upsertEditorial, {
+        slug: e.slug,
+        title: e.title,
+        excerpt: e.excerpt,
+        coverGradient: e.coverGradient as "mist" | "oat" | "rose" | "deep" | "ivory",
+        kind: e.kind,
+        author: e.author,
+        publishedAt: e.publishedAt,
+        status: "published",
+        body: undefined,
+        tags: ["lingerie", "lona"],
+      });
     }
 
-    // ------------------------------------------------------------
-    // 6) Coupons
-    // ------------------------------------------------------------
+    // ── 6) Reviews (LONA_REVIEWS) ─────────────────────────
+    let reviewCount = 0;
+    for (const r of LONA_REVIEWS) {
+      const productId = productIdBySlug.get(r.productSlug);
+      if (!productId) continue;
+      await ctx.runMutation(internal.seed.upsertReview, {
+        productId,
+        rating: r.rating,
+        body: r.body,
+        verified: r.verified,
+        authorHint: r.author,
+        daysAgo: r.daysAgo,
+      });
+      reviewCount++;
+    }
+
+    // ── 7) Coupons ────────────────────────────────────────
     let couponCount = 0;
-    for (const cp of COUPONS_DATA) {
-      await ctx.runMutation(internal.seed.upsertCoupon, cp);
+    for (const cp of LONA_COUPONS) {
+      await ctx.runMutation(internal.seed.upsertCoupon, {
+        code: cp.code,
+        percentOff: cp.percentOff,
+        description: cp.description,
+        active: cp.active,
+      });
       couponCount++;
     }
 
-    // ------------------------------------------------------------
-    // 7) Default warehouse
-    // ------------------------------------------------------------
+    // ── 8) Default warehouse ─────────────────────────────
     await ctx.runMutation(internal.seed.upsertWarehouse, {
-      code: "FLORENCE",
-      name: "Florence Atelier",
-      country: "IT",
+      code: "TEHRAN",
+      name: "انبار مرکزی تهران",
+      country: "IR",
       active: true,
     });
 
     return {
-      products: PRODUCTS.length,
-      collections: COLLECTIONS.length,
-      editorials: EDITORIALS_DATA.length,
-      coupons: couponCount,
-      variants: variantSkuRows.length,
       categories: categoryCount,
+      products: LONA_PRODUCTS.length,
+      variants: variantCount,
+      collections: LONA_COLLECTIONS.length,
+      editorials: LONA_EDITORIALS.length,
+      reviews: reviewCount,
+      coupons: couponCount,
       warehouses: 1,
       startedAt,
       finishedAt: Date.now(),
@@ -208,18 +258,42 @@ export const runAll = action({
   },
 });
 
-// ============================================================
-// Internal mutations that the seed action calls.
-// ============================================================
-// Each looks up by its unique key first; existing rows are patched
-// (idempotent), missing rows are inserted. Queries are admin-bypassed
-// because this code runs inside an `action` invocation that already
-// gate-checks at the dashboard level.
-import { internalMutation } from "./_generated/server";
-import { v as convV } from "convex/values";
+// ──────────────────────────────────────────────────────────────
+// Color/Name/Gradient lookup mirrors — local table that matches
+// src/data/lona-catalog.ts::LONA_COLOR_OPTIONS so the seed stays
+// self-contained (no server-side cross-file import gymnastics).
+// ──────────────────────────────────────────────────────────────
+function lookupColorGradient(id: string): string {
+  switch (id) {
+    case "black":     return "deep";
+    case "white":     return "mist";
+    case "beige":     return "oat";
+    case "rose":      return "rose";
+    case "burgundy":  return "deep";
+    case "navy":      return "deep";
+    case "chocolate": return "oat";
+    case "emerald":   return "oat";
+    default:          return "mist";
+  }
+}
+function lookupColorName(id: string): string {
+  switch (id) {
+    case "black":     return "مشکی";
+    case "white":     return "سفید";
+    case "beige":     return "بژ";
+    case "rose":      return "رز کمرنگ";
+    case "burgundy":  return "شرابی";
+    case "navy":      return "سرمه‌ای";
+    case "chocolate": return "شکلاتی";
+    case "emerald":   return "زمردی";
+    default:          return id;
+  }
+}
 
-// We declare these in the same file (allowed by Convex) but they are
-// are exported as internal so only seeded actions can call them.
+// =============================================================
+// INTERNAL MUTATIONS
+// =============================================================
+import { internalMutation } from "./_generated/server";
 
 export const upsertCategory = internalMutation({
   args: {
@@ -236,9 +310,7 @@ export const upsertCategory = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+      .query("categories").withIndex("by_slug", (q) => q.eq("slug", args.slug)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, args);
       return existing._id;
@@ -252,13 +324,16 @@ export const upsertProduct = internalMutation({
     slug: convV.string(),
     name: convV.string(),
     category: convV.union(
-      convV.literal("outerwear"),
-      convV.literal("knitwear"),
-      convV.literal("shirting"),
-      convV.literal("trousers"),
-      convV.literal("dresses"),
-      convV.literal("leather"),
-      convV.literal("accessories")
+      convV.literal("bras"),
+      convV.literal("briefs"),
+      convV.literal("sets"),
+      convV.literal("sleepwear"),
+      convV.literal("loungewear"),
+      convV.literal("bodysuits"),
+      convV.literal("shapewear"),
+      convV.literal("sportswear"),
+      convV.literal("accessories"),
+      convV.literal("bridal"),
     ),
     collectionSlug: convV.string(),
     priceCents: convV.number(),
@@ -276,20 +351,18 @@ export const upsertProduct = internalMutation({
           convV.literal("oat"),
           convV.literal("rose"),
           convV.literal("deep"),
-          convV.literal("ivory")
+          convV.literal("ivory"),
         ),
       })
     ),
-    sizes: convV.array(
-      convV.object({ id: convV.string(), label: convV.string() })
-    ),
+    sizes: convV.array(convV.object({ id: convV.string(), label: convV.string() })),
     badges: convV.array(
       convV.union(
         convV.literal("new"),
         convV.literal("restocked"),
         convV.literal("limited"),
         convV.literal("editorial"),
-        convV.literal("exclusive")
+        convV.literal("exclusive"),
       )
     ),
     rating: convV.optional(convV.number()),
@@ -300,14 +373,14 @@ export const upsertProduct = internalMutation({
         convV.literal("oat"),
         convV.literal("rose"),
         convV.literal("deep"),
-        convV.literal("ivory")
+        convV.literal("ivory"),
       )
     ),
     imageUrls: convV.optional(convV.array(convV.string())),
     status: convV.union(
       convV.literal("draft"),
       convV.literal("published"),
-      convV.literal("archived")
+      convV.literal("archived"),
     ),
     featured: convV.boolean(),
     trending: convV.boolean(),
@@ -316,9 +389,7 @@ export const upsertProduct = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("products")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+      .query("products").withIndex("by_slug", (q) => q.eq("slug", args.slug)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, args);
       return existing._id;
@@ -327,31 +398,39 @@ export const upsertProduct = internalMutation({
   },
 });
 
-export const upsertVariant = internalMutation({
+/**
+ * Bulk variant upsert. Called in chunks from the seed action so
+ * the action doesn't time out on ~3,000 individual inserts.
+ */
+export const upsertVariantsBulk = internalMutation({
   args: {
-    productId: convV.id("products"),
-    sku: convV.string(),
-    size: convV.string(),
-    color: convV.string(),
-    stock: convV.number(),
-    available: convV.boolean(),
+    rows: convV.array(
+      convV.object({
+        productId: convV.id("products"),
+        sku: convV.string(),
+        size: convV.string(),
+        color: convV.string(),
+        stock: convV.number(),
+        available: convV.boolean(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("variants")
-      .withIndex("by_sku", (q) => q.eq("sku", args.sku))
-      .unique();
-    if (existing) {
-      // Don't touch stock on re-seed (someone may have consumed it).
-      await ctx.db.patch(existing._id, {
-        productId: args.productId,
-        size: args.size,
-        color: args.color,
-        available: args.available,
-      });
-      return existing._id;
+    for (const row of args.rows) {
+      const existing = await ctx.db
+        .query("variants").withIndex("by_sku", (q) => q.eq("sku", row.sku)).unique();
+      if (existing) {
+        // Don't touch stock on re-seed (someone may have consumed it).
+        await ctx.db.patch(existing._id, {
+          productId: row.productId,
+          size: row.size,
+          color: row.color,
+          available: row.available,
+        });
+      } else {
+        await ctx.db.insert("variants", row);
+      }
     }
-    return await ctx.db.insert("variants", args);
   },
 });
 
@@ -367,7 +446,7 @@ export const upsertCollection = internalMutation({
       convV.literal("oat"),
       convV.literal("rose"),
       convV.literal("deep"),
-      convV.literal("ivory")
+      convV.literal("ivory"),
     ),
     coverGradient: convV.optional(
       convV.union(
@@ -375,14 +454,14 @@ export const upsertCollection = internalMutation({
         convV.literal("oat"),
         convV.literal("rose"),
         convV.literal("deep"),
-        convV.literal("ivory")
+        convV.literal("ivory"),
       )
     ),
     kind: convV.union(
       convV.literal("seasonal"),
       convV.literal("campaign"),
       convV.literal("editorial"),
-      convV.literal("permanent")
+      convV.literal("permanent"),
     ),
     season: convV.optional(convV.string()),
     order: convV.number(),
@@ -390,9 +469,7 @@ export const upsertCollection = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("collections")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+      .query("collections").withIndex("by_slug", (q) => q.eq("slug", args.slug)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, args);
       return existing._id;
@@ -411,34 +488,55 @@ export const upsertEditorial = internalMutation({
       convV.literal("oat"),
       convV.literal("rose"),
       convV.literal("deep"),
-      convV.literal("ivory")
+      convV.literal("ivory"),
     ),
     kind: convV.union(
       convV.literal("journal"),
       convV.literal("atelier"),
       convV.literal("campaign"),
-      convV.literal("blog")
+      convV.literal("blog"),
     ),
     author: convV.string(),
     publishedAt: convV.number(),
     status: convV.union(
       convV.literal("draft"),
       convV.literal("published"),
-      convV.literal("archived")
+      convV.literal("archived"),
     ),
     body: convV.optional(convV.string()),
     tags: convV.optional(convV.array(convV.string())),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("editorials")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
+      .query("editorials").withIndex("by_slug", (q) => q.eq("slug", args.slug)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, args);
       return existing._id;
     }
     return await ctx.db.insert("editorials", args);
+  },
+});
+
+export const upsertReview = internalMutation({
+  args: {
+    productId: convV.string(),
+    rating: convV.number(),
+    body: convV.optional(convV.string()),
+    verified: convV.boolean(),
+    authorHint: convV.string(),
+    daysAgo: convV.number(),
+  },
+  handler: async (ctx, args) => {
+    const createdAt = Date.now() - args.daysAgo * 86_400_000;
+    return await ctx.db.insert("reviews", {
+      productId: args.productId,
+      rating: args.rating,
+      title: undefined,
+      body: args.body,
+      verified: args.verified,
+      status: "published" as const,
+      createdAt,
+    });
   },
 });
 
@@ -452,24 +550,16 @@ export const upsertCoupon = internalMutation({
   handler: async (ctx, args) => {
     const code = args.code.toUpperCase();
     const existing = await ctx.db
-      .query("coupons")
-      .withIndex("by_code", (q) => q.eq("code", code))
-      .unique();
+      .query("coupons").withIndex("by_code", (q) => q.eq("code", code)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, {
-        code,
-        percentOff: args.percentOff,
-        description: args.description,
-        active: args.active,
+        code, percentOff: args.percentOff, description: args.description, active: args.active,
       });
       return existing._id;
     }
     return await ctx.db.insert("coupons", {
-      code,
-      percentOff: args.percentOff,
-      description: args.description,
-      active: args.active,
-      usedCount: 0,
+      code, percentOff: args.percentOff, description: args.description,
+      active: args.active, usedCount: 0,
     });
   },
 });
@@ -483,9 +573,7 @@ export const upsertWarehouse = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("warehouses")
-      .withIndex("by_code", (q) => q.eq("code", args.code))
-      .unique();
+      .query("warehouses").withIndex("by_code", (q) => q.eq("code", args.code)).unique();
     if (existing) {
       await ctx.db.patch(existing._id, { ...args });
       return existing._id;
@@ -493,523 +581,3 @@ export const upsertWarehouse = internalMutation({
     return await ctx.db.insert("warehouses", args);
   },
 });
-
-// ============================================================
-// Seed data — mirrors src/data/catalog.ts so the existing FE
-// keeps working until a future phase replaces the read path.
-// ============================================================
-
-const PRODUCTS_DATA = [
-  {
-    slug: "merino-overcoat-paragon",
-    name: "Paragon Merino Overcoat",
-    category: "outerwear" as const,
-    collectionSlug: "autumn-winter",
-    priceCents: 248000,
-    compareAtCents: 268000,
-    currency: "USD" as const,
-    description:
-      "An unlined overcoat cut from a 16-micron Italian merino, finished by hand in our Tuscan atelier. The shoulder is dropped by a half-inch for a quiet, considered line.",
-    composition: "100% Italian merino wool. Horn buttons. Cupro lining.",
-    origin: "Cut and sewn in Italy.",
-    colors: [
-      { id: "oat", name: "Oat Melange", gradient: "oat" as const },
-      { id: "mist", name: "Pale Mist", gradient: "mist" as const },
-      { id: "deep", name: "Midnight", gradient: "deep" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-      { id: "xl", label: "XL" },
-    ],
-    badges: ["new", "editorial"] as const,
-    rating: 4.9,
-    reviewCount: 64,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: true,
-    trending: true,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "silk-cashmere-turtleneck",
-    name: "Aria Silk-Cashmere Turtleneck",
-    category: "knitwear" as const,
-    collectionSlug: "essentials",
-    priceCents: 69000,
-    currency: "USD" as const,
-    description:
-      "A close-knit sweater drawn together from Mongolian cashmere and mulberry silk. A clean funnel collar and a structural rib at the cuff.",
-    composition: "70% cashmere, 30% silk.",
-    origin: "Knitted in Northern Italy.",
-    colors: [
-      { id: "oat", name: "Raw Ivory", gradient: "oat" as const },
-      { id: "rose", name: "Rose Quartz", gradient: "rose" as const },
-      { id: "mist", name: "Polar Mist", gradient: "mist" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["restocked"] as const,
-    rating: 4.8,
-    reviewCount: 142,
-    secondaryGradient: "rose" as const,
-    status: "published" as const,
-    featured: true,
-    trending: false,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "wide-leg-trouser-monolith",
-    name: "Monolith Wide-Leg Trouser",
-    category: "trousers" as const,
-    collectionSlug: "essentials",
-    priceCents: 72000,
-    currency: "USD" as const,
-    description:
-      "A high-rise trouser pressed from a dry Japanese gabardine. The leg opens from the knee; the waist stays close. A single forward pleat sets the line.",
-    composition: "100% Japanese cotton gabardine.",
-    origin: "Tailored in Portugal.",
-    colors: [
-      { id: "oat", name: "Bone", gradient: "oat" as const },
-      { id: "deep", name: "Carbon", gradient: "deep" as const },
-    ],
-    sizes: [
-      { id: "24", label: "24" },
-      { id: "26", label: "26" },
-      { id: "28", label: "28" },
-      { id: "30", label: "30" },
-      { id: "32", label: "32" },
-    ],
-    badges: ["editorial"] as const,
-    rating: 4.7,
-    reviewCount: 88,
-    secondaryGradient: "deep" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "poplin-shirt-constellation",
-    name: "Constellation Poplin Shirt",
-    category: "shirting" as const,
-    collectionSlug: "essentials",
-    priceCents: 42000,
-    currency: "USD" as const,
-    description:
-      "A long-staple Egyptian cotton poplin, mother-of-pearl buttons, an unfused collar that holds its line after a full day's wear.",
-    composition: "100% Egyptian cotton.",
-    origin: "Sewn in Como.",
-    colors: [
-      { id: "mist", name: "Quartz White", gradient: "mist" as const },
-      { id: "rose", name: "Blush", gradient: "rose" as const },
-      { id: "oat", name: "Sand", gradient: "oat" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-      { id: "xl", label: "XL" },
-    ],
-    badges: ["new"] as const,
-    rating: 4.9,
-    reviewCount: 211,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: true,
-    trending: true,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "leather-tote-glycine",
-    name: "Glycine Leather Tote",
-    category: "leather" as const,
-    collectionSlug: "objects",
-    priceCents: 185000,
-    currency: "USD" as const,
-    description:
-      "A tote formed from a single hide of vegetable-tanned Tuscan calfskin. Will develop a quiet patina with years of wear. Saddle-stitched by hand.",
-    composition: "Vegetable-tanned calfskin. Brass hardware. Unlined.",
-    origin: "Hand-finished in Florence.",
-    colors: [
-      { id: "oat", name: "Saddle", gradient: "oat" as const },
-      { id: "deep", name: "Ink", gradient: "deep" as const },
-      { id: "rose", name: "Coral Skin", gradient: "rose" as const },
-    ],
-    sizes: [{ id: "one", label: "One Size" }],
-    badges: ["limited", "editorial"] as const,
-    rating: 5.0,
-    reviewCount: 38,
-    secondaryGradient: "oat" as const,
-    status: "published" as const,
-    featured: true,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "wool-crepe-slip-dress",
-    name: "Whitehaven Wool-Crepe Slip Dress",
-    category: "dresses" as const,
-    collectionSlug: "evening",
-    priceCents: 128000,
-    compareAtCents: 148000,
-    currency: "USD" as const,
-    description:
-      "A weightless column drawn in a closely-woven Italian wool crepe. Adjustable straps finished with a hand-rolled hem.",
-    composition: "100% Italian wool crepe.",
-    origin: "Atelier in Milan.",
-    colors: [
-      { id: "mist", name: "Pearl", gradient: "mist" as const },
-      { id: "deep", name: "Noir", gradient: "deep" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new"] as const,
-    rating: 4.8,
-    reviewCount: 56,
-    secondaryGradient: "rose" as const,
-    status: "published" as const,
-    featured: false,
-    trending: true,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "cashmere-scarf-soren",
-    name: "Sorén Cashmere Scarf",
-    category: "accessories" as const,
-    collectionSlug: "objects",
-    priceCents: 42000,
-    currency: "USD" as const,
-    description:
-      "A long, gently-weighted scarf drawn from a single 200-needle cashmere. Woven on a quiet loom in northern Scotland.",
-    composition: "100% Inner Mongolian cashmere.",
-    origin: "Woven in Scotland.",
-    colors: [
-      { id: "oat", name: "Champagne", gradient: "oat" as const },
-      { id: "mist", name: "Glacier", gradient: "mist" as const },
-      { id: "rose", name: "Petal", gradient: "rose" as const },
-    ],
-    sizes: [{ id: "one", label: "180 × 50 cm" }],
-    badges: ["restocked"] as const,
-    rating: 4.9,
-    reviewCount: 124,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "berlino-derby-vegetal",
-    name: "Berlino Vegetal Derby",
-    category: "leather" as const,
-    collectionSlug: "objects",
-    priceCents: 98000,
-    currency: "USD" as const,
-    description:
-      "A blake-stitched derby with a vegetal-tanned upper and a hand-burnished toe. Built on a soft last with a low, considered waist.",
-    composition: "Vegetal-tanned calfskin. Leather sole.",
-    origin: "Made in Marche, Italy.",
-    colors: [
-      { id: "oat", name: "Saddle", gradient: "oat" as const },
-      { id: "deep", name: "Espresso", gradient: "deep" as const },
-    ],
-    sizes: [
-      { id: "39", label: "39" },
-      { id: "40", label: "40" },
-      { id: "41", label: "41" },
-      { id: "42", label: "42" },
-      { id: "43", label: "43" },
-    ],
-    badges: ["editorial"] as const,
-    rating: 4.7,
-    reviewCount: 47,
-    secondaryGradient: "deep" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "structured-blazer-canon",
-    name: "Canon Structured Blazer",
-    category: "outerwear" as const,
-    collectionSlug: "essentials",
-    priceCents: 148000,
-    currency: "USD" as const,
-    description:
-      "A precise single-breasted blazer with a half-canvas chest and a low button stance. The shoulder is unpadded; the line is clean.",
-    composition: "100% Italian wool.",
-    origin: "Tailored in Naples.",
-    colors: [
-      { id: "oat", name: "Ecru", gradient: "oat" as const },
-      { id: "mist", name: "Pale Slate", gradient: "mist" as const },
-      { id: "deep", name: "Slate", gradient: "deep" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new", "limited"] as const,
-    rating: 4.8,
-    reviewCount: 73,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: false,
-    trending: true,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "linen-trouser-callisto",
-    name: "Callisto Linen Trouser",
-    category: "trousers" as const,
-    collectionSlug: "resort",
-    priceCents: 54000,
-    currency: "USD" as const,
-    description:
-      "A relaxed trouser in a Belgian heavyweight linen. Garment-washed for an immediate, lived-in hand.",
-    composition: "100% Belgian linen.",
-    origin: "Sewn in Portugal.",
-    colors: [
-      { id: "oat", name: "Sand", gradient: "oat" as const },
-      { id: "mist", name: "Sea", gradient: "mist" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["new"] as const,
-    rating: 4.6,
-    reviewCount: 61,
-    secondaryGradient: "oat" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "tortoise-eyewear-athena",
-    name: "Athena Tortoise Eyewear",
-    category: "accessories" as const,
-    collectionSlug: "objects",
-    priceCents: 38000,
-    currency: "USD" as const,
-    description:
-      "An acetate frame with a soft square lens. Cut, polished and assembled by hand in Cadore, Italy.",
-    composition: "Italian Mazzucchelli acetate.",
-    origin: "Made in Cadore, Italy.",
-    colors: [
-      { id: "oat", name: "Champagne Tortoise", gradient: "oat" as const },
-      { id: "deep", name: "Midnight Tortoise", gradient: "deep" as const },
-    ],
-    sizes: [{ id: "one", label: "One Size" }],
-    badges: ["restocked"] as const,
-    rating: 4.8,
-    reviewCount: 92,
-    secondaryGradient: "deep" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: false,
-    visible: true,
-  },
-  {
-    slug: "ponte-knit-skirt-aria",
-    name: "Aria Ponte Pencil Skirt",
-    category: "knitwear" as const,
-    collectionSlug: "essentials",
-    priceCents: 48000,
-    currency: "USD" as const,
-    description:
-      "A knee-length pencil cut from a tightly-knit Italian ponte. Holds its narrow line through the day.",
-    composition: "68% viscose, 28% nylon, 4% elastane.",
-    origin: "Knitted in Italy.",
-    colors: [
-      { id: "deep", name: "Onyx", gradient: "deep" as const },
-      { id: "mist", name: "Pearl", gradient: "mist" as const },
-    ],
-    sizes: [
-      { id: "xs", label: "XS" },
-      { id: "s", label: "S" },
-      { id: "m", label: "M" },
-      { id: "l", label: "L" },
-    ],
-    badges: ["editorial"] as const,
-    rating: 4.7,
-    reviewCount: 53,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-  {
-    slug: "resort-collection-tote",
-    name: "Resort Canvas Weekender",
-    category: "leather" as const,
-    collectionSlug: "resort",
-    priceCents: 98000,
-    currency: "USD" as const,
-    description:
-      "An oversized canvas weekender trimmed in vegetable-tanned leather. A natural companion for long weekends and shore houses.",
-    composition: "Heavyweight cotton canvas. Leather trim.",
-    origin: "Sewn in Portugal.",
-    colors: [
-      { id: "oat", name: "Ivory", gradient: "ivory" as const },
-      { id: "mist", name: "Sea Mist", gradient: "mist" as const },
-    ],
-    sizes: [{ id: "one", label: "One Size" }],
-    badges: ["new"] as const,
-    rating: 4.8,
-    reviewCount: 18,
-    secondaryGradient: "mist" as const,
-    status: "published" as const,
-    featured: false,
-    trending: false,
-    editorial: true,
-    visible: true,
-  },
-];
-
-const COLLECTIONS_DATA = [
-  {
-    slug: "autumn-winter",
-    name: "Autumn — Winter",
-    eyebrow: "Volume XII",
-    description:
-      "Long coats, dense knits, considered evenings. The season in pieces designed to last past it.",
-    productSlugs: ["p-001" /* legacy */, "merino-overcoat-paragon", "silk-cashmere-turtleneck", "wide-leg-trouser-monolith", "poplin-shirt-constellation", "structured-blazer-canon"],
-    gradient: "oat" as const,
-    kind: "seasonal" as const,
-    season: "AW — Volume XII",
-    order: 1,
-    visible: true,
-  },
-  {
-    slug: "essentials",
-    name: "The Essentials",
-    eyebrow: "Permanent",
-    description:
-      "Pieces that hold the wardrobe together. Refined twice a year, then left alone.",
-    productSlugs: ["silk-cashmere-turtleneck", "wide-leg-trouser-monolith", "poplin-shirt-constellation", "structured-blazer-canon", "ponte-knit-skirt-aria"],
-    gradient: "mist" as const,
-    kind: "permanent" as const,
-    order: 2,
-    visible: true,
-  },
-  {
-    slug: "evening",
-    name: "Evening",
-    eyebrow: "After Six",
-    description: "Low light, high whisper. Pieces for rooms where points are made quietly.",
-    productSlugs: ["wool-crepe-slip-dress", "merino-overcoat-paragon", "leather-tote-glycine", "tortoise-eyewear-athena"],
-    gradient: "deep" as const,
-    kind: "campaign" as const,
-    order: 3,
-    visible: true,
-  },
-  {
-    slug: "objects",
-    name: "Objects",
-    eyebrow: "Carry With You",
-    description:
-      "Leather, eyewear, fragrance. The companions you reach for daily, made to age beautifully.",
-    productSlugs: ["leather-tote-glycine", "cashmere-scarf-soren", "berlino-derby-vegetal", "tortoise-eyewear-athena"],
-    gradient: "rose" as const,
-    kind: "permanent" as const,
-    order: 4,
-    visible: true,
-  },
-  {
-    slug: "resort",
-    name: "Resort",
-    eyebrow: "Away",
-    description:
-      "For rooms with windows open to the sea. Linen, canvas, fluid knits.",
-    productSlugs: ["linen-trouser-callisto", "resort-collection-tote"],
-    gradient: "mist" as const,
-    kind: "seasonal" as const,
-    season: "Resort — Volume I",
-    order: 5,
-    visible: true,
-  },
-];
-
-const EDITORIALS_DATA = [
-  {
-    slug: "in-the-quiet-room",
-    title: "In The Quiet Room",
-    excerpt:
-      "A study in low light and long shadows — photographed at our Tuscan atelier over three November afternoons.",
-    coverGradient: "mist" as const,
-    kind: "campaign" as const,
-    author: "Editorial Office",
-    publishedAt: Date.parse("2026-01-12"),
-    status: "published" as const,
-  },
-  {
-    slug: "the-patination-of-leather",
-    title: "The Patination of Leather",
-    excerpt:
-      "How vegetable-tanned calfskin reads sunlight, rain, and the corner of a well-stacked shelf.",
-    coverGradient: "oat" as const,
-    kind: "atelier" as const,
-    author: "Maria Venturi",
-    publishedAt: Date.parse("2025-12-04"),
-    status: "published" as const,
-  },
-  {
-    slug: "a-conversation-with-the-tailor",
-    title: "A Conversation With The Tailor",
-    excerpt:
-      "Our head tailor, Vittorio Sala, on half-canvas construction, the dropped shoulder, and the room left for the wearer.",
-    coverGradient: "deep" as const,
-    kind: "atelier" as const,
-    author: "Editorial Office",
-    publishedAt: Date.parse("2025-11-18"),
-    status: "published" as const,
-  },
-  {
-    slug: "the-permanent-wardrobe",
-    title: "The Permanent Wardrobe",
-    excerpt:
-      "Why we list the same five pieces twice a year, and only refine them.",
-    coverGradient: "mist" as const,
-    kind: "journal" as const,
-    author: "Lou Bertrand",
-    publishedAt: Date.parse("2025-10-22"),
-    status: "published" as const,
-  },
-];
-
-const COUPONS_DATA = [
-  { code: "WELCOME10", percentOff: 0.10, description: "First-order welcome — 10% off.", active: true },
-  { code: "ÆON15", percentOff: 0.15, description: "Member code — 15% off.", active: true },
-  { code: "PATRON20", percentOff: 0.20, description: "Patron program — 20% off.", active: true },
-];

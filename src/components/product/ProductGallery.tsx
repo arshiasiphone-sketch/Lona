@@ -18,20 +18,26 @@ const gradientOf = (k: GradientKey) =>
 
 const silhouetteOf = (cat: TProduct["category"]) => {
   switch (cat) {
-    case "outerwear":
-      return "coat" as const;
-    case "knitwear":
-      return "knit" as const;
-    case "trousers":
-      return "trouser" as const;
-    case "shirting":
-      return "shirt" as const;
-    case "dresses":
-      return "dress" as const;
-    case "leather":
-      return "leather" as const;
-    default:
+    case "bras":
+      return "bra" as const;
+    case "briefs":
+      return "brief" as const;
+    case "sets":
+      return "bra" as const;
+    case "sleepwear":
+      return "robe" as const;
+    case "loungewear":
+      return "robe" as const;
+    case "bodysuits":
+      return "bodysuit" as const;
+    case "shapewear":
+      return "bodysuit" as const;
+    case "sportswear":
+      return "tee" as const;
+    case "accessories":
       return "accessory" as const;
+    case "bridal":
+      return "bra" as const;
   }
 };
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ProductCategory } from "@/data/catalog";
 import { products as allProducts } from "@/data/catalog";
 import { cn } from "@/lib/glass";
+import { formatPrice } from "@/lib/format";
 import {
   Select,
   SelectContent,
@@ -25,21 +26,30 @@ const empty: ShopFilters = {
   sizes: [],
   availability: "all",
   priceMin: 0,
-  priceMax: 3000,
+  priceMax: 5_000_000,
 };
 
-const PRICE_FLOOR = 200;
-const PRICE_CEIL = 3000;
+/**
+ * Toman price bounds — the catalogue ranges roughly from
+ * 220,000 toman (basic briefs) to 3,990,000 toman (bridal sets).
+ * The slider adapts to whichever category is selected, so these
+ * are absolute floor/ceiling.
+ */
+const PRICE_FLOOR = 200_000;
+const PRICE_CEIL = 5_000_000;
 
 const CATEGORIES: { id: ProductCategory | "all"; label: string }[] = [
-  { id: "all", label: "All categories" },
-  { id: "outerwear", label: "Outerwear" },
-  { id: "knitwear", label: "Knitwear" },
-  { id: "shirting", label: "Shirting" },
-  { id: "trousers", label: "Trousers" },
-  { id: "dresses", label: "Dresses" },
-  { id: "leather", label: "Leather" },
-  { id: "accessories", label: "Accessories" },
+  { id: "all",        label: "همه دسته‌ها" },
+  { id: "bras",       label: "سوتین" },
+  { id: "briefs",     label: "شورت" },
+  { id: "sets",       label: "ست لباس زیر" },
+  { id: "sleepwear",  label: "لباس خواب" },
+  { id: "loungewear", label: "لباس راحتی" },
+  { id: "bodysuits",  label: "بادی" },
+  { id: "shapewear",  label: "گن" },
+  { id: "sportswear", label: "لباس ورزشی زنانه" },
+  { id: "accessories",label: "اکسسوری" },
+  { id: "bridal",     label: "کالکشن عروس" },
 ];
 
 interface FiltersPanelProps {
@@ -54,16 +64,19 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
   const set = <K extends keyof ShopFilters>(k: K, v: ShopFilters[K]) =>
     onChange({ ...filters, [k]: v });
 
-  // Derive available colors / sizes / availability from current category
+  // Derive available colors / sizes from current category
   const facets = useMemo(() => {
     const pool = filters.category === "all"
       ? allProducts
       : allProducts.filter((p) => p.category === filters.category);
-    const colors = new Map<string, string>(); // id -> name
+    const colors = new Map<string, string>();
     pool.forEach((p) => p.colors.forEach((c) => colors.set(c.id, c.name)));
     const sizes = new Map<string, string>();
     pool.forEach((p) => p.sizes.forEach((s) => sizes.set(s.id, s.label)));
-    return { colors: Array.from(colors, ([id, label]) => ({ id, label })), sizes: Array.from(sizes, ([id, label]) => ({ id, label })) };
+    return {
+      colors: Array.from(colors, ([id, label]) => ({ id, label })),
+      sizes: Array.from(sizes, ([id, label]) => ({ id, label })),
+    };
   }, [filters.category]);
 
   if (variant === "inline") {
@@ -85,21 +98,24 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
           </SelectContent>
         </Select>
         <AvailabilityPill value={filters.availability} onChange={(v) => set("availability", v)} />
-        <PriceRangePill value={[filters.priceMin, filters.priceMax]} onChange={([min, max]) => onChange({ ...filters, priceMin: min, priceMax: max })} />
+        <PriceRangePill
+          value={[filters.priceMin, filters.priceMax]}
+          onChange={([min, max]) => onChange({ ...filters, priceMin: min, priceMax: max })}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <FacetGroup label="Category">
+      <FacetGroup label="دسته‌بندی">
         <ul className="space-y-1">
           {CATEGORIES.map((c) => (
             <li key={c.id}>
               <button
                 onClick={() => set("category", c.id)}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition",
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-right text-sm transition",
                   filters.category === c.id
                     ? "bg-white/80 font-medium text-ink"
                     : "text-ink-soft hover:bg-white/40 hover:text-ink"
@@ -117,20 +133,20 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
         </ul>
       </FacetGroup>
 
-      <FacetGroup label="Availability">
+      <FacetGroup label="موجودی">
         <div className="grid grid-cols-3 gap-2">
           {(
             [
-              { id: "all", label: "All" },
-              { id: "in_stock", label: "In stock" },
-              { id: "limited", label: "Limited" },
+              { id: "all",      label: "همه" },
+              { id: "in_stock", label: "موجود" },
+              { id: "limited",  label: "محدود" },
             ] as const
           ).map((opt) => (
             <button
               key={opt.id}
               onClick={() => set("availability", opt.id)}
               className={cn(
-                "rounded-full border border-edge px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] transition",
+                "rounded-full border border-edge px-3 py-1.5 text-[11px] transition",
                 filters.availability === opt.id
                   ? "bg-ink text-canvas"
                   : "text-ink-soft hover:bg-white/40"
@@ -142,20 +158,20 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
         </div>
       </FacetGroup>
 
-      <FacetGroup label="Price">
+      <FacetGroup label="قیمت">
         <PriceRangePill
           value={[filters.priceMin, filters.priceMax]}
           onChange={([min, max]) => onChange({ ...filters, priceMin: min, priceMax: max })}
         />
         <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
-          <span>${filters.priceMin}</span>
-          <span>${filters.priceMax}</span>
+          <span>{formatPrice(filters.priceMin)}</span>
+          <span>{formatPrice(filters.priceMax)}</span>
         </div>
       </FacetGroup>
 
       {!compact && (
         <>
-          <FacetGroup label="Color">
+          <FacetGroup label="رنگ">
             <div className="flex flex-wrap gap-2.5">
               {facets.colors.map((c) => {
                 const on = filters.colors.includes(c.id);
@@ -195,7 +211,7 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
             </div>
           </FacetGroup>
 
-          <FacetGroup label="Size">
+          <FacetGroup label="سایز">
             <div className="grid grid-cols-5 gap-1.5">
               {facets.sizes.map((s) => {
                 const on = filters.sizes.includes(s.id);
@@ -211,7 +227,7 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
                       )
                     }
                     className={cn(
-                      "rounded-lg py-2 text-[10px] uppercase tracking-[0.16em] transition",
+                      "rounded-lg py-2 text-[10px] transition",
                       on
                         ? "bg-ink text-canvas"
                         : "hairline text-ink-soft hover:bg-white/40"
@@ -246,13 +262,13 @@ function AvailabilityPill({
   onChange: (v: ShopFilters["availability"]) => void;
 }) {
   const opts = [
-    { id: "all", label: "Availability" },
-    { id: "in_stock", label: "In stock" },
-    { id: "limited", label: "Limited" },
+    { id: "all",      label: "موجودی" },
+    { id: "in_stock", label: "موجود" },
+    { id: "limited",  label: "محدود" },
   ] as const;
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ShopFilters["availability"])}>
-      <SelectTrigger className="h-9 rounded-full border-edge bg-canvas/70 px-4 text-[11px] uppercase tracking-[0.16em]">
+      <SelectTrigger className="h-9 rounded-full border-edge bg-canvas/70 px-4 text-[11px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="glass-strong rounded-2xl border-edge">
@@ -288,14 +304,14 @@ function PriceRangePill({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="h-9 rounded-full border border-edge bg-canvas/70 px-4 text-[11px] uppercase tracking-[0.16em] text-ink hover:bg-white/80"
+        className="h-9 rounded-full border border-edge bg-canvas/70 px-4 text-[11px] text-ink hover:bg-white/80"
       >
-        Price · ${min}–${max}
+        قیمت · {formatPrice(min)} – {formatPrice(max)}
       </button>
       {open && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="glass-strong absolute left-0 top-full z-30 mt-2 w-72 rounded-2xl border border-edge p-4 shadow-float"
+          className="glass-strong absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border border-edge p-4 shadow-float"
         >
           <PriceDualRange value={value} onChange={onChange} min={PRICE_FLOOR} max={PRICE_CEIL} />
         </div>
@@ -304,9 +320,6 @@ function PriceRangePill({
   );
 }
 
-/**
- * Dual-thumb range slider. Built on two `<input type=range>` stacked visually.
- */
 function PriceDualRange({
   value,
   onChange,
@@ -321,6 +334,7 @@ function PriceDualRange({
   const [lo, hi] = value;
   const pctLo = ((lo - min) / (max - min)) * 100;
   const pctHi = ((hi - min) / (max - min)) * 100;
+  const step = 50_000; // 50k toman tick
   return (
     <div>
       <div className="relative h-6">
@@ -333,32 +347,32 @@ function PriceDualRange({
           type="range"
           min={min}
           max={max}
-          step={20}
+          step={step}
           value={lo}
           onChange={(e) => {
-            const v = Math.min(Number(e.target.value), hi - 20);
+            const v = Math.min(Number(e.target.value), hi - step);
             onChange([v, hi]);
           }}
           className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-ink"
-          aria-label="minimum price"
+          aria-label="حداقل قیمت"
         />
         <input
           type="range"
           min={min}
           max={max}
-          step={20}
+          step={step}
           value={hi}
           onChange={(e) => {
-            const v = Math.max(Number(e.target.value), lo + 20);
+            const v = Math.max(Number(e.target.value), lo + step);
             onChange([lo, v]);
           }}
           className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-ink"
-          aria-label="maximum price"
+          aria-label="حداکثر قیمت"
         />
       </div>
       <div className="mt-3 flex items-center justify-between text-[11px] text-ink-muted">
-        <span>${lo}</span>
-        <span>${hi}</span>
+        <span>{formatPrice(lo)}</span>
+        <span>{formatPrice(hi)}</span>
       </div>
     </div>
   );

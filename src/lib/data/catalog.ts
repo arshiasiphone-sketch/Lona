@@ -88,7 +88,12 @@ type ConvexOrderItem = Doc<"order_items">;
  * ──────────────────────────────────────────────────────────────── */
 
 function centsToWhole(cents: number): number {
-  return Math.round(cents / 100);
+  // Phase 5.5/5.8: Toman amounts are stored directly in `priceCents`
+  // and `totalCents` (no cents-of-a-currency sub-unit in toman). The
+  // display formatter (`formatPrice` in `src/lib/format.ts`) treats
+  // the input as the toman amount itself, so the legacy `÷ 100`
+  // conversion was the wrong unit and is removed here.
+  return Math.round(cents);
 }
 
 function isoFromMs(ms: number | undefined | null): string {

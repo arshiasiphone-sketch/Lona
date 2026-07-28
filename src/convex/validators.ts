@@ -17,13 +17,16 @@ import { v } from "convex/values";
 // ----------------------------------------------------------------
 
 export const productCategoryLiterals = [
-  "outerwear",
-  "knitwear",
-  "shirting",
-  "trousers",
-  "dresses",
-  "leather",
+  "bras",
+  "briefs",
+  "sets",
+  "sleepwear",
+  "loungewear",
+  "bodysuits",
+  "shapewear",
+  "sportswear",
   "accessories",
+  "bridal",
 ] as const;
 
 export const vProductCategory = v.union(
