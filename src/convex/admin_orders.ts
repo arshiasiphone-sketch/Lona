@@ -13,9 +13,63 @@
  * hint, only the server-side check is authoritative.
  */
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
-import { requirePermission } from "./admin";
+import { requirePermission, audit } from "./admin";
+
+/* ──────────────────────────────────────────────────────────────
+ * ORDER STATUS TRANSITION (Phase 5.3)
+ *
+ * Mirrors the storefront's lifecycle: each forward transition
+ * appends an `order_status_history` row + an `activity_logs` row
+ * so the audit trail is intact. The validity matrix is the
+ * single source of truth — the FE should mirror it (disable
+ * options in the dropdown) but the server is authoritative.
+ * ────────────────────────────────────────────────────────────── */
+
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  pending: ["processing", "cancelled"],
+  processing: ["shipped", "cancelled"],
+  shipped: ["delivered", "returning", "cancelled"],
+  delivered: ["returning"],
+  returning: ["delivered"],
+  cancelled: [],
+};
+
+export const setOrderStatus = mutation({
+  args: {
+    id: v.id("orders"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("shipped"),
+      v.literal("delivered"),
+      v.literal("returning"),
+      v.literal("cancelled"),
+    ),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, { id, status, note }) => {
+    const user = await requirePermission(ctx, "manage_orders");
+    const order = await ctx.db.get(id);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    const allowed = VALID_STATUS_TRANSITIONS[order.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new Error(
+        `INVALID_TRANSITION:${order.status}->${status}`,
+      );
+    }
+    await ctx.db.patch(id, { status });
+    await ctx.db.insert("order_status_history", {
+      orderId: id,
+      status,
+      note,
+      at: Date.now(),
+    });
+    await audit(ctx, user, `order.${status}`, "orders", id);
+    return id;
+  },
+});
 
 /* ────────────────────────────────────────────────────────────
  * ORDERS
@@ -75,12 +129,25 @@ export const getOrderWithItems = query({
  * ──────────────────────────────────────────────────────────── */
 
 export const listCustomers = query({
-  args: { limit: v.optional(v.number()) },
-  handler: async (ctx, { limit }) => {
+  args: {
+    limit: v.optional(v.number()),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, { limit, search }) => {
     await requirePermission(ctx, "manage_customers");
     const rows = await ctx.db.query("users").collect();
-    rows.sort((a, b) => b._creationTime - a._creationTime);
-    return limit ? rows.slice(0, limit) : rows;
+    const needle = search?.trim().toLowerCase() ?? "";
+    const filtered = needle
+      ? rows.filter((u) =>
+          [u.name, u.email, u.phone]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(needle),
+        )
+      : rows;
+    filtered.sort((a, b) => b._creationTime - a._creationTime);
+    return limit ? filtered.slice(0, limit) : filtered;
   },
 });
 
@@ -90,23 +157,44 @@ export const customerDetail = query({
     await requirePermission(ctx, "manage_customers");
     const user = await ctx.db.get(id);
     if (!user) return null;
-    const [orders, addresses, preferences, notifications, activity] = await Promise.all([
-      ctx.db.query("orders").withIndex("by_user", (q) => q.eq("userId", id)).collect(),
-      ctx.db.query("addresses").withIndex("by_user", (q) => q.eq("userId", id)).collect(),
-      ctx.db.query("preferences").withIndex("by_user", (q) => q.eq("userId", id)).first(),
-      ctx.db.query("notifications").withIndex("by_user", (q) => q.eq("userId", id)).collect(),
-      ctx.db
-        .query("activity_logs")
-        .withIndex("by_user", (q) => q.eq("userId", id))
-        .take(50),
-    ]);
+    const [orders, addresses, preferences, notifications, activity] =
+      await Promise.all([
+        ctx.db
+          .query("orders")
+          .withIndex("by_user", (q) => q.eq("userId", id))
+          .collect(),
+        ctx.db
+          .query("addresses")
+          .withIndex("by_user", (q) => q.eq("userId", id))
+          .collect(),
+        ctx.db
+          .query("preferences")
+          .withIndex("by_user", (q) => q.eq("userId", id))
+          .first(),
+        ctx.db
+          .query("notifications")
+          .withIndex("by_user", (q) => q.eq("userId", id))
+          .collect(),
+        ctx.db
+          .query("activity_logs")
+          .withIndex("by_user", (q) => q.eq("userId", id))
+          .take(50),
+      ]);
+    const lifetimeSpendCents = orders.reduce((sum, o) => {
+      if (o.status === "cancelled" || o.status === "returning") return sum;
+      return sum + o.totalCents;
+    }, 0);
     return {
       user,
       orders: orders.sort((a, b) => b.placedAt - a.placedAt),
       addresses,
       preferences,
-      notifications: notifications.sort((a, b) => b.createdAt - a.createdAt),
+      notifications: notifications.sort(
+        (a, b) => b.createdAt - a.createdAt,
+      ),
       activity,
+      lifetimeSpendCents,
+      orderCount: orders.length,
     };
   },
 });
@@ -168,7 +256,37 @@ export const dashboardStats = query({
       if (o.status === "cancelled" || o.status === "returning") return sum;
       return sum + o.totalCents;
     }, 0);
-    const lowStock = await countLowStock(ctx, 5);
+
+    // Today-specific slice. Anchored against UTC midnight so the
+    // boundary is stable across regions; the FE renders timestamps
+    // in fa-IR so the admin sees an Iran-local view of "today".
+    const dayMs = 86_400_000;
+    const todayStart = Math.floor(Date.now() / dayMs) * dayMs;
+    const todayOrders = orders.filter((o) => o.placedAt >= todayStart);
+    const todaySalesCents = todayOrders.reduce((sum, o) => {
+      if (o.status === "cancelled" || o.status === "returning") return sum;
+      return sum + o.totalCents;
+    }, 0);
+
+    const variants = await ctx.db.query("variants").collect();
+    const productIndex = new Map(products.map((p) => [p._id, p]));
+    const lowStock = variants
+      .filter(
+        (v) => (v.available && v.stock <= 5) || (!v.available && v.stock > 0),
+      )
+      .sort((a, b) => a.stock - b.stock)
+      .slice(0, 6)
+      .map((v) => ({
+        variantId: v._id,
+        sku: v.sku,
+        size: v.size,
+        color: v.color,
+        stock: v.stock,
+        productSlug: productIndex.get(v.productId)?.slug ?? "—",
+        productName: productIndex.get(v.productId)?.name ?? "—",
+      }));
+    const lowStockCount = await countLowStock(ctx, 5);
+
     return {
       productCount: products.length,
       publishedCount: products.filter((p) => p.status === "published").length,
@@ -176,14 +294,20 @@ export const dashboardStats = query({
       archivedCount: products.filter((p) => p.status === "archived").length,
       orderCount: orders.length,
       activeOrderCount: orders.filter(
-        (o) => o.status === "pending" || o.status === "processing" || o.status === "shipped",
+        (o) =>
+          o.status === "pending" ||
+          o.status === "processing" ||
+          o.status === "shipped",
       ).length,
       customerCount: users.length,
       reviewCount: reviews.length,
       pendingReviewCount: reviews.filter((r) => r.status === "pending").length,
       activeCouponCount: coupons.filter((c) => c.active).length,
       totalRevenueCents: totalRevenue,
-      lowStockVariantCount: lowStock,
+      todaySalesCents,
+      todayOrderCount: todayOrders.length,
+      lowStockVariantCount: lowStockCount,
+      lowStockProducts: lowStock,
     };
   },
 });
@@ -193,5 +317,7 @@ async function countLowStock(
   threshold: number,
 ): Promise<number> {
   const variants = await ctx.db.query("variants").collect();
-  return variants.filter((v) => (v.available && v.stock <= threshold) || (!v.available && v.stock > 0)).length;
+  return variants.filter(
+    (v) => (v.available && v.stock <= threshold) || (!v.available && v.stock > 0),
+  ).length;
 }

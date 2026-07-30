@@ -55,7 +55,7 @@ export default function Collections() {
     if (!rows) return [] as CollectionRow[];
     const needle = query.trim().toLowerCase();
     return rows.filter((row) => {
-      if (!showArchived && !row..visible) return false;
+      if (!showArchived && !row.visible) return false;
       if (!needle) return true;
       return [row.name, row.slug, row.description ?? "", row.eyebrow ?? ""]
         .join(" ")
@@ -233,11 +233,11 @@ export default function Collections() {
                         <td className="px-4 py-3 align-top">
                           <StatusBadge
                             status={
-                              row.?.visible
+                              row.visible
                                 ? ("published" as StatusKind)
                                 : ("archived" as StatusKind)
                             }
-                            label={row.?.visible ? "فعال" : "آرشیو"}
+                            label={row.visible ? "فعال" : "آرشیو"}
                           />
                         </td>
                         <td className="px-4 py-3 align-top">
@@ -250,7 +250,7 @@ export default function Collections() {
                             >
                               <Pencil className="h-3.5 w-3.5 text-ink" />
                             </button>
-                            {row.?.visible ? (
+                            {row.visible ? (
                               <button
                                 type="button"
                                 onClick={() => archive({ id: row._id })}
@@ -383,7 +383,7 @@ function CollectionEditDrawer({
     setProductSlugs(
       (editingRow?.productSlugs ?? []).filter(Boolean) as Id<"products">[],
     );
-    setVisible(editingRow?.?.visible ?? true);
+    setVisible(editingRow?.visible ?? true);
   }, [open, editingRow]);
 
   if (!open) return null;

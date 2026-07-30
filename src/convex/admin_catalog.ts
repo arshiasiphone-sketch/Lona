@@ -354,6 +354,38 @@ export const archiveCoupon = mutation({
   },
 });
 
+/** Re-enable a soft-archived coupon. */
+export const enableCoupon = mutation({
+  args: { id: v.id("coupons") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_coupons");
+    await ctx.db.patch(id, { active: true });
+    await audit(ctx, user, "coupon.enable", "coupons", id);
+    return id;
+  },
+});
+
+/**
+ * Hard-delete a coupon. Coupons have no FK enforcement from
+ * other tables so we let the admin wipe a mistaken or test row
+ * without manual DB access. UsedCount is preserved in the audit
+ * metadata so historical reports still trace the deletion.
+ */
+export const deleteCoupon = mutation({
+  args: { id: v.id("coupons") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_coupons");
+    const coupon = await ctx.db.get(id);
+    if (!coupon) return { deleted: false as const };
+    await ctx.db.delete(id);
+    await audit(ctx, user, "coupon.delete", "coupons", id, {
+      code: coupon.code,
+      usedCount: coupon.usedCount,
+    });
+    return { deleted: true as const };
+  },
+});
+
 /* ────────────────────────────────────────────────────────────
  * EDITORIALS
  * ──────────────────────────────────────────────────────────── */

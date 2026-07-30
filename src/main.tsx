@@ -55,6 +55,18 @@ const MediaLibraryPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/admin/settings/Settings.tsx"),
 );
+const OrdersPage = lazy(() =>
+  import("./pages/admin/orders/Orders.tsx"),
+);
+const CustomersPage = lazy(() =>
+  import("./pages/admin/customers/Customers.tsx"),
+);
+const CouponsPage = lazy(() =>
+  import("./pages/admin/coupons/Coupons.tsx"),
+);
+const ReviewsPage = lazy(() =>
+  import("./pages/admin/reviews/Reviews.tsx"),
+);
 const AdminStub = lazy(() => import("./pages/admin/_Stub.tsx"));
 const RequireRole = lazy(() =>
   import("./components/admin/RequireRole.tsx").then((m) => ({
@@ -300,6 +312,38 @@ createRoot(document.getElementById("root")!).render(
                             element={
                               <Suspense fallback={<RouteLoading />}>
                                 <SettingsPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="orders"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <OrdersPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="customers"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <CustomersPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="coupons"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <CouponsPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="reviews"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <ReviewsPage />
                               </Suspense>
                             }
                           />

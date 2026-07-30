@@ -80,6 +80,12 @@ function KpisAndFeeds() {
           icon={<DollarSign className="h-3.5 w-3.5" />}
         />
         <AdminKPI
+          label="فروش امروز"
+          value={formatPrice((stats.todaySalesCents ?? 0) / 100, true)}
+          trend={`${(stats.todayOrderCount ?? 0).toLocaleString("fa-IR")} سفارش در ۲۴ ساعت اخیر`}
+          icon={<Package className="h-3.5 w-3.5" />}
+        />
+        <AdminKPI
           label="محصولات"
           value={stats.productCount.toLocaleString("fa-IR")}
           trend={`${stats.publishedCount.toLocaleString("fa-IR")} منتشر شده · ${stats.draftCount.toLocaleString("fa-IR")} پیش‌نویس · ${stats.archivedCount.toLocaleString("fa-IR")} آرشیو`}
@@ -118,6 +124,42 @@ function KpisAndFeeds() {
           trend={`از طریق صف بررسی مدیریت می‌شود`}
           icon={<CheckCheck className="h-3.5 w-3.5" />}
         />
+      </div>
+
+      <div className="rounded-3xl border border-edge bg-white/85 p-6">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-primary" />
+          <h2 className="font-display text-2xl text-ink">محصولات با موجودی کم</h2>
+        </div>
+        {(!stats.lowStockProducts || stats.lowStockProducts.length === 0) ? (
+          <AdminEmptyState
+            title="موجودی‌ها پایدار هستند."
+            body="هیچ variantey با موجودی کم شناسایی نشد. تأمین دوباره نیازی نیست."
+            icon={<AlertTriangle className="h-5 w-5" />}
+          />
+        ) : (
+          <ul className="mt-5 space-y-3">
+            {stats.lowStockProducts.map((row: { variantId: string; sku: string; size?: string; color?: string; stock: number; productName: string; productSlug: string }, i: number) => (
+              <motion.li
+                key={row.variantId}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: EASE_LUXURY, delay: i * 0.04 }}
+                className="flex items-center justify-between rounded-2xl border border-edge bg-canvas-soft px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink">{row.productName}</p>
+                  <p className="mt-0.5 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                    {[row.size, row.color].filter(Boolean).join(" · ") || "—"} · {row.sku}
+                  </p>
+                </div>
+                <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                  {row.stock.toLocaleString("fa-IR")} عدد باقی
+                </span>
+              </motion.li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
