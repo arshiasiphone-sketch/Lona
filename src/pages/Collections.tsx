@@ -11,11 +11,11 @@ export default function Collections() {
       <header>
         <p className="type-eyebrow text-ink-muted">خانهٔ لونا</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-8xl">
-          Collections
+          کالکسیون‌ها
         </h1>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-ink-soft lg:text-base">
-          Four chapters. ÆON publishes new volumes twice a year. The Permanent
-          collection is refined alongside, never replaced.
+          چهار فصل. لونا هر سال دو دورهٔ تازه منتشر می‌کند. کالکسیون ماندگار در
+          کنار آن‌ها اصلاح می‌شود، هرگز جایگزین نمی‌گردد.
         </p>
       </header>
 
@@ -65,8 +65,8 @@ export default function Collections() {
                       c.gradient === "deep" ? "text-canvas" : "text-ink"
                     )}
                   >
-                    Enter Collection
-                    <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    ورود به کالکسیون
+                    <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
                   </span>
                 </div>
               </div>

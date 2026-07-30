@@ -66,7 +66,7 @@ export function EmptyState({
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
           {action.label}
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
         </button>
       )}
       {cta && (
@@ -75,7 +75,7 @@ export function EmptyState({
           className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
           {cta.label}
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
         </Link>
       )}
     </motion.div>
@@ -92,9 +92,9 @@ export function EmptySearch({
   return (
     <EmptyState
       icon={<SearchX className="h-5 w-5 text-ink" />}
-      eyebrow="Search"
-      title={`No piece answers to “${query}.”`}
-      body="Perhaps try a category, a collection, or a colour — our catalogue is small by design."
+      eyebrow="جستجو"
+      title={`هیچ تکه‌ای برای «${query}» پیدا نشد.`}
+      body="شاید یک دسته‌بندی، یک کالکسیون یا یک رنگ را امتحان کنید — کاتالوگ لونا به‌عمد کوچک نگه داشته می‌شود."
       action={{ label: "بازنشانی فیلترها", onClick: onReset }}
     />
   );
@@ -108,17 +108,17 @@ export function EmptyCart() {
       </span>
       <p className="type-eyebrow mt-6 text-ink-muted">کیف</p>
       <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">
-        Quiet, for now.
+        آرام، فعلاً.
       </h1>
       <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-ink-soft">
-        Your bag is currently empty. Begin with the season's newly considered pieces.
+        سبد خرید شما خالی است. از تازه‌ترین تکه‌های این فصل شروع کنید.
       </p>
       <Link
         to="/shop"
         className="mt-10 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
       >
-        View Catalogue
-        <ArrowRight className="h-3.5 w-3.5" />
+        مشاهدهٔ کالکسیون
+        <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
       </Link>
     </div>
   );
@@ -131,17 +131,17 @@ export function EmptyWishlist() {
         <Heart className="h-5 w-5 text-ink" />
       </span>
       <p className="mt-6 font-display text-3xl text-ink lg:text-4xl">
-        Nothing saved yet.
+        هنوز چیزی ذخیره نشده.
       </p>
       <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-ink-soft">
-        Heart a piece to keep it here. Wishlist items persist for ninety days.
+        یک تکه را نشانه‌گذاری کنید تا اینجا نگه داشته شود. علاقه‌مندی‌ها تا نود روز ماندگارند.
       </p>
       <Link
         to="/shop"
         className="mt-8 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
       >
-        Browse Catalogue
-        <ArrowRight className="h-3.5 w-3.5" />
+        گشت در کالکسیون
+        <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
       </Link>
     </div>
   );
@@ -151,10 +151,10 @@ export function EmptyOrders() {
   return (
     <EmptyState
       icon={<Package className="h-5 w-5 text-ink" />}
-      eyebrow="Orders"
-      title="هنوز جای‌گذاری‌ای انجام نشده است."
-      body="When you place your first order with ÆON, it will appear here with its tracking number, the makers involved, and your replenishment allowance."
-      cta={{ label: "شروع یک تکه", to: "/shop" }}
+      eyebrow="سفارش‌ها"
+      title="هنوز سفارشی ثبت نشده است."
+      body="با اولین سفارش شما در لونا، این صفحه شامل کد پیگیری، نام سازندگان و دستور تکرار بعدی شما خواهد شد."
+      cta={{ label: "انتخاب یک تکه", to: "/shop" }}
     />
   );
 }
@@ -163,9 +163,9 @@ export function EmptyFilter({ onReset }: { onReset: () => void }) {
   return (
     <EmptyState
       icon={<SlidersHorizontal className="h-5 w-5 text-ink" />}
-      eyebrow="Filtered"
+      eyebrow="فیلتر شده"
       title="هیچ تکه‌ای با انتخاب فعلی هم‌خوانی ندارد."
-      body="Try loosening the price ceiling, removing colour or size filters, or returning to the full catalogue."
+      body="کران بالای قیمت را کمی بازتر کنید، فیلتر رنگ یا سایز را بردارید، یا به کاتالوگ کامل بازگردید."
       action={{ label: "بازنشانی فیلترها", onClick: onReset }}
     />
   );

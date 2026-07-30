@@ -19,7 +19,7 @@ import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import {
   Archive,
-  ArrowRight,
+  ArrowLeft,
   Copy,
   Edit3,
   Filter,
@@ -43,7 +43,14 @@ import { formatPrice } from "@/lib/format";
 
 type ProductRow = Doc<"products">;
 
-const STATUS_FILTERS = ["all", "draft", "published", "archived"] as const;
+const STATUS_FILTERS = [
+  { value: "all", label: "همه" },
+  { value: "draft", label: "پیش‌نویس" },
+  { value: "published", label: "منتشر شده" },
+  { value: "archived", label: "آرشیو شده" },
+] as const;
+
+type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];
 
 export default function ProductList() {
   const products = useQuery(api.admin_products.listForAdmin, {});
@@ -52,8 +59,7 @@ export default function ProductList() {
   const duplicate = useMutation(api.admin_products.duplicate);
 
   const [query, setQuery] = React.useState("");
-  const [status, setStatus] =
-    React.useState<(typeof STATUS_FILTERS)[number]>("all");
+  const [status, setStatus] = React.useState<StatusFilterValue>("all");
   const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
@@ -81,7 +87,7 @@ export default function ProductList() {
     });
   };
 
-  const bulkAction = (selectedKeys.size > 0 && (
+  const bulkAction = selectedKeys.size > 0 ? (
     <div className="flex items-center gap-2">
       <button
         type="button"
@@ -91,7 +97,7 @@ export default function ProductList() {
         }}
         className="rounded-full bg-canvas/40 px-2 py-1 text-[10px] uppercase tracking-[0.18em] hover:bg-canvas/60"
       >
-        Archive
+        بایگانی
       </button>
       <button
         type="button"
@@ -101,10 +107,10 @@ export default function ProductList() {
         }}
         className="rounded-full bg-canvas/40 px-2 py-1 text-[10px] uppercase tracking-[0.18em] hover:bg-canvas/60"
       >
-        Publish
+        انتشار
       </button>
     </div>
-  ));
+  ) : null;
 
   const columns: AdminTableColumn<ProductRow>[] = [
     {
@@ -115,7 +121,7 @@ export default function ProductList() {
     },
     {
       key: "name",
-      header: "Title",
+      header: "عنوان",
       sortable: true,
       sortValue: (row) => row.name,
       cell: (row) => (
@@ -124,7 +130,7 @@ export default function ProductList() {
           className="block transition hover:text-primary"
         >
           <p className="font-display text-base leading-tight text-ink">
-            {row.name || "Untitled"}
+            {row.name || "بدون عنوان"}
           </p>
           <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
             {row.slug}
@@ -134,7 +140,7 @@ export default function ProductList() {
     },
     {
       key: "category",
-      header: "Category",
+      header: "دسته‌بندی",
       cell: (row) => (
         <span className="text-xs uppercase tracking-[0.16em] text-ink-soft">
           {row.category}
@@ -143,12 +149,12 @@ export default function ProductList() {
     },
     {
       key: "status",
-      header: "Status",
+      header: "وضعیت",
       cell: (row) => <StatusBadge status={row.status as StatusKind} />,
     },
     {
       key: "price",
-      header: "Price",
+      header: "قیمت",
       cell: (row) => (
         <span className="font-medium text-ink type-caption">
           {row.priceCents > 0 ? formatPrice(row.priceCents / 100) : "—"}
@@ -157,7 +163,7 @@ export default function ProductList() {
     },
     {
       key: "flags",
-      header: "Flags",
+      header: "نشان‌ها",
       cell: (row) => (
         <div className="flex flex-wrap items-center gap-1">
           {row.featured ? (
@@ -185,10 +191,10 @@ export default function ProductList() {
     },
     {
       key: "created",
-      header: "Created",
+      header: "تاریخ ایجاد",
       cell: (row) => (
         <span className="text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-          {new Date(row._creationTime).toLocaleDateString()}
+          {new Date(row._creationTime).toLocaleDateString("fa-IR")}
         </span>
       ),
     },
@@ -213,11 +219,11 @@ export default function ProductList() {
         <div>
           <p className="type-eyebrow text-ink-muted">کاتالوگ</p>
           <h1 className="mt-2 font-display text-4xl text-ink lg:text-5xl">
-            Products
+            محصولات
           </h1>
           <p className="mt-2 max-w-xl text-sm text-ink-soft">
-            Every piece in the ÆON catalogue — drafts, published, archived —
-            in one searchable table.
+            تمام تکه‌های لونا — پیش‌نویس، منتشر شده و آرشیو شده — در یک جدول
+            قابل جست‌وجو.
           </p>
         </div>
         <Link
@@ -237,21 +243,21 @@ export default function ProductList() {
         <Filter className="h-3.5 w-3.5 text-ink-muted" />
         {STATUS_FILTERS.map((filter) => (
           <button
-            key={filter}
+            key={filter.value}
             type="button"
-            onClick={() => setStatus(filter)}
+            onClick={() => setStatus(filter.value)}
             className={cn(
               "rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] transition",
-              status === filter
+              status === filter.value
                 ? "bg-ink text-canvas"
                 : "hairline bg-canvas/70 text-ink-soft hover:bg-white",
             )}
           >
-            {filter}
+            {filter.label}
           </button>
         ))}
         <span className="ml-auto text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          {rows.length} of {products?.length ?? 0}
+          {rows.length} از {products?.length ?? 0}
         </span>
       </motion.div>
 
@@ -260,7 +266,7 @@ export default function ProductList() {
         rowKey={(row) => row._id}
         columns={columns}
         isLoading={products === undefined}
-        searchPlaceholder="Search by name, slug, collection…"
+        searchPlaceholder="جست‌وجو بر اساس نام، اسلاگ یا کالکسیون…"
         searchValue={query}
         onSearchChange={setQuery}
         selectedKeys={[...selectedKeys]}
@@ -270,13 +276,13 @@ export default function ProductList() {
           <AdminEmptyState
             title={
               products && products.length > 0
-                ? "No matches."
-                : "No products drafted yet."
+                ? "نتیجه‌ای پیدا نشد."
+                : "هنوز محصولی پیش‌نویس نشده است."
             }
             body={
               products && products.length > 0
-                ? "Try loosening the status filter or search."
-                : "Hit New product above to open the first draft."
+                ? "فیلتر وضعیت یا جست‌وجو را کمی بازتر کنید."
+                : "برای شروع، روی «محصول تازه» در بالا کلیک کنید."
             }
             icon={<Package className="h-5 w-5" />}
             action={
@@ -284,7 +290,7 @@ export default function ProductList() {
                 to="/admin/products/new"
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
               >
-                Begin a draft <ArrowRight className="h-3.5 w-3.5" />
+                شروع یک پیش‌نویس <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />
               </Link>
             }
           />
@@ -354,7 +360,7 @@ function RowActions({
     <div className="flex items-center justify-end gap-1">
       <Link
         to={`/admin/products/${row._id}`}
-        aria-label="Edit"
+        aria-label="ویرایش"
         className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white"
       >
         <Edit3 className="h-3.5 w-3.5 text-ink" />
@@ -404,7 +410,7 @@ function RowActions({
               setBusy(false);
             }
           }}
-          aria-label="Archive"
+          aria-label="بایگانی"
           className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
         >
           <Archive className="h-3.5 w-3.5 text-ink" />

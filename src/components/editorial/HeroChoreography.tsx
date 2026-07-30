@@ -13,8 +13,8 @@ const MotionDiv = motion.div;
 const MotionDl = motion.dl;
 
 const STATS = [
-  { label: "تکه‌های فعال", value: "184" },
-  { label: "کارگاه", value: "11" },
+  { label: "تکه‌های فعال", value: "۱۸۴" },
+  { label: "کارگاه", value: "۱۱" },
   { label: "سال‌های اصلاح", value: "XIV" },
 ];
 
@@ -84,13 +84,13 @@ export function HeroChoreography() {
           >
             <span className="h-px w-10 bg-ink/40" />
             <p className="type-eyebrow text-ink-muted">
-              Volume XII · Autumn — Winter
+              دورهٔ دوازدهم · پاییز — زمستان
             </p>
           </MotionDiv>
 
-          <h1 className="mt-8 font-display text-[clamp(3rem,9vw,8.5rem)] font-light leading-[0.92] tracking-[-0.02em] text-ink">
+          <h1 className="mt-8 font-display text-[clamp(3rem,9vw,8.5rem)] font-light leading-[1.05] tracking-[-0.01em] text-ink">
             {reduced ? (
-              "Considered objects, quietly distinguished."
+              "تکه‌هایی سنجیده، آرام و شایسته."
             ) : (
               <>
                 <TextReveal
@@ -100,7 +100,7 @@ export function HeroChoreography() {
                   delay={0.15}
                   className="block"
                 >
-                  Considered objects,
+                  تکه‌هایی سنجیده،
                 </TextReveal>
                 <TextReveal
                   asRoot="span"
@@ -109,7 +109,7 @@ export function HeroChoreography() {
                   delay={0.55}
                   className="block italic text-primary"
                 >
-                  quietly distinguished.
+                  آرام و شایسته.
                 </TextReveal>
               </>
             )}
@@ -119,11 +119,10 @@ export function HeroChoreography() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: EASE_LUXURY, delay: 1.1 }}
-            className="mt-10 max-w-xl text-base leading-relaxed text-ink-soft lg:text-lg"
+            className="mt-10 max-w-xl text-base leading-[1.85] text-ink-soft lg:text-lg"
           >
-            ÆON is an editorial house of garments and objects. Made in small
-            numbers by our ateliers in Florence, Naples and Kyoto — designed to
-            be kept.
+            لونا خانه‌ای ادیتوریال برای لباس‌ها و تکه‌های آرام است. در
+            تهران، اصفهان و شیراز با تعداد محدود تولید می‌شود — برای ماندن.
           </MotionParagraph>
 
           <MotionDiv
@@ -137,7 +136,7 @@ export function HeroChoreography() {
               className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-ink px-6 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
             >
               <span className="relative z-10">خرید</span>
-              <ArrowRight className="relative z-10 h-4 w-4 transition group-hover:translate-x-1" />
+              <ArrowRight className="relative z-10 h-4 w-4 transition group-hover:-translate-x-1 rtl:group-hover:translate-x-1" />
               <MotionDiv
                 aria-hidden
                 initial={{ x: "-120%" }}
@@ -147,11 +146,11 @@ export function HeroChoreography() {
               />
             </Link>
             <Link
-              to="/collections/autumn-winter"
+              to="/collections"
               className="group inline-flex items-center gap-3 rounded-full glass-subtle px-5 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-ink transition hover:bg-white/60"
             >
-              Read the Editorial
-              <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              مطالعهٔ مجله
+              <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
             </Link>
           </MotionDiv>
 
@@ -204,10 +203,10 @@ export function HeroChoreography() {
           >
             <div className="gradient-oat relative h-full w-full overflow-hidden rounded-3xl ring-1 ring-inset ring-white/40">
               <div className="absolute inset-x-0 bottom-0 p-6 font-display text-2xl text-ink/80">
-                01
+                ۰۱
               </div>
               <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-ink/55">
-                ÆON
+                LONA
               </span>
             </div>
           </ImageMaskReveal>
@@ -236,10 +235,10 @@ export function HeroChoreography() {
                 className="gradient-mist relative h-full w-full overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45 shadow-float"
               >
                 <div className="absolute inset-x-0 bottom-0 p-6 font-display text-2xl text-ink/80">
-                  02
+                  ۰۲
                 </div>
                 <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-ink/55">
-                  ÆON
+                  LONA
                 </span>
               </MotionDiv>
             </ImageMaskReveal>
@@ -253,10 +252,10 @@ export function HeroChoreography() {
           >
             <div className="gradient-deep relative h-full w-full overflow-hidden rounded-3xl ring-1 ring-inset ring-white/40">
               <div className="absolute inset-x-0 bottom-0 p-6 font-display text-2xl text-canvas/80">
-                03
+                ۰۳
               </div>
               <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-canvas/60">
-                ÆON
+                LONA
               </span>
             </div>
           </ImageMaskReveal>
@@ -274,7 +273,7 @@ export function HeroChoreography() {
               transition={{ duration: 2.4, repeat: Infinity, ease: EASE_LUXURY }}
               className="h-1.5 w-1.5 rounded-full bg-primary"
             />
-            New Arrivals · 14 pieces
+            تازه‌ها · ۱۴ تکه
           </MotionDiv>
         </MotionDiv>
       </div>

@@ -43,7 +43,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         className="absolute left-0 top-0 h-full w-[88%] max-w-sm glass-strong overflow-y-auto p-8"
       >
         <div className="flex items-center justify-between">
-          <span className="font-display text-2xl tracking-[0.36em] text-ink">ÆON</span>
+          <span className="font-display text-2xl tracking-[0.36em] text-ink">LONA</span>
           <button
             onClick={onClose}
             className="grid h-10 w-10 place-items-center rounded-full hairline text-ink hover:bg-white/60"
@@ -67,7 +67,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         </ul>
         <div className="mt-16 flex flex-col gap-2 text-xs text-ink-muted">
           <span>تأسیس ۱۳۹۸</span>
-          <span>New York · Florence · Kyoto</span>
+          <span>تهران · اصفهان · شیراز</span>
         </div>
       </motion.aside>
     </motion.div>

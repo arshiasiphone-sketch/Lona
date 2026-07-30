@@ -17,9 +17,9 @@ const gradientMap: Record<string, string> = {
 const gradientFor = (key: string): string => gradientMap[key] ?? "gradient-oat";
 
 const categoryLabel: Record<string, string> = {
-  journal: "Journal",
-  atelier: "From the Atelier",
-  campaign: "Campaign",
+  journal: "مجله",
+  atelier: "یادداشت کارگاه",
+  campaign: "کالکسیون",
 };
 
 export default function Press() {
@@ -30,11 +30,11 @@ export default function Press() {
       <header>
         <p className="type-eyebrow text-ink-muted">مجلهٔ لونا</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-8xl">
-          Long form from the house.
+          روایت‌های بلند خانهٔ لونا.
         </h1>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-ink-soft lg:text-base">
-          Essays, atelier notes, and campaign archives — published when there is
-          something to say and not before.
+          نوشته‌ها، یادداشت‌های کارگاه و آرشیو کالکسیون‌ها — هر زمان که سخنی
+          برای گفتن باشد، نه زودتر.
         </p>
       </header>
 
@@ -57,8 +57,8 @@ export default function Press() {
                 {hero.excerpt}
               </p>
               <span className="mt-6 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink">
-                Read
-                <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                ادامه
+                <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
               </span>
             </div>
           </div>
@@ -105,8 +105,8 @@ export default function Press() {
                       e.cover === "deep" ? "text-canvas" : "text-ink"
                     )}
                   >
-                    Read
-                    <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    ادامه
+                    <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
                   </span>
                 </div>
               </div>
@@ -118,7 +118,7 @@ export default function Press() {
       <div className="mt-24 text-center">
         <p className="font-display text-lg text-ink-muted">داستان‌های بیشتر در راه است.</p>
         <p className="mt-2 text-sm text-ink-muted">
-          Subscribe to the seasonal letter at the foot of any page.
+          برای دریافت نامهٔ فصلی، ایمیل خود را در پایان همین صفحه ثبت کنید.
         </p>
       </div>
     </div>
