@@ -406,7 +406,7 @@ export function AdminTable<T>({
           {selectedKeys && selectedKeys.length > 0 ? (
             <div className="flex items-center gap-2 rounded-full bg-ink px-3 py-1.5 text-canvas">
               <span className="text-[11px] uppercase tracking-[0.18em]">
-                {selectedKeys.length} selected
+                {selectedKeys.length.toLocaleString("fa-IR")} انتخاب شده
               </span>
               {bulkAction}
             </div>
@@ -453,7 +453,7 @@ export function AdminTable<T>({
                   colSpan={columns.length + (onToggleRow ? 1 : 0)}
                   className="px-6 py-12 text-center text-sm text-ink-muted"
                 >
-                  {empty ?? "No records yet."}
+                  {empty ?? "هنوز موردی ثبت نشده است."}
                 </td>
               </tr>
             ) : (
