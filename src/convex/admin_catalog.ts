@@ -92,6 +92,85 @@ export const archiveCategory = mutation({
   },
 });
 
+/** Restore an archived / hidden category back to visible. */
+export const restoreCategory = mutation({
+  args: { id: v.id("categories") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { visible: true });
+    await audit(ctx, user, "category.restore", "categories", id);
+    return id;
+  },
+});
+
+/**
+ * Bulk reorder categories — atomic reorder of `order` field. The
+ * caller (tree UI) supplies ids in the new top-to-bottom order.
+ */
+export const reorderCategories = mutation({
+  args: { order: v.array(v.id("categories")) },
+  handler: async (ctx, { order }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    for (let i = 0; i < order.length; i++) {
+      await ctx.db.patch(order[i], { order: i });
+    }
+    await audit(ctx, user, "category.reorder", "categories", undefined, {
+      count: order.length,
+    });
+    return order.length;
+  },
+});
+
+/**
+ * Counts products linked to a category. Used by the admin UI to
+ * surface a delete-safety confirmation when a category still holds
+ * inventory we don't want to orphan.
+ */
+export const categoryProductCount = query({
+  args: { id: v.id("categories") },
+  handler: async (ctx, { id }) => {
+    await requirePermission(ctx, "manage_products");
+    const slug = await ctx.db.get(id);
+    if (!slug) return 0;
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_category", (q) =>
+        q.eq("category", slug.name as Parameters<typeof q.eq>[1]),
+      )
+      .collect();
+    return products.length;
+  },
+});
+
+/**
+ * Hard-delete with safety. Refuses if any product is still tagged
+ * with this category's name; the admin must archive or move products
+ * first. We never hard-delete categories that still hold products,
+ * because the storefront's product filter would 404 on stale slugs.
+ */
+export const deleteCategory = mutation({
+  args: { id: v.id("categories") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const cat = await ctx.db.get(id);
+    if (!cat) return { deleted: false as const };
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_category", (q) =>
+        q.eq("category", cat.name as Parameters<typeof q.eq>[1]),
+      )
+      .collect();
+    if (products.length > 0) {
+      throw new Error(
+        `CATEGORY_NOT_EMPTY:${products.length} products still linked`,
+      );
+    }
+    await ctx.db.delete(id);
+    await audit(ctx, user, "category.delete", "categories", id);
+    return { deleted: true as const };
+  },
+});
+
 /* ────────────────────────────────────────────────────────────
  * COLLECTIONS
  * ──────────────────────────────────────────────────────────── */
@@ -109,6 +188,79 @@ export const getCollectionById = query({
   handler: async (ctx, { id }) => {
     await requirePermission(ctx, "manage_products");
     return await ctx.db.get(id);
+  },
+});
+
+/**
+ * Archive a collection (soft-disable, products keep the slug). Useful
+ * to retire a seasonal collection without losing product links.
+ */
+export const archiveCollection = mutation({
+  args: { id: v.id("collections") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { visible: false });
+    await audit(ctx, user, "collection.archive", "collections", id);
+    return id;
+  },
+});
+
+/**
+ * Restore an archived collection to visible.
+ */
+export const restoreCollection = mutation({
+  args: { id: v.id("collections") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { visible: true });
+    await audit(ctx, user, "collection.restore", "collections", id);
+    return id;
+  },
+});
+
+/**
+ * Replace the ordered list of product slugs attached to a collection.
+ * The storefront renders products in this exact order; `order` 0 is
+ * the lead product on the collection landing page.
+ */
+export const setCollectionProducts = mutation({
+  args: {
+    id: v.id("collections"),
+    productSlugs: v.array(v.string()),
+  },
+  handler: async (ctx, { id, productSlugs }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    await ctx.db.patch(id, { productSlugs });
+    await audit(ctx, user, "collection.setProducts", "collections", id, {
+      count: productSlugs.length,
+    });
+    return id;
+  },
+});
+
+/**
+ * Hard-delete a collection. Refuses if it's still the primary
+ * `collectionSlug` referenced by any product so historical product
+ * pages don't break.
+ */
+export const deleteCollection = mutation({
+  args: { id: v.id("collections") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_products");
+    const col = await ctx.db.get(id);
+    if (!col) return { deleted: false as const };
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_collectionSlug", (q) => q.eq("collectionSlug", col.slug))
+      .collect();
+    if (products.length > 0) {
+      throw new Error(
+        `COLLECTION_NOT_EMPTY:${products.length} products still linked`,
+      );
+    }
+    await ctx.db.delete(id);
+    await audit(ctx, user, "collection.delete", "collections", id);
+    return { deleted: true as const };
   },
 });
 
@@ -254,6 +406,55 @@ export const archiveEditorial = mutation({
     const user = await requirePermission(ctx, "manage_content");
     await ctx.db.patch(id, { status: "archived" });
     await audit(ctx, user, "editorial.archive", "editorials", id);
+    return id;
+  },
+});
+
+/**
+ * Publish a draft editorial — flips status to "published" and stamps
+ * the publish time so the storefront `editorials.ts` query picks it
+ * up.
+ */
+export const publishEditorial = mutation({
+  args: { id: v.id("editorials") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_content");
+    const ed = await ctx.db.get(id);
+    if (!ed) throw new Error("NOT_FOUND");
+    await ctx.db.patch(id, {
+      status: "published",
+      publishedAt: Date.now(),
+    });
+    await audit(ctx, user, "editorial.publish", "editorials", id);
+    return id;
+  },
+});
+
+/**
+ * Move a published editorial back to draft so the storefront hides
+ * it during edits.
+ */
+export const unpublishEditorial = mutation({
+  args: { id: v.id("editorials") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_content");
+    await ctx.db.patch(id, { status: "draft" });
+    await audit(ctx, user, "editorial.unpublish", "editorials", id);
+    return id;
+  },
+});
+
+/**
+ * Hard-delete an editorial. No product / collection referential
+ * integrity to enforce (editorials reference products by slug in
+ * copy but the FK is loose), so we just remove the row.
+ */
+export const deleteEditorial = mutation({
+  args: { id: v.id("editorials") },
+  handler: async (ctx, { id }) => {
+    const user = await requirePermission(ctx, "manage_content");
+    await ctx.db.delete(id);
+    await audit(ctx, user, "editorial.delete", "editorials", id);
     return id;
   },
 });

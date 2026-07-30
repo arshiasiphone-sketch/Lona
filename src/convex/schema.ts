@@ -469,6 +469,42 @@ const schema = defineSchema(
       updatedAt: v.number(),
       updatedBy: v.optional(v.id("users")),
     }).index("by_key", ["key"]),
+
+    /**
+     * Phase 5.2 — Media library assets that are NOT tied to a
+     * product. Distinct from `product_images` so brand assets
+     * (editorial covers, homepage backgrounds, lookbook spreads,
+     * Instagram raw shots) live in their own pool with their own
+     * alt-text edits, captions and orphan-detection logic. The
+     * admin media page renders both tables in one unified grid.
+     */
+    media_library: defineTable({
+      storageId: v.id("_storage"),
+      filename: v.string(),
+      alt: v.string(),
+      caption: v.optional(v.string()),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+      contentType: v.optional(v.string()),
+      size: v.optional(v.number()),
+      uploadedAt: v.number(),
+    }).index("by_uploadedAt", ["uploadedAt"]),
+
+    /**
+     * Phase 5.2 — Homepage block composition. Stored as one row in
+     * `settings` (key=`homepage_blocks`) by `admin_settings.ts`, but
+     * reserved here so the storefront can also read it directly via
+     * a dedicated subscription without juggling the generic
+     * settings table in two places.
+     */
+    homepage_blocks: defineTable({
+      blockId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      enabled: v.boolean(),
+      order: v.number(),
+      payload: v.any(),
+    }).index("by_order", ["order"]),
   },
   {
     schemaValidation: false,
