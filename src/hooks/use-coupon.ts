@@ -48,7 +48,7 @@ export function useCoupon() {
     ? { code: remote.code, percentOff: remote.percentOff }
     : optimistic;
 
-  const apply = useCallback((raw: string): AppliedCoupon | null => {
+  const apply: (raw: string) => AppliedCoupon | null = useCallback((raw: string): AppliedCoupon | null => {
     const code = raw.trim().toUpperCase();
     setInput(raw);
     setCommitted(code || null);
