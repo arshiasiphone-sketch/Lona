@@ -1,0 +1,919 @@
+{
+  "customer_pages": [
+    {
+      "file": "src/pages/About.tsx",
+      "english_unique": 54,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Auth.tsx",
+      "english_unique": 44,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Cart.tsx",
+      "english_unique": 92,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Checkout.tsx",
+      "english_unique": 117,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Collection.tsx",
+      "english_unique": 37,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Collections.tsx",
+      "english_unique": 26,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Dashboard.tsx",
+      "english_unique": 112,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Landing.tsx",
+      "english_unique": 17,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/NotFound.tsx",
+      "english_unique": 14,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Press.tsx",
+      "english_unique": 36,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Product.tsx",
+      "english_unique": 73,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Search.tsx",
+      "english_unique": 74,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Shop.tsx",
+      "english_unique": 75,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/Wishlist.tsx",
+      "english_unique": 23,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/AdminDashboard.tsx",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/_Stub.tsx",
+      "english_unique": 34,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/products/ProductList.tsx",
+      "english_unique": 87,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/products/ProductWizard.tsx",
+      "english_unique": 163,
+      "persian_count": 0
+    }
+  ],
+  "admin_pages": [
+    {
+      "file": "src/pages/admin/AdminDashboard.tsx",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/_Stub.tsx",
+      "english_unique": 34,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/products/ProductList.tsx",
+      "english_unique": 87,
+      "persian_count": 0
+    },
+    {
+      "file": "src/pages/admin/products/ProductWizard.tsx",
+      "english_unique": 163,
+      "persian_count": 0
+    }
+  ],
+  "global_chrome": [
+    {
+      "file": "src/components/global/CommandPalette.tsx",
+      "english_unique": 27,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/global/GlobalOverlays.tsx",
+      "english_unique": 2,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/global/RecentlyViewed.tsx",
+      "english_unique": 40,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/global/SideCart.tsx",
+      "english_unique": 97,
+      "persian_count": 0
+    }
+  ],
+  "layouts": [
+    {
+      "file": "src/components/layout/Footer.tsx",
+      "english_unique": 42,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/layout/MobileNav.tsx",
+      "english_unique": 22,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/layout/Navbar.tsx",
+      "english_unique": 53,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/layout/PageShell.tsx",
+      "english_unique": 15,
+      "persian_count": 0
+    }
+  ],
+  "motion": [
+    {
+      "file": "src/components/motion/Cursor.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/FlyToBag.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/HoverGlow.tsx",
+      "english_unique": 7,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/ImageMaskReveal.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/MagneticHover.tsx",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/PageTransition.tsx",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/PressScale.tsx",
+      "english_unique": 4,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/Reveal.tsx",
+      "english_unique": 13,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/RouteProgressBar.tsx",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/ScrollProgress.tsx",
+      "english_unique": 5,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/SectionReveal.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/motion/TextReveal.tsx",
+      "english_unique": 16,
+      "persian_count": 0
+    }
+  ],
+  "product": [
+    {
+      "file": "src/components/product/BundleSuggestions.tsx",
+      "english_unique": 63,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/product/ProductCard.tsx",
+      "english_unique": 58,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/product/ProductGallery.tsx",
+      "english_unique": 61,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/product/ProductGrid.tsx",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/product/ShippingEstimator.tsx",
+      "english_unique": 33,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/product/VariantPicker.tsx",
+      "english_unique": 28,
+      "persian_count": 0
+    }
+  ],
+  "customer": [
+    {
+      "file": "src/components/customer/EmptyStates.tsx",
+      "english_unique": 33,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/customer/FiltersPanel.tsx",
+      "english_unique": 65,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/customer/InfiniteSentinel.tsx",
+      "english_unique": 7,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/customer/ListCard.tsx",
+      "english_unique": 50,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/customer/SortDropdown.tsx",
+      "english_unique": 18,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/customer/ViewToggle.tsx",
+      "english_unique": 17,
+      "persian_count": 0
+    }
+  ],
+  "editorial": [
+    {
+      "file": "src/components/editorial/Benefits.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Bestsellers.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/BrandManifesto.tsx",
+      "english_unique": 14,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/BrandStory.tsx",
+      "english_unique": 13,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/CategoryGrid.tsx",
+      "english_unique": 21,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/EditorialStory.tsx",
+      "english_unique": 11,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/FeaturedCollections.tsx",
+      "english_unique": 29,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Hero.tsx",
+      "english_unique": 27,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/HeroChoreography.tsx",
+      "english_unique": 56,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/InstagramGallery.tsx",
+      "english_unique": 18,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Lookbook.tsx",
+      "english_unique": 23,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Marquee.tsx",
+      "english_unique": 5,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Recommendations.tsx",
+      "english_unique": 11,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/Testimonials.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/editorial/TrendingProducts.tsx",
+      "english_unique": 11,
+      "persian_count": 0
+    }
+  ],
+  "admin": [
+    {
+      "file": "src/components/admin/MediaUploader.tsx",
+      "english_unique": 79,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/admin/RequireRole.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/admin/VariantEditor.tsx",
+      "english_unique": 57,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/admin/index.tsx",
+      "english_unique": 118,
+      "persian_count": 0
+    }
+  ],
+  "brand": [
+    {
+      "file": "src/components/brand/LonaLogo.tsx",
+      "english_unique": 33,
+      "persian_count": 0
+    }
+  ],
+  "ui": [
+    {
+      "file": "src/components/ui/GlassCard.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/ProductImage.tsx",
+      "english_unique": 43,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/accordion.tsx",
+      "english_unique": 14,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/alert-dialog.tsx",
+      "english_unique": 21,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/alert.tsx",
+      "english_unique": 13,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/aspect-ratio.tsx",
+      "english_unique": 3,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/avatar.tsx",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/badge.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/breadcrumb.tsx",
+      "english_unique": 24,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/button-group.tsx",
+      "english_unique": 15,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/button.tsx",
+      "english_unique": 21,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/calendar.tsx",
+      "english_unique": 47,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/card.tsx",
+      "english_unique": 17,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/carousel.tsx",
+      "english_unique": 37,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/chart.tsx",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/checkbox.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/collapsible.tsx",
+      "english_unique": 4,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/command.tsx",
+      "english_unique": 30,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/context-menu.tsx",
+      "english_unique": 35,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/dialog.tsx",
+      "english_unique": 23,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/drawer.tsx",
+      "english_unique": 26,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/dropdown-menu.tsx",
+      "english_unique": 34,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/empty.tsx",
+      "english_unique": 18,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/field.tsx",
+      "english_unique": 49,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/form.tsx",
+      "english_unique": 23,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/hover-card.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/input-group.tsx",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/input-otp.tsx",
+      "english_unique": 15,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/input.tsx",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/item.tsx",
+      "english_unique": 36,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/kbd.tsx",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/label.tsx",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/menubar.tsx",
+      "english_unique": 38,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/navigation-menu.tsx",
+      "english_unique": 26,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/pagination.tsx",
+      "english_unique": 28,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/popover.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/progress.tsx",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/radio-group.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/resizable.tsx",
+      "english_unique": 11,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/scroll-area.tsx",
+      "english_unique": 16,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/select.tsx",
+      "english_unique": 31,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/separator.tsx",
+      "english_unique": 7,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/sheet.tsx",
+      "english_unique": 32,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/sidebar.tsx",
+      "english_unique": 151,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/skeleton.tsx",
+      "english_unique": 4,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/slider.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/sonner.tsx",
+      "english_unique": 16,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/spinner.tsx",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/switch.tsx",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/table.tsx",
+      "english_unique": 24,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/tabs.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/textarea.tsx",
+      "english_unique": 4,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/toggle-group.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/toggle.tsx",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/tooltip.tsx",
+      "english_unique": 10,
+      "persian_count": 0
+    },
+    {
+      "file": "src/components/ui/index.ts",
+      "english_unique": 49,
+      "persian_count": 0
+    }
+  ],
+  "data_layer": [
+    {
+      "file": "src/data/catalog.ts",
+      "english_unique": 50,
+      "persian_count": 0
+    },
+    {
+      "file": "src/data/lona-catalog.ts",
+      "english_unique": 145,
+      "persian_count": 0
+    }
+  ],
+  "lib_data": [
+    {
+      "file": "src/lib/data/catalog.ts",
+      "english_unique": 51,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/data/permissions.ts",
+      "english_unique": 33,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/data/session.ts",
+      "english_unique": 7,
+      "persian_count": 0
+    }
+  ],
+  "convex_admin": [
+    {
+      "file": "src/convex/_generated/api.d.ts",
+      "english_unique": 31,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/_generated/dataModel.d.ts",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/_generated/server.d.ts",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/_helpers.ts",
+      "english_unique": 25,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/addresses.ts",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/admin.ts",
+      "english_unique": 22,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/admin_bootstrap.ts",
+      "english_unique": 18,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/admin_catalog.ts",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/admin_orders.ts",
+      "english_unique": 36,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/admin_products.ts",
+      "english_unique": 73,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/auth/emailOtp.ts",
+      "english_unique": 7,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/auth.config.ts",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/auth.ts",
+      "english_unique": 3,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/cart.ts",
+      "english_unique": 13,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/categories.ts",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/collections.ts",
+      "english_unique": 20,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/coupons.ts",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/editorials.ts",
+      "english_unique": 16,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/http.ts",
+      "english_unique": 2,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/orders.ts",
+      "english_unique": 45,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/preferences.ts",
+      "english_unique": 9,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/products.ts",
+      "english_unique": 26,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/recentlyViewed.ts",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/reviews.ts",
+      "english_unique": 14,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/schema.ts",
+      "english_unique": 101,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/seed.ts",
+      "english_unique": 64,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/users.ts",
+      "english_unique": 2,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/validators.ts",
+      "english_unique": 63,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/variants.ts",
+      "english_unique": 19,
+      "persian_count": 0
+    },
+    {
+      "file": "src/convex/wishlist.ts",
+      "english_unique": 14,
+      "persian_count": 0
+    }
+  ],
+  "lib_db": [
+    {
+      "file": "src/lib/data/catalog.ts",
+      "english_unique": 51,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/data/permissions.ts",
+      "english_unique": 33,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/data/session.ts",
+      "english_unique": 7,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/format.ts",
+      "english_unique": 12,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/glass.ts",
+      "english_unique": 6,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/motion.ts",
+      "english_unique": 8,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/toast.ts",
+      "english_unique": 1,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/utils.ts",
+      "english_unique": 2,
+      "persian_count": 0
+    },
+    {
+      "file": "src/lib/vly-integrations.ts",
+      "english_unique": 2,
+      "persian_count": 0
+    }
+  ],
+  "pages_index": [
+    {
+      "file": "index.html",
+      "english_unique": 19,
+      "persian_count": 0
+    },
+    {
+      "file": "src/main.tsx",
+      "english_unique": 57,
+      "persian_count": 0
+    },
+    {
+      "file": "src/instrumentation.tsx",
+      "english_unique": 41,
+      "persian_count": 0
+    }
+  ]
+}
