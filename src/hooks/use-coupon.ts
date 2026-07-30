@@ -21,13 +21,30 @@ export interface AppliedCoupon {
   percentOff: number;
 }
 
+/**
+ * Explicit return shape for `useCoupon()`.
+ *
+ * Note: defining this as a named interface (instead of inferring through
+ * `ReturnType<typeof useCoupon>`) prevents a subtle TS inference bug
+ * where `["apply"]` resolves to `Function.prototype.apply` (which has
+ * a 2-arg `(thisArg, argsArray)` signature) instead of the property on
+ * the hook's return object. SideCart.tsx dodges this by handwriting the
+ * prop type; Cart.tsx's indexed lookup does not.
+ */
+export interface UseCouponReturn {
+  applied: AppliedCoupon | null;
+  apply: (raw: string) => AppliedCoupon | null;
+  remove: () => void;
+  input: string;
+}
+
 const ALLOW_LIST: Record<string, number> = {
   WELCOME10: 0.10,
   "\u00c6ON15": 0.15,
   PATRON20: 0.20,
 };
 
-export function useCoupon() {
+export function useCoupon(): UseCouponReturn {
   const [input, setInput] = useState<string>("");
   const [committed, setCommitted] = useState<string | null>(null);
 
@@ -48,13 +65,18 @@ export function useCoupon() {
     ? { code: remote.code, percentOff: remote.percentOff }
     : optimistic;
 
-  const apply: (raw: string) => AppliedCoupon | null = useCallback((raw: string): AppliedCoupon | null => {
+  // Plain arrow (NOT useCallback) so the function type stays exactly
+  // `(raw: string) => AppliedCoupon | null`. React's old
+  // `useCallback<T extends Function>` generic widens to `Function` and
+  // loses the parameter count, which propagates through `ReturnType`
+  // to Cart.tsx:307 ("Expected 2 arguments, but got 1").
+  const apply = (raw: string): AppliedCoupon | null => {
     const code = raw.trim().toUpperCase();
     setInput(raw);
     setCommitted(code || null);
     if (!code) return null;
     return ALLOW_LIST[code] ? { code, percentOff: ALLOW_LIST[code] } : null;
-  }, []);
+  };
 
   const remove = useCallback(() => {
     setCommitted(null);

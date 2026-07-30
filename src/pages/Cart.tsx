@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, X, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useCart, type CartLine } from "@/hooks/use-cart";
-import { useCoupon } from "@/hooks/use-coupon";
+import { useCoupon, type UseCouponReturn } from "@/hooks/use-coupon";
 import { getProductById, products, type Product } from "@/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn, glassClass } from "@/lib/glass";
@@ -267,9 +267,9 @@ function CouponInput({
   onApply,
   onRemove,
 }: {
-  applied: ReturnType<typeof useCoupon>["applied"];
-  onApply: ReturnType<typeof useCoupon>["apply"];
-  onRemove: ReturnType<typeof useCoupon>["remove"];
+  applied: UseCouponReturn["applied"];
+  onApply: UseCouponReturn["apply"];
+  onRemove: UseCouponReturn["remove"];
 }) {
   const [code, setCode] = useState(applied?.code ?? "");
   return (
