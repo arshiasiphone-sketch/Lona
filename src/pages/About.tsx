@@ -6,25 +6,36 @@ import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { EASE_LUXURY } from "@/lib/motion";
 
 const stores = [
-  { city: "Milan", address: "Via dei Giardini 14, 20121", hours: "Mon — Sat · 11:00 — 19:00" },
-  { city: "New York", address: "118 Greene Street, SoHo", hours: "Tue — Sun · 11:00 — 19:00" },
-  { city: "Kyoto", address: "47 Higashiyama-ku, Gion", hours: "Wed — Mon · 11:00 — 19:00" },
+  {
+    city: "تهران",
+    address: "خیابان ولیعصر، پلاک ۲۵۶۸، طبقهٔ همکف",
+    hours: "شنبه تا چهارشنبه · ۱۰:۰۰ تا ۲۱:۰۰",
+  },
+  {
+    city: "اصفهان",
+    address: "چهارباغ عباسی، کوچهٔ جهان‌نما، پلاک ۱۲",
+    hours: "شنبه تا پنجشنبه · ۱۱:۰۰ تا ۲۲:۰۰",
+  },
+  {
+    city: "شیراز",
+    address: "خیابان زند، پلاک ۴۲، بوستان سعادت",
+    hours: "یکشنبه تا جمعه · ۱۰:۳۰ تا ۲۰:۳۰",
+  },
 ];
 
 export default function About() {
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="max-w-4xl">
-        <p className="type-eyebrow text-ink-muted">Atelier ÆON</p>
+        <p className="type-eyebrow text-ink-muted">کارگاه لونا</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-9xl">
-          A house for the slow, the durable, the quietly distinguished.
+          خانه‌ای برای آرامش، ماندگاری و ظرافت بی‌صدا.
         </h1>
         <p className="mt-8 text-base leading-relaxed text-ink-soft lg:text-lg">
-          ÆON was founded in 2012 in Florence by a small retinue of textile
-          makers, tailors and quiet patrons. The house is dedicated to
-          producing long-lasting objects — garments in considered cuts,
-          accessories in vegetable-tanned leathers, fragrance in small
-          numbered runs.
+          لونا در سال ۱۳۹۸ در تهران با جمعی کوچک از طراحان پارچه، خیاطان و
+          مشتریان آگاه آغاز شد. این خانه به تولید محصولاتی ماندگار اختصاص
+          دارد — لباس‌های زیر با برش‌های سنجیده، پارچه‌های نرم و لطیف، و
+          جزئیاتی که هر روز حس خوبی به همراه دارند.
         </p>
       </header>
 
@@ -36,43 +47,44 @@ export default function About() {
           transition={{ duration: 0.9, ease: EASE_LUXURY }}
           className="grid gap-12 lg:grid-cols-2"
         >
-          <div className="gradient-oat aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45">
+          <div className="gradient-rose aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45">
             <div className="grid h-full place-items-center text-ink/55">
-              <p className="font-display text-3xl">کارگاه فلورانس</p>
+              <p className="font-display text-3xl">کارگاه تهران</p>
             </div>
           </div>
           <div className="grid gap-6 self-center">
-            <p className="type-eyebrow text-ink-muted">ساخته‌شده با دست</p>
+            <p className="type-eyebrow text-ink-muted">دوخته‌شده با دست</p>
             <h2 className="font-display text-3xl leading-[1.05] text-ink lg:text-4xl">
-              Each piece is finished by a single maker. The label inside is their name.
+              هر قطعه به دست یک نفر تمام می‌شود؛ نام او بر برچسب درج شده است.
             </h2>
             <p className="text-sm leading-relaxed text-ink-soft">
-              ÆON does not believe in mass production. Every garment passes through
-              at least twelve pairs of hands — from the cutter to the finishing
-              presser. Each carries a label inside listing the makers who held it.
+              لونا به تولید انبوه باور ندارد. هر لباس دست‌کم از دوازده جفت
+              دست عبور می‌کند — از برش‌زن تا دوخت آخر. برچسبی درون هر لباس،
+              نام سازندگانی را که آن را در دست گرفته‌اند، با افتخار روایت
+              می‌کند.
             </p>
           </div>
         </motion.div>
       </Reveal>
 
       <EditorialStory
-        eyebrow="Materials"
-        quote="We work with twelve mills, four tanneries, and a single glassworks in Murano. We have worked with them for years. We do not change suppliers for price."
+        eyebrow="پارچه و مواد"
+        quote="ما با دوازده کارخانهٔ پارچه، چهار کارگاه گلدوزی و یک واحد بسته‌بندی در تهران همکاری می‌کنیم. سال‌هاست که با آن‌ها کار می‌کنیم و هرگز برای قمت تأمین‌کننده را تغییر نمی‌دهیم."
         body=""
-        attribution="Lou Bertrand, Founder"
+        attribution="بنیان‌گذار لونا"
       />
 
       {/* Sustainability */}
       <section id="sustainability" className="mt-32">
         <p className="type-eyebrow text-ink-muted">پایداری</p>
         <h2 className="mt-3 font-display text-4xl leading-[1.05] text-ink lg:text-6xl">
-          Slow, by design.
+          کند، به انتخاب خودمان.
         </h2>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {[
-            { stat: "100%", label: "پایه‌ی الیاف طبیعی در سری ماندگار لونا." },
-            { stat: "≤ 4g", label: "میانگین کربن برای هر تکه، ممیزی سالانه." },
-            { stat: "Always", label: "تعمیر، نه تعویض — بازگشت به کارگاه سازنده." },
+            { stat: "۱۰۰٪", label: "الیاف طبیعی در سری ماندگار لونا." },
+            { stat: "≤ ۴ گرم", label: "میانگین کربن برای هر تکه، ممیزی سالانه." },
+            { stat: "همیشه", label: "تعمیر، نه تعویض — بازگشت به کارگاه سازنده." },
           ].map((item, i) => (
             <motion.div
               key={item.label}
@@ -93,14 +105,20 @@ export default function About() {
       <section id="stores" className="mt-32">
         <p className="type-eyebrow text-ink-muted">بوتیک‌ها</p>
         <h2 className="mt-3 font-display text-4xl leading-[1.05] text-ink lg:text-6xl">
-          Three rooms.
+          سه فضا.
         </h2>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft lg:text-base">
+          بوتیک‌های لونا فضاهایی آرام برای تجربهٔ حضوری لباس‌ها هستند؛ جایی
+          برای لمس پارچه، امتحان سایز و گفت‌وگو با مشاوران ما.
+        </p>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {stores.map((s) => (
             <div key={s.city} className="glass rounded-3xl p-8">
               <p className="type-eyebrow text-ink-muted">{s.city}</p>
-              <p className="mt-3 font-display text-2xl text-ink">{s.address}</p>
-              <p className="mt-2 text-sm text-ink-muted">{s.hours}</p>
+              <p className="mt-3 font-display text-2xl leading-[1.25] text-ink">
+                {s.address}
+              </p>
+              <p className="mt-3 text-sm text-ink-muted">{s.hours}</p>
             </div>
           ))}
         </div>
@@ -113,34 +131,41 @@ export default function About() {
             <div>
               <p className="type-eyebrow text-ink-muted">مشاور شخصی</p>
               <h2 className="mt-3 font-display text-3xl leading-[1.05] text-ink lg:text-4xl">
-                Write to the atelier.
+                به کارگاه بنویسید.
               </h2>
-              <p className="mt-4 text-sm text-ink-muted">
-                For fittings, repairs, custom orders or quiet questions. Replies arrive within 24 hours.
+              <p className="mt-4 text-sm leading-relaxed text-ink-muted">
+                برای اندازه‌گیری، تعمیر، سفارش‌های ویژه یا هر پرسش آرام دیگر.
+                پاسخ ما در کمتر از ۲۴ ساعت به دست شما می‌رسد.
               </p>
             </div>
             <ul className="divide-y divide-edge/60">
               <li className="flex items-center gap-3 py-4 text-sm">
                 <Mail className="h-4 w-4 text-ink-muted" />
-                <span className="text-ink">concierge@lona.studio</span>
+                <span dir="ltr" className="text-ink">
+                  concierge@lona.studio
+                </span>
               </li>
               <li className="flex items-center gap-3 py-4 text-sm">
                 <Phone className="h-4 w-4 text-ink-muted" />
-                <span className="text-ink">+1 (212) 555-0192</span>
+                <span dir="ltr" className="text-ink">
+                  +98 ۲۱ ۸۸۲۳ ۴۵۶۷
+                </span>
               </li>
               <li className="flex items-start gap-3 py-4 text-sm">
                 <MapPin className="mt-0.5 h-4 w-4 text-ink-muted" />
-                <span className="text-ink-soft">Via dei Giardini 14, 20121 Milano, IT</span>
+                <span className="text-ink-soft">
+                  خیابان ولیعصر، پلاک ۲۵۶۸، تهران، ایران
+                </span>
               </li>
             </ul>
           </div>
         </div>
         <div className="mt-10 flex items-center justify-between text-sm text-ink-muted">
           <Link to="/shop" className="hover:text-ink">
-            View Catalogue →
+            مشاهدهٔ کالکسیون ←
           </Link>
           <Link to="/press" className="hover:text-ink">
-            Read the Journal →
+            مطالعهٔ مجله ←
           </Link>
         </div>
       </section>
