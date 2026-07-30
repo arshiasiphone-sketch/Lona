@@ -41,7 +41,7 @@ export function ViewToggle() {
       </button>
       <button
         onClick={() => set("list")}
-        aria-label="list view"
+        aria-label="نمای فهرستی"
         aria-pressed={view === "list"}
         className={cn(
           "relative z-10 flex items-center justify-center gap-1.5 rounded-full text-[11px] uppercase tracking-[0.16em] transition",

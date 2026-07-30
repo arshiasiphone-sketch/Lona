@@ -13,7 +13,7 @@ export default function Collection() {
   if (!collection) {
     return (
       <div className="mx-auto max-w-2xl px-6 pt-32 pb-24 text-center">
-        <h1 className="font-display text-3xl text-ink">Collection not found.</h1>
+        <h1 className="font-display text-3xl text-ink">کالکسیون یافت نشد.</h1>
         <Link
           to="/collections"
           className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"

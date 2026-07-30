@@ -28,7 +28,7 @@ export default function Press() {
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>
-        <p className="type-eyebrow text-ink-muted">The Journal</p>
+        <p className="type-eyebrow text-ink-muted">مجلهٔ لونا</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-8xl">
           Long form from the house.
         </h1>
@@ -116,7 +116,7 @@ export default function Press() {
       </div>
 
       <div className="mt-24 text-center">
-        <p className="font-display text-lg text-ink-muted">More to come.</p>
+        <p className="font-display text-lg text-ink-muted">داستان‌های بیشتر در راه است.</p>
         <p className="mt-2 text-sm text-ink-muted">
           Subscribe to the seasonal letter at the foot of any page.
         </p>

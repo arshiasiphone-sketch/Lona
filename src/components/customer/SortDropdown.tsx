@@ -11,11 +11,11 @@ import { ArrowUpDown } from "lucide-react";
 export type ShopSort = "featured" | "newest" | "price_asc" | "price_desc" | "editor_picks";
 
 const SORTS: { id: ShopSort; label: string }[] = [
-  { id: "featured", label: "Featured" },
-  { id: "newest", label: "Newly arrived" },
-  { id: "editor_picks", label: "Editor picks" },
-  { id: "price_asc", label: "Price · Low → High" },
-  { id: "price_desc", label: "Price · High → Low" },
+  { id: "featured", label: "ویژه" },
+  { id: "newest", label: "تازه" },
+  { id: "editor_picks", label: "ویرایش" },
+  { id: "price_asc", label: "قیمت · کم به زیاد" },
+  { id: "price_desc", label: "قیمت · زیاد به کم" },
 ];
 
 export function SortDropdown() {

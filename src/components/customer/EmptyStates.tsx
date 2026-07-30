@@ -95,7 +95,7 @@ export function EmptySearch({
       eyebrow="Search"
       title={`No piece answers to “${query}.”`}
       body="Perhaps try a category, a collection, or a colour — our catalogue is small by design."
-      action={{ label: "Reset filters", onClick: onReset }}
+      action={{ label: "بازنشانی فیلترها", onClick: onReset }}
     />
   );
 }
@@ -106,7 +106,7 @@ export function EmptyCart() {
       <span className="mx-auto grid h-16 w-16 place-items-center rounded-full hairline bg-white/60">
         <ShoppingBag className="h-5 w-5 text-ink" />
       </span>
-      <p className="type-eyebrow mt-6 text-ink-muted">Bag</p>
+      <p className="type-eyebrow mt-6 text-ink-muted">کیف</p>
       <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">
         Quiet, for now.
       </h1>
@@ -152,9 +152,9 @@ export function EmptyOrders() {
     <EmptyState
       icon={<Package className="h-5 w-5 text-ink" />}
       eyebrow="Orders"
-      title="No placements yet."
+      title="هنوز جای‌گذاری‌ای انجام نشده است."
       body="When you place your first order with ÆON, it will appear here with its tracking number, the makers involved, and your replenishment allowance."
-      cta={{ label: "Begin a piece", to: "/shop" }}
+      cta={{ label: "شروع یک تکه", to: "/shop" }}
     />
   );
 }
@@ -164,9 +164,9 @@ export function EmptyFilter({ onReset }: { onReset: () => void }) {
     <EmptyState
       icon={<SlidersHorizontal className="h-5 w-5 text-ink" />}
       eyebrow="Filtered"
-      title="No pieces match the current selection."
+      title="هیچ تکه‌ای با انتخاب فعلی هم‌خوانی ندارد."
       body="Try loosening the price ceiling, removing colour or size filters, or returning to the full catalogue."
-      action={{ label: "Reset filters", onClick: onReset }}
+      action={{ label: "بازنشانی فیلترها", onClick: onReset }}
     />
   );
 }

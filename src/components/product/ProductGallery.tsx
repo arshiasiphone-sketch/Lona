@@ -88,7 +88,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
               setFullscreen(true);
             }}
             className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full glass-strong text-ink transition hover:bg-ink hover:text-canvas"
-            aria-label="Open fullscreen gallery"
+            aria-label="باز کردن"
           >
             <Maximize2 className="h-4 w-4" />
           </button>
@@ -150,7 +150,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
               <button
                 onClick={() => setFullscreen(false)}
                 className="grid h-10 w-10 place-items-center rounded-full border border-canvas/30 text-canvas transition hover:bg-canvas/10"
-                aria-label="Close fullscreen"
+                aria-label="بستن"
               >
                 ✕
               </button>
@@ -180,14 +180,14 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
               <button
                 onClick={() => setActive((a) => (a === 0 ? FRAMES.length - 1 : a - 1))}
                 className="absolute left-6 grid h-12 w-12 place-items-center rounded-full bg-canvas/15 text-canvas backdrop-blur-md transition hover:bg-canvas/25"
-                aria-label="previous image"
+                aria-label="تصویر قبلی"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setActive((a) => (a + 1) % FRAMES.length)}
                 className="absolute right-6 grid h-12 w-12 place-items-center rounded-full bg-canvas/15 text-canvas backdrop-blur-md transition hover:bg-canvas/25"
-                aria-label="next image"
+                aria-label="تصویر بعدی"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

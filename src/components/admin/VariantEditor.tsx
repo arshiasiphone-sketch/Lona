@@ -161,7 +161,7 @@ export function VariantEditor({
               disabled={!dirty || busy}
               className="inline-flex items-center gap-1.5 rounded-full hairline px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-soft transition hover:bg-white disabled:opacity-40"
             >
-              <RotateCcw className="h-3 w-3" /> Reset
+              <RotateCcw className="h-3 w-3" /> بازنشانی
             </button>
             <button
               type="button"
@@ -169,7 +169,7 @@ export function VariantEditor({
               disabled={!dirty || busy}
               className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary disabled:opacity-40"
             >
-              <Save className="h-3 w-3" /> Save variants
+              <Save className="h-3 w-3" /> ذخیرهٔ تنوع‌ها
             </button>
           </div>
         </div>
@@ -203,13 +203,13 @@ export function VariantEditor({
             <table className="w-full text-left text-sm">
               <thead className="bg-canvas-soft text-ink-muted">
                 <tr>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Size</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Colour</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">SKU</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Stock</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">سایز</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">رنگ</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">کد محصول</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">موجودی</th>
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Price Δ¢</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Available</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-right">Manage</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">موجود</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-right">مدیریت</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,7 +268,7 @@ export function VariantEditor({
                               value={
                                 row?.priceCentsOverride === undefined ? "" : row.priceCentsOverride
                               }
-                              placeholder="optional"
+                              placeholder="اختیاری"
                               onChange={(e) =>
                                 rowIdx >= 0 &&
                                 update(rowIdx, {
@@ -319,11 +319,11 @@ export function VariantEditor({
                           >
                             {on ? (
                               <>
-                                <Trash2 className="h-3 w-3" /> Remove
+                                <Trash2 className="h-3 w-3" /> حذف
                               </>
                             ) : (
                               <>
-                                <Plus className="h-3 w-3" /> Add
+                                <Plus className="h-3 w-3" /> افزودن
                               </>
                             )}
                           </button>

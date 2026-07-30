@@ -17,7 +17,7 @@ export function Recommendations() {
     <section className="mx-auto mt-32 max-w-[1728px] px-6 lg:px-10">
       <div className="flex items-end justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Considered for you</p>
+          <p className="type-eyebrow text-ink-muted">برای شما سنجیده شده</p>
           <h2 className="mt-3 font-display text-3xl leading-[1.02] text-ink lg:text-5xl">
             From your last visits
           </h2>

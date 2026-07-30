@@ -24,7 +24,7 @@ export function VariantPicker({
       {/* Color */}
       <div>
         <div className="flex items-center justify-between">
-          <p className="type-eyebrow text-ink-muted">Color</p>
+          <p className="type-eyebrow text-ink-muted">رنگ</p>
           <p className="text-xs text-ink">
             {product.colors.find((c) => c.id === selectedColor)?.name ?? ""}
           </p>
@@ -44,7 +44,7 @@ export function VariantPicker({
       {/* Size */}
       <div>
         <div className="flex items-center justify-between">
-          <p className="type-eyebrow text-ink-muted">Size</p>
+          <p className="type-eyebrow text-ink-muted">سایز</p>
           <button className="text-xs uppercase tracking-[0.18em] text-ink-soft underline-offset-4 hover:underline">
             Size guide
           </button>

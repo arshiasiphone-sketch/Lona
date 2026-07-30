@@ -98,7 +98,7 @@ export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
     >
       <div className="flex items-end justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Considered Together</p>
+          <p className="type-eyebrow text-ink-muted">هماهنگ انتخاب‌شده</p>
           <h2 className="mt-3 font-display text-3xl text-ink lg:text-4xl">
             Frequently with
           </h2>
@@ -159,7 +159,7 @@ export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
 
         <div className="flex flex-col items-end gap-3 lg:border-l lg:border-edge/60 lg:pl-6">
           <div className="text-right">
-            <p className="type-eyebrow text-ink-muted">Together</p>
+            <p className="type-eyebrow text-ink-muted">با هم</p>
             <p className="font-display text-2xl text-ink type-caption">
               {formatPrice(total)}
             </p>

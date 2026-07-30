@@ -147,7 +147,7 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
           <Stethoscope className="h-4 w-4 text-primary" />
           <p className="mt-2 text-ink">شما در حالت عملیاتی هستید.</p>
           <p className="mt-1">
-            هر نوشتن ادمین در <code>activity_logs</code> با نقش و زمان ثبت می‌شود.
+            هر نوشتن ادمین در <code>لاگ فعالیت</code> با نقش و زمان ثبت می‌شود.
           </p>
         </div>
       </nav>

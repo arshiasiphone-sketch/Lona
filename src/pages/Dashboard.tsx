@@ -444,7 +444,7 @@ export default function Dashboard() {
       </motion.div>
 
       <div className="sr-only">
-        <p>Account workspace skeleton</p>
+        <p>چارچوب فضای کاربری حساب</p>
       </div>
     </div>
   );

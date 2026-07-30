@@ -111,7 +111,7 @@ export function ListCard({ product }: ListCardProps) {
                 toast.added(product.name);
               }}
               className="grid h-9 w-9 place-items-center rounded-full bg-ink text-canvas transition hover:bg-primary"
-              aria-label="Add to bag"
+              aria-label="افزودن به سبد خرید"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -124,17 +124,17 @@ export function ListCard({ product }: ListCardProps) {
 
         <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
           <div>
-            <p className="type-eyebrow text-ink-muted">Composition</p>
+            <p className="type-eyebrow text-ink-muted">ترکیب</p>
             <p className="mt-1 text-ink-soft">{product.composition}</p>
           </div>
           <div>
-            <p className="type-eyebrow text-ink-muted">Origin</p>
+            <p className="type-eyebrow text-ink-muted">کشور سازنده</p>
             <p className="mt-1 text-ink-soft">{product.origin}</p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
-          <span>Available sizes</span>
+          <span>موجود</span>
           <div className="flex flex-wrap gap-1.5">
             {product.sizes.map((s) => (
               <span

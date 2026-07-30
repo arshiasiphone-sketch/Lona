@@ -9,12 +9,12 @@ interface MobileNavProps {
 }
 
 const links = [
-  { label: "Shop", to: "/shop" },
-  { label: "Collections", to: "/collections" },
-  { label: "Journal", to: "/press" },
-  { label: "Atelier", to: "/about" },
-  { label: "Account", to: "/account" },
-  { label: "Cart", to: "/cart" },
+  { label: "خرید", to: "/shop" },
+  { label: "کالکسیون‌ها", to: "/collections" },
+  { label: "مجله", to: "/press" },
+  { label: "کارگاه", to: "/about" },
+  { label: "حساب کاربری", to: "/account" },
+  { label: "سبد خرید", to: "/cart" },
 ];
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
@@ -30,7 +30,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
     >
       {/* Backdrop */}
       <button
-        aria-label="Close navigation"
+        aria-label="بستن"
         onClick={onClose}
         className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
         tabIndex={open ? 0 : -1}
@@ -47,7 +47,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           <button
             onClick={onClose}
             className="grid h-10 w-10 place-items-center rounded-full hairline text-ink hover:bg-white/60"
-            aria-label="Close"
+            aria-label="بستن"
           >
             <X className="h-4 w-4" />
           </button>
@@ -66,7 +66,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           ))}
         </ul>
         <div className="mt-16 flex flex-col gap-2 text-xs text-ink-muted">
-          <span>Established 2012</span>
+          <span>تأسیس ۱۳۹۸</span>
           <span>New York · Florence · Kyoto</span>
         </div>
       </motion.aside>

@@ -295,7 +295,7 @@ export default function Checkout() {
                       label="تاریخ انقضا"
                       value={form.expiry}
                       onChange={(v) => set("expiry", formatExpiry(v))}
-                      placeholder="MM/YY"
+                      placeholder="ماه/سال"
                       error={errors.expiry}
                     />
                     <Field

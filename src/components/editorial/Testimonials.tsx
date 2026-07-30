@@ -9,7 +9,7 @@ interface Props {
 export function Testimonials({ items }: Props) {
   return (
     <section className="mx-auto mt-32 max-w-[1728px] px-6 lg:px-10">
-      <p className="type-eyebrow text-ink-muted">Notes</p>
+      <p className="type-eyebrow text-ink-muted">یادداشت</p>
       <h2 className="mt-3 font-display text-4xl leading-[1.05] text-ink lg:text-5xl">
         From our patrons
       </h2>

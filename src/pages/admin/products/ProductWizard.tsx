@@ -49,14 +49,14 @@ import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
 
 const STEPS = [
-  { key: "basic", label: "Basic Info" },
-  { key: "media", label: "Media" },
-  { key: "categories", label: "Categories" },
-  { key: "collections", label: "Collections" },
-  { key: "variants", label: "Variants" },
-  { key: "pricing", label: "Pricing & Inventory" },
-  { key: "seo", label: "SEO" },
-  { key: "publishing", label: "Publishing" },
+  { key: "basic", label: "اطلاعات پایه" },
+  { key: "media", label: "رسانه" },
+  { key: "categories", label: "دسته‌بندی‌ها" },
+  { key: "collections", label: "کالکسیون‌ها" },
+  { key: "variants", label: "تنوع‌ها" },
+  { key: "pricing", label: "قیمت و موجودی" },
+  { key: "seo", label: "سئو" },
+  { key: "publishing", label: "انتشار نهایی" },
 ] as const;
 
 type StepKey = (typeof STEPS)[number]["key"];
@@ -79,7 +79,7 @@ export default function ProductWizard() {
     void (async () => {
       const tempSlug = `draft-${Math.random().toString(36).slice(2, 10)}`;
       const id = await createDraft({
-        name: "Untitled piece",
+        name: "تکهٔ بدون نام",
         slug: tempSlug,
         category: "accessories",
         collectionSlug: "essentials",
@@ -108,7 +108,7 @@ export default function ProductWizard() {
   if (product === null) {
     return (
       <div className="rounded-3xl border border-edge bg-white/85 p-10 text-center">
-        <p className="font-display text-2xl text-ink">Product not found.</p>
+        <p className="font-display text-2xl text-ink">محصول یافت نشد.</p>
         <Link
           to="/admin/products"
           className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
@@ -264,7 +264,7 @@ function WizardFooter({
         disabled={index === 0}
         className="inline-flex items-center gap-2 rounded-full hairline bg-white/70 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-white disabled:opacity-30"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Back
+        <ArrowLeft className="h-3.5 w-3.5" /> بازگشت
       </button>
       <div className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
         Step {index + 1} of {STEPS.length} · {step}
@@ -282,7 +282,7 @@ function WizardFooter({
           to={`/shop/${product.slug}`}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          <Eye className="h-3.5 w-3.5" /> View on storefront
+          <Eye className="h-3.5 w-3.5" /> مشاهده در فروشگاه
         </Link>
       )}
     </div>
@@ -342,8 +342,8 @@ function BasicInfoStep({
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Step 1 / 8</p>
-          <h3 className="mt-2 font-display text-2xl text-ink">Basic information</h3>
+          <p className="type-eyebrow text-ink-muted">مرحلهٔ ۱ از ۸</p>
+          <h3 className="mt-2 font-display text-2xl text-ink">اطلاعات پایه</h3>
         </div>
         <SaveIndicator state={saved} />
       </div>
@@ -396,7 +396,7 @@ function BasicInfoStep({
             value={form.collectionSlug}
             onChange={(e) => set("collectionSlug", e.target.value.toLowerCase())}
             className="admin-input"
-            placeholder="autumn-winter, essentials, evening, objects…"
+            placeholder="پاییز-زمستان، ضروریات، شب، اکسسوری…"
           />
         </Field>
         <Field label="Description" full>
@@ -412,7 +412,7 @@ function BasicInfoStep({
             value={form.composition}
             onChange={(e) => set("composition", e.target.value)}
             className="admin-input"
-            placeholder="100% Italian merino wool…"
+            placeholder="۱۰۰٪ مرینو ایتالیایی…"
           />
         </Field>
         <Field label="Origin" full>
@@ -420,7 +420,7 @@ function BasicInfoStep({
             value={form.origin}
             onChange={(e) => set("origin", e.target.value)}
             className="admin-input"
-            placeholder="Cut and sewn in Florence."
+            placeholder="برش و دوخت در فلورانس."
           />
         </Field>
       </div>
@@ -446,8 +446,8 @@ function BasicInfoStep({
 function MediaStep({ product }: { product: Doc<"products"> }) {
   return (
     <div className="space-y-3 rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">Step 2 / 8</p>
-      <h3 className="font-display text-2xl text-ink">Media library</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۲ از ۸</p>
+      <h3 className="font-display text-2xl text-ink">کتابخانهٔ رسانه</h3>
       <p className="text-sm text-ink-soft">
         Drop or browse pieces of editorial photography. The first image
         becomes the primary card on the storefront.
@@ -483,8 +483,8 @@ function CategoriesStep({
   ];
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">Step 3 / 8</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">Categories</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۳ از ۸</p>
+      <h3 className="mt-2 font-display text-2xl text-ink">دسته‌بندی‌ها</h3>
       <p className="mt-2 text-sm text-ink-soft">
         Storefront indexing puts each piece in one primary category.
         Collections layer on top for grouping.
@@ -524,7 +524,7 @@ function CategoriesStep({
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary disabled:opacity-40"
         >
-          <Check className="h-3.5 w-3.5" /> Save & continue
+          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -554,8 +554,8 @@ function CollectionsStep({
   );
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">Step 4 / 8</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">Collections</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۴ از ۸</p>
+      <h3 className="mt-2 font-display text-2xl text-ink">کالکسیون‌ها</h3>
       <p className="mt-2 text-sm text-ink-soft">
         Use collections to bundle the piece into seasonal stories and
         merchandising modules.
@@ -598,7 +598,7 @@ function CollectionsStep({
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          <Check className="h-3.5 w-3.5" /> Save & continue
+          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -619,8 +619,8 @@ function VariantsStep({
 }) {
   return (
     <div>
-      <p className="type-eyebrow text-ink-muted">Step 5 / 8</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">Variants</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۵ از ۸</p>
+      <h3 className="mt-2 font-display text-2xl text-ink">تنوع‌ها</h3>
       <p className="mt-2 max-w-2xl text-sm text-ink-soft">
         Layer size × colour combinations. Stock held in a row is never
         hard-deleted — any variant removed from the table is
@@ -656,8 +656,8 @@ function PricingInventoryStep({
   const [busy, setBusy] = React.useState(false);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">Step 6 / 8</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">Pricing & inventory</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۶ از ۸</p>
+      <h3 className="mt-2 font-display text-2xl text-ink">قیمت‌گذاری و موجودی</h3>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Field label="Price (USD)">
           <input
@@ -682,7 +682,7 @@ function PricingInventoryStep({
       </div>
       <div className="mt-6 rounded-2xl bg-canvas-soft p-4 text-sm text-ink-soft">
         <p>
-          <strong className="text-ink">Inventory:</strong> stock is owned by
+          <strong className="text-ink">موجودی:</strong> stock is owned by
           the Variants step. Use the matrix for column-level totals; reach out
           about low-stock alerts from the dashboard.
         </p>
@@ -706,7 +706,7 @@ function PricingInventoryStep({
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary disabled:opacity-40"
         >
-          <Check className="h-3.5 w-3.5" /> Save & continue
+          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -728,8 +728,8 @@ function SeoStep({
   const [seoDescription, setSeoDescription] = React.useState(product.description);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">Step 7 / 8</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">SEO</h3>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۷ از ۸</p>
+      <h3 className="mt-2 font-display text-2xl text-ink">سئو</h3>
       <p className="mt-2 text-sm text-ink-soft">
         Search and social metadata. Description is mirrored into the
         long-form copy until dedicated SEO fields land.
@@ -764,7 +764,7 @@ function SeoStep({
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          <Check className="h-3.5 w-3.5" /> Save & continue
+          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -820,8 +820,8 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-edge bg-white/85 p-6">
-        <p className="type-eyebrow text-ink-muted">Step 8 / 8</p>
-        <h3 className="mt-2 font-display text-2xl text-ink">Publishing</h3>
+        <p className="type-eyebrow text-ink-muted">مرحلهٔ ۸ از ۸</p>
+        <h3 className="mt-2 font-display text-2xl text-ink">انتشار نهایی</h3>
         <p className="mt-2 text-sm text-ink-soft">
           Promote the piece into featured, trending and editorial modules,
           then commit it to the storefront.
@@ -830,9 +830,9 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {(
             [
-              { key: "featured", label: "Featured", state: featured, set: setFeatured, icon: Star },
-              { key: "trending", label: "Trending", state: trending, set: setTrending, icon: Sparkles },
-              { key: "editorial", label: "Editorial pick", state: editorial, set: setEditorial, icon: Eye },
+              { key: "featured", label: "ویژه", state: featured, set: setFeatured, icon: Star },
+              { key: "trending", label: "پرطرفدار", state: trending, set: setTrending, icon: Sparkles },
+              { key: "editorial", label: "انتخاب ادیتوریال", state: editorial, set: setEditorial, icon: Eye },
             ] as const
           ).map(({ key, label, state, set, icon: Icon }) => (
             <label

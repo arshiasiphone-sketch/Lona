@@ -188,7 +188,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
         <div className="grid h-12 w-12 place-items-center rounded-full hairline bg-white text-primary">
           <ImagePlus className="h-5 w-5" />
         </div>
-        <p className="font-display text-lg text-ink">Drop a piece's photography here.</p>
+        <p className="font-display text-lg text-ink">تصاویر تکه را در اینجا رها کنید.</p>
         <p className="mt-1 text-xs text-ink-muted">
           PNG, JPG, WebP, AVIF — up to 8 MB each, 12 images per product.
         </p>
@@ -276,7 +276,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                   type="button"
                   onClick={() => retry(row.key)}
                   className="grid h-8 w-8 place-items-center rounded-full hairline"
-                  aria-label="Dismiss"
+                  aria-label="بستن"
                 >
                   <RefreshCw className="h-3.5 w-3.5 text-ink-soft" />
                 </button>
@@ -328,7 +328,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                   type="button"
                   onClick={() => remove(row._id)}
                   className="grid h-7 w-7 place-items-center rounded-full bg-white/20"
-                  aria-label="Delete"
+                  aria-label="حذف"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -336,7 +336,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
             </div>
             {i === 0 && (
               <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-ink/90 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-canvas">
-                <Star className="h-3 w-3" /> Primary
+                <Star className="h-3 w-3" /> اصلی
               </div>
             )}
           </div>

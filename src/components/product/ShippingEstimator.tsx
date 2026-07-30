@@ -16,24 +16,24 @@ interface Estimate {
 
 const countryTable: Record<string, Estimate[]> = {
   US: [
-    { label: "Standard · DHL", window: "5–8 business days", price: 0, recommended: true },
-    { label: "Express · DHL", window: "2–3 business days", price: 24 },
-    { label: "White-glove · local courier", window: "Same/Next-day in major cities", price: 64 },
+    { label: "استاندارد · DHL", window: "5–8 business days", price: 0, recommended: true },
+    { label: "فوری · DHL", window: "2–3 business days", price: 24 },
+    { label: "ارسال ویژه · پیک محلی", window: "Same/Next-day in major cities", price: 64 },
   ],
   EU: [
-    { label: "Standard · DHL", window: "4–7 business days", price: 0, recommended: true },
-    { label: "Express · DHL", window: "2–3 business days", price: 22 },
+    { label: "استاندارد · DHL", window: "4–7 business days", price: 0, recommended: true },
+    { label: "فوری · DHL", window: "2–3 business days", price: 22 },
   ],
   UK: [
-    { label: "Standard · DHL", window: "4–7 business days", price: 0, recommended: true },
-    { label: "Express · DHL", window: "2–3 business days", price: 26 },
+    { label: "استاندارد · DHL", window: "4–7 business days", price: 0, recommended: true },
+    { label: "فوری · DHL", window: "2–3 business days", price: 26 },
   ],
   JP: [
-    { label: "Standard · Sagawa", window: "3–5 business days", price: 0, recommended: true },
-    { label: "Express · Yamato", window: "1–2 business days", price: 28 },
+    { label: "استاندارد · ساگاوا", window: "3–5 business days", price: 0, recommended: true },
+    { label: "فوری · یاماتو", window: "1–2 business days", price: 28 },
   ],
   OTHER: [
-    { label: "Standard · DHL", window: "7–10 business days", price: 28, recommended: true },
+    { label: "استاندارد · DHL", window: "7–10 business days", price: 28, recommended: true },
   ],
 };
 
@@ -53,7 +53,7 @@ export function ShippingEstimator({ defaultZip = "" }: ShippingEstimatorProps) {
     <div className="glass rounded-2xl p-5">
       <div className="flex items-center gap-2">
         <Truck className="h-4 w-4 text-ink" />
-        <p className="type-eyebrow text-ink">Shipping estimate</p>
+        <p className="type-eyebrow text-ink">برآورد ارسال</p>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
         Enter your country and postal code for delivery windows and prices.
@@ -68,11 +68,11 @@ export function ShippingEstimator({ defaultZip = "" }: ShippingEstimatorProps) {
           }}
           className="h-11 rounded-2xl bg-canvas/60 px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
         >
-          <option value="US">United States</option>
-          <option value="EU">European Union</option>
-          <option value="UK">United Kingdom</option>
-          <option value="JP">Japan</option>
-          <option value="OTHER">Rest of world</option>
+          <option value="US">ایالات متحده</option>
+          <option value="EU">اتحادیهٔ اروپا</option>
+          <option value="UK">بریتانیا</option>
+          <option value="JP">ژاپن</option>
+          <option value="OTHER">سایر کشورها</option>
         </select>
         <input
           value={zip}
@@ -80,7 +80,7 @@ export function ShippingEstimator({ defaultZip = "" }: ShippingEstimatorProps) {
             setZip(e.target.value);
             setConfirmed(false);
           }}
-          placeholder="Postal / ZIP code"
+          placeholder="کد پستی"
           className="h-11 rounded-2xl bg-canvas/60 px-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button

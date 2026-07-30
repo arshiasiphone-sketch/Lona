@@ -13,9 +13,9 @@ const MotionDiv = motion.div;
 const MotionDl = motion.dl;
 
 const STATS = [
-  { label: "Pieces in rotation", value: "184" },
-  { label: "Ateliers", value: "11" },
-  { label: "Years refining", value: "XIV" },
+  { label: "تکه‌های فعال", value: "184" },
+  { label: "کارگاه", value: "11" },
+  { label: "سال‌های اصلاح", value: "XIV" },
 ];
 
 /**
@@ -136,7 +136,7 @@ export function HeroChoreography() {
               to="/shop"
               className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full bg-ink px-6 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
             >
-              <span className="relative z-10">Shop the Season</span>
+              <span className="relative z-10">خرید</span>
               <ArrowRight className="relative z-10 h-4 w-4 transition group-hover:translate-x-1" />
               <MotionDiv
                 aria-hidden

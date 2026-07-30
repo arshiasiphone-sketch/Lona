@@ -162,17 +162,17 @@ export default function ProductList() {
         <div className="flex flex-wrap items-center gap-1">
           {row.featured ? (
             <Pill tone="primary">
-              <Star className="h-2.5 w-2.5" /> Featured
+              <Star className="h-2.5 w-2.5" /> ویژه
             </Pill>
           ) : null}
           {row.trending ? (
             <Pill tone="info">
-              <Sparkles className="h-2.5 w-2.5" /> Trending
+              <Sparkles className="h-2.5 w-2.5" /> پرطرفدار
             </Pill>
           ) : null}
           {row.editorial ? (
             <Pill tone="neutral">
-              <Edit3 className="h-2.5 w-2.5" /> Editorial
+              <Edit3 className="h-2.5 w-2.5" /> ادیتوریال
             </Pill>
           ) : null}
           {!row.featured && !row.trending && !row.editorial ? (
@@ -211,7 +211,7 @@ export default function ProductList() {
     <div className="space-y-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">Catalogue</p>
+          <p className="type-eyebrow text-ink-muted">کاتالوگ</p>
           <h1 className="mt-2 font-display text-4xl text-ink lg:text-5xl">
             Products
           </h1>
@@ -224,7 +224,7 @@ export default function ProductList() {
           to="/admin/products/new"
           className="inline-flex items-center gap-2 self-start rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          <Plus className="h-3.5 w-3.5" /> New product
+          <Plus className="h-3.5 w-3.5" /> محصول تازه
         </Link>
       </header>
 
@@ -370,7 +370,7 @@ function RowActions({
             setBusy(false);
           }
         }}
-        aria-label="Duplicate"
+        aria-label="کپی"
         className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
       >
         <Copy className="h-3.5 w-3.5 text-ink" />
@@ -387,7 +387,7 @@ function RowActions({
               setBusy(false);
             }
           }}
-          aria-label="Restore"
+          aria-label="بازنشانی"
           className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
         >
           <RotateCcw className="h-3.5 w-3.5 text-ink" />
@@ -435,8 +435,8 @@ function PublishGate({ row }: { row: ProductRow }) {
           setBusy(false);
         }
       }}
-      aria-label="Publish"
-      title="Publish directly from the list"
+      aria-label="انتشار"
+      title="انتشار مستقیم از فهرست"
       className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
     >
       <Send className="h-3.5 w-3.5 text-ink" />

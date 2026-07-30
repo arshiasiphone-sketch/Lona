@@ -87,7 +87,7 @@ export function FiltersPanel({ filters, onChange, compact, variant = "sidebar" }
           onValueChange={(v) => set("category", v as ShopFilters["category"])}
         >
           <SelectTrigger className="h-9 rounded-full border-edge bg-canvas/70 px-4 text-[11px] uppercase tracking-[0.16em]">
-            <SelectValue placeholder="Category" />
+            <SelectValue placeholder="دسته‌بندی" />
           </SelectTrigger>
           <SelectContent className="glass-strong rounded-2xl border-edge">
             {CATEGORIES.map((c) => (

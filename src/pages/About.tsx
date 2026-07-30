@@ -38,11 +38,11 @@ export default function About() {
         >
           <div className="gradient-oat aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45">
             <div className="grid h-full place-items-center text-ink/55">
-              <p className="font-display text-3xl">The Florence Atelier</p>
+              <p className="font-display text-3xl">کارگاه فلورانس</p>
             </div>
           </div>
           <div className="grid gap-6 self-center">
-            <p className="type-eyebrow text-ink-muted">Made by Hand</p>
+            <p className="type-eyebrow text-ink-muted">ساخته‌شده با دست</p>
             <h2 className="font-display text-3xl leading-[1.05] text-ink lg:text-4xl">
               Each piece is finished by a single maker. The label inside is their name.
             </h2>
@@ -64,15 +64,15 @@ export default function About() {
 
       {/* Sustainability */}
       <section id="sustainability" className="mt-32">
-        <p className="type-eyebrow text-ink-muted">Sustainability</p>
+        <p className="type-eyebrow text-ink-muted">پایداری</p>
         <h2 className="mt-3 font-display text-4xl leading-[1.05] text-ink lg:text-6xl">
           Slow, by design.
         </h2>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {[
-            { stat: "100%", label: "Natural fiber base across the Permanent collection." },
-            { stat: "≤ 4g", label: "Average CO₂ per garment, audited annually." },
-            { stat: "Always", label: "Repair, not replace — sent back to the original atelier." },
+            { stat: "100%", label: "پایه‌ی الیاف طبیعی در سری ماندگار لونا." },
+            { stat: "≤ 4g", label: "میانگین کربن برای هر تکه، ممیزی سالانه." },
+            { stat: "Always", label: "تعمیر، نه تعویض — بازگشت به کارگاه سازنده." },
           ].map((item, i) => (
             <motion.div
               key={item.label}
@@ -91,7 +91,7 @@ export default function About() {
 
       {/* Stores */}
       <section id="stores" className="mt-32">
-        <p className="type-eyebrow text-ink-muted">Stores</p>
+        <p className="type-eyebrow text-ink-muted">بوتیک‌ها</p>
         <h2 className="mt-3 font-display text-4xl leading-[1.05] text-ink lg:text-6xl">
           Three rooms.
         </h2>
@@ -111,7 +111,7 @@ export default function About() {
         <div className="glass-strong overflow-hidden rounded-3xl">
           <div className="grid gap-10 p-10 lg:grid-cols-[1fr_1.4fr] lg:p-16">
             <div>
-              <p className="type-eyebrow text-ink-muted">Personal Concierge</p>
+              <p className="type-eyebrow text-ink-muted">مشاور شخصی</p>
               <h2 className="mt-3 font-display text-3xl leading-[1.05] text-ink lg:text-4xl">
                 Write to the atelier.
               </h2>
@@ -122,7 +122,7 @@ export default function About() {
             <ul className="divide-y divide-edge/60">
               <li className="flex items-center gap-3 py-4 text-sm">
                 <Mail className="h-4 w-4 text-ink-muted" />
-                <span className="text-ink">concierge@aeon.studio</span>
+                <span className="text-ink">concierge@lona.studio</span>
               </li>
               <li className="flex items-center gap-3 py-4 text-sm">
                 <Phone className="h-4 w-4 text-ink-muted" />

@@ -9,7 +9,7 @@ export default function Collections() {
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>
-        <p className="type-eyebrow text-ink-muted">The House</p>
+        <p className="type-eyebrow text-ink-muted">خانهٔ لونا</p>
         <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-8xl">
           Collections
         </h1>
