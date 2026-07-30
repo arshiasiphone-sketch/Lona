@@ -34,6 +34,19 @@ interface ProductImageProps {
   alt?: string;
   /** Floating "L" wordmark ratio */
   withMark?: boolean;
+  /**
+   * Phase 5.8.1 — real URL passthrough.
+   * When provided, the component renders an `<img>` over the
+   * gradient + silhouette base layer. If the URL fails to load
+   * the visual falls back to the branded gradient/silhouette so
+   * the visitor never sees a blank plate.
+   */
+  src?: string;
+  /** Optional responsive source for `<img srcSet>`. */
+  srcSet?: string;
+  sizes?: string;
+  /** Eager-load above-the-fold imagery. Defaults to lazy. */
+  priority?: boolean;
 }
 
 const silhouetteFor = (s: ProductImageProps["silhouette"]) => {
@@ -220,6 +233,11 @@ export function ProductImage({
   className,
   silhouette = "coat",
   withMark = true,
+  src,
+  srcSet,
+  sizes,
+  priority = false,
+  alt,
   ...rest
 }: ProductImageProps) {
   return (
@@ -233,10 +251,29 @@ export function ProductImage({
     >
       {/* Soft highlight ring */}
       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-white/40" />
-      {/* Silhouette */}
+      {/* Silhouette — sits beneath the photo so it remains the branded fallback */}
       <div className="text-ink/55">{silhouetteFor(silhouette)}</div>
+      {/* Real product photography — falls back to the silhouette on error */}
+      {src ? (
+        <img
+          src={src}
+          srcSet={srcSet}
+          sizes={sizes}
+          alt={alt ?? ""}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
+          draggable={false}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
+          onError={(e) => {
+            // Hide the broken image so the gradient + silhouette fallback shines through.
+            const el = e.currentTarget;
+            el.style.opacity = "0";
+          }}
+        />
+      ) : null}
       {withMark && (
-        <span className="absolute bottom-3 left-3 font-display text-[10px] tracking-[0.4em] text-ink/50">
+        <span className="absolute bottom-3 start-3 font-display text-[10px] tracking-[0.4em] text-ink/50">
           LONA
         </span>
       )}

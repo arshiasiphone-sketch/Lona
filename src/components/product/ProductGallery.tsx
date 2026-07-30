@@ -52,6 +52,11 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
   const [fullscreen, setFullscreen] = useState(false);
   const [zoom, setZoom] = useState(false);
 
+  // Phase 5.8.1 — prefer real photo URLs when the catalog carries them.
+  const galleryUrls: (string | undefined)[] =
+    product.imageUrls && product.imageUrls.length > 0
+      ? product.imageUrls.slice(0, 4)
+      : [];
   // 4 frame angles for the active color (rotate the cycle through the gradient to imply angle changes).
   const FRAMES = [0, 1, 2, 3];
 
@@ -78,8 +83,11 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
             <ProductImage
               gradient={colorGradient}
               silhouette={silhouetteOf(product.category)}
+              src={galleryUrls[active]}
+              alt={product.name}
+              priority
               withMark
-              className="h-full w-full"
+              className="h-full w-full [&>div.rounded-xl]:rounded-3xl"
             />
           </motion.div>
           <button
@@ -108,6 +116,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                 ? colorGradient
                 : cycle[(cycle.indexOf(colorGradient) + frame) % cycle.length];
             const isActive = active === frame;
+            const thumbUrl = galleryUrls[frame];
             return (
               <button
                 key={frame}
@@ -116,14 +125,16 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                   "relative aspect-square overflow-hidden rounded-xl ring-1 ring-inset ring-white/40 transition",
                   isActive && "ring-2 ring-ink"
                 )}
-                aria-label={`View angle ${frame + 1}`}
+                aria-label={`نمای تصویر ${frame + 1}`}
               >
                 <div className={cn("absolute inset-0", gradientOf(grad))}>
                   <ProductImage
                     gradient={grad}
                     silhouette={silhouetteOf(product.category)}
+                    src={thumbUrl}
+                    alt={`${product.name} — نمای ${frame + 1}`}
                     withMark={false}
-                    className="h-full w-full"
+                    className="h-full w-full [&>div.rounded-xl]:rounded-xl"
                   />
                 </div>
               </button>
@@ -172,8 +183,11 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                   <ProductImage
                     gradient={colorGradient}
                     silhouette={silhouetteOf(product.category)}
+                    src={galleryUrls[active]}
+                    alt={`${product.name} — نمای ${active + 1}`}
+                    priority
                     withMark={false}
-                    className="h-full w-full"
+                    className="h-full w-full [&>div.rounded-xl]:rounded-3xl"
                   />
                 </motion.div>
               </AnimatePresence>
@@ -202,7 +216,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                     "h-2 w-8 rounded-full transition",
                     f === active ? "bg-canvas" : "bg-canvas/30 hover:bg-canvas/50"
                   )}
-                  aria-label={`image ${f + 1}`}
+                  aria-label={`تصویر ${f + 1}`}
                 />
               ))}
             </div>

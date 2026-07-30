@@ -75,6 +75,9 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
   const primary = product.colors[0];
   const secondary = product.colors[1] ?? primary;
   const discount = formatDiscount(product.price, product.compareAt);
+  // Phase 5.8.1 — real photo URLs from the live catalog layer; falls back to silhouette if missing.
+  const primaryImage = product.imageUrls?.[0];
+  const hoverImage = product.imageUrls?.[1] ?? primaryImage;
 
   const handleQuickAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -137,14 +140,34 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
             )}
             style={{ transitionTimingFunction: HOVER_EASE }}
           >
-            <div className={cn("absolute inset-0", gradientClass(primary.gradient))}>
-              <div className="absolute inset-0 grid place-items-center text-ink/55">
-                <SilhouetteBlock category={product.category} />
-              </div>
-            </div>
+            <ProductImage
+              gradient={gradientClass(primary.gradient).replace("gradient-", "") as TProduct["colors"][number]["gradient"]}
+              silhouette={SILHOUETTE_MAP[product.category]}
+              src={primaryImage}
+              alt={product.name}
+              withMark={false}
+              className="absolute inset-0 [&>div.rounded-xl]:rounded-none [&_img]:opacity-0 [&_img]:transition-opacity [&_img]:duration-700 group-hover:[&_img]:opacity-100"
+              priority={priority}
+            />
 
-            {/* Secondary fade with soft blur */}
-            {product.secondaryGradient && (
+            {/* Hover layer — secondary image with gentle fade + soft blur */}
+            {hoverImage && hoverImage !== primaryImage ? (
+              <div
+                className={cn(
+                  "absolute inset-0 opacity-0 transition-opacity duration-[700ms] group-hover:opacity-100"
+                )}
+                style={{ transitionTimingFunction: HOVER_EASE }}
+              >
+                <ProductImage
+                  gradient={gradientClass((product.secondaryGradient ?? secondary.gradient) as TProduct["colors"][number]["gradient"]).replace("gradient-", "") as TProduct["colors"][number]["gradient"]}
+                  silhouette={SILHOUETTE_MAP[product.category]}
+                  src={hoverImage}
+                  alt={product.name}
+                  withMark={false}
+                  className="absolute inset-0 [&>div.rounded-xl]:rounded-none"
+                />
+              </div>
+            ) : product.secondaryGradient ? (
               <div
                 className={cn(
                   "absolute inset-0 opacity-0 transition-opacity duration-[700ms] backdrop-blur-[2px] group-hover:opacity-100",
@@ -156,7 +179,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
                   <SilhouetteBlock category={product.category} />
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Soft edge + subtle gold glow on hover */}
