@@ -12,7 +12,7 @@
  *     Phase 5.5 (English slugs; Persian labels live in the FE
  *     mirror at `src/data/catalog.ts::CATEGORY_LABEL_FA`).
  *   • Colors are mapped onto the gradient literals (`mist`/`oat`/
- *     `rose`/`deep`/`ivory`) the validator already constraints.
+ *     `rose`/`deep`/`pearl`) the validator already constrains.
  *   • Prices are stored as toman in `priceCents` (the field name
  *     preserves schema compatibility; the adapter treats the value
  *     as toman directly — see `centsToman` helper below).
@@ -191,7 +191,7 @@ export const LONA_COLLECTIONS = [
   { slug: "soft-essentials",    name: "ملزومات نرم",           eyebrow: "Permanent",   description: "اصول روزمره‌ی کمد لباس زیر هر زن ایرانی؛ شش تکه‌ای که هر روز به آن‌ها بازمی‌گردید.",                              gradient: "mist"  as GradientKey, kind: "permanent" as const },
   { slug: "bridal-moments",     name: "لحظه‌های عروسی",        eyebrow: "Bridal ’25",  description: "کالکشنی برای روزهای پیش از عروسی؛ توری‌های فرانسوی، ابریشم خالص و رنگ‌های عاج و شیری.",                          gradient: "oat"   as GradientKey, kind: "campaign"  as const, season: "Bridal ۲۰۲۵" },
   { slug: "daily-comfort",      name: "راحتی روزانه",          eyebrow: "Daily",       description: "برای روزهای پُرکار، ساعت‌های طولانی پشت میز یا در مسیر خانه؛ لباس‌هایی که فراموش می‌کنید تن‌تان هست.",            gradient: "oat"   as GradientKey, kind: "permanent" as const },
-  { slug: "silk-stories",       name: "داستان‌های ابریشم",     eyebrow: "Atelier",     description: "ابریشم خالص مولبری در شش تکه‌ی ظریف؛ پیراهن‌های خوابی که با لمس‌شان آرامش را به خواب می‌برند.",                      gradient: "ivory" as GradientKey, kind: "editorial" as const },
+  { slug: "silk-stories",       name: "داستان‌های ابریشم",     eyebrow: "Atelier",     description: "ابریشم خالص مولبری در شش تکه‌ی ظریف؛ پیراهن‌های خوابی که با لمس‌شان آرامش را به خواب می‌برند.",                      gradient: "pearl" as GradientKey, kind: "editorial" as const },
   { slug: "midnight-collection",name: "کالکشن نیمه‌شب",       eyebrow: "بعد از شش",   description: "رنگ‌های عمیق، احساس شب و زرق‌و‌رقی که فقط در نور کم خودنمایی می‌کند.",                                                  gradient: "deep"  as GradientKey, kind: "campaign"  as const },
   { slug: "summer-escape",      name: "فرار تابستانی",         eyebrow: "تابستان",     description: "پارچه‌های خنک و رنگ‌های روشن برای سفرهای کوتاه و روزهای گرم سال.",                                                       gradient: "mist"  as GradientKey, kind: "seasonal"  as const, season: "تابستان ۱۴۰۵" },
   { slug: "premium-lace",       name: "توری لوکس",             eyebrow: "Heritage",    description: "توری‌های فرانسوی Chantilly و Calais، انتخابی ظریف برای لحظه‌های خاص.",                                                 gradient: "rose"  as GradientKey, kind: "editorial" as const },
@@ -1548,7 +1548,7 @@ export const LONA_EDITORIALS = [
     kind: "journal" as const,
     author: "زهرا کریمی",
     publishedAt: Date.parse("2025-11-15"),
-    coverGradient: "ivory" as GradientKey,
+    coverGradient: "pearl" as GradientKey,
     status: "published" as const,
   },
   {
