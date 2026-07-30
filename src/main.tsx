@@ -43,6 +43,18 @@ const ProductList = lazy(() =>
 const ProductWizard = lazy(() =>
   import("./pages/admin/products/ProductWizard.tsx"),
 );
+const CategoriesPage = lazy(() =>
+  import("./pages/admin/categories/Categories.tsx"),
+);
+const CollectionsPage = lazy(() =>
+  import("./pages/admin/collections/Collections.tsx"),
+);
+const MediaLibraryPage = lazy(() =>
+  import("./pages/admin/media/MediaLibrary.tsx"),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/admin/settings/Settings.tsx"),
+);
 const AdminStub = lazy(() => import("./pages/admin/_Stub.tsx"));
 const RequireRole = lazy(() =>
   import("./components/admin/RequireRole.tsx").then((m) => ({
@@ -256,6 +268,38 @@ createRoot(document.getElementById("root")!).render(
                             element={
                               <Suspense fallback={<RouteLoading />}>
                                 <ProductWizard />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="categories"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <CategoriesPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="collections"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <CollectionsPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="media"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <MediaLibraryPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="settings"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <SettingsPage />
                               </Suspense>
                             }
                           />
