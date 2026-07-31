@@ -146,7 +146,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
               src={primaryImage}
               alt={product.name}
               withMark={false}
-              className="absolute inset-0 [&>div.rounded-xl]:rounded-none [&_img]:opacity-0 [&_img]:transition-opacity [&_img]:duration-700 group-hover:[&_img]:opacity-100"
+              className="absolute inset-0 [&>div.rounded-xl]:rounded-none [&_img]:transition-opacity [&_img]:duration-700"
               priority={priority}
             />
 
