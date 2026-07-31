@@ -4,6 +4,14 @@ import { ArrowUpRight } from "lucide-react";
 import type { Collection } from "@/data/catalog";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+
+const COLLECTION_IMAGES = [
+  LONA_MOCK_IMAGES.softGarment,
+  LONA_MOCK_IMAGES.silkDetail,
+  LONA_MOCK_IMAGES.neutralFashion,
+] as const;
 
 interface Props {
   collections: Collection[];
@@ -44,9 +52,12 @@ export function FeaturedCollections({
               className="group focus-luxury block overflow-hidden rounded-2xl"
             >
               <div className="relative aspect-[4/5] w-full">
-                <div
-                  className={cn(
-                    "absolute inset-0 transition duration-700 group-hover:scale-105",
+                <EditorialImage
+                  src={COLLECTION_IMAGES[i % COLLECTION_IMAGES.length]}
+                  alt={`${c.name} — کالکشن لونا`}
+                  className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-105"
+                  imgClassName="opacity-90"
+                  fallbackClassName={cn(
                     c.gradient === "oat" && "gradient-oat",
                     c.gradient === "mist" && "gradient-mist",
                     c.gradient === "deep" && "gradient-deep",

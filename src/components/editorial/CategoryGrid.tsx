@@ -11,6 +11,8 @@ import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 interface Category {
   name: string;
@@ -24,6 +26,19 @@ interface Category {
     | "gradient-lona-pearl";
   tone: "ink" | "canvas";
 }
+
+const CATEGORY_IMAGES = [
+  LONA_MOCK_IMAGES.softGarment,
+  LONA_MOCK_IMAGES.flatLay,
+  LONA_MOCK_IMAGES.laceDetail,
+  LONA_MOCK_IMAGES.silkDetail,
+  LONA_MOCK_IMAGES.wardrobe,
+  LONA_MOCK_IMAGES.neutralFashion,
+  LONA_MOCK_IMAGES.editorialFashion,
+  LONA_MOCK_IMAGES.activeMood,
+  LONA_MOCK_IMAGES.fabricFlatLay,
+  LONA_MOCK_IMAGES.bridalMood,
+] as const;
 
 const CATEGORIES: Category[] = [
   { name: "سوتین",               path: "/shop?category=bras",       gradient: "gradient-oat",         tone: "ink" },
@@ -70,11 +85,12 @@ export function CategoryGrid() {
               className="focus-luxury group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-canvas"
               aria-label={cat.name}
             >
-              <div
-                className={cn(
-                  "absolute inset-0 transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]",
-                  cat.gradient
-                )}
+              <EditorialImage
+                src={CATEGORY_IMAGES[i % CATEGORY_IMAGES.length]}
+                alt={`تصویر دسته‌بندی ${cat.name} لونا`}
+                className="absolute inset-0 h-full w-full transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+                imgClassName="opacity-85"
+                fallbackClassName={cat.gradient}
               />
               <div
                 aria-hidden

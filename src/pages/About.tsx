@@ -5,6 +5,8 @@ import { Reveal } from "@/components/motion/Reveal";
 import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { EASE_LUXURY } from "@/lib/motion";
 import { usePageMeta } from "@/lib/seo";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 const stores = [
   {
@@ -54,11 +56,16 @@ export default function About() {
           transition={{ duration: 0.9, ease: EASE_LUXURY }}
           className="grid gap-12 lg:grid-cols-2"
         >
-          <div className="gradient-rose aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45">
+          <EditorialImage
+            src={LONA_MOCK_IMAGES.editorialFashion}
+            alt="تصویر کارگاه تهران لونا"
+            className="gradient-rose aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45"
+            imgClassName="opacity-90"
+          >
             <div className="grid h-full place-items-center text-ink/55">
               <p className="font-display text-3xl">کارگاه تهران</p>
             </div>
-          </div>
+          </EditorialImage>
           <div className="grid gap-6 self-center">
             <p className="type-eyebrow text-ink-muted">دوخته‌شده با دست</p>
             <h2 className="font-display text-3xl leading-[1.05] text-ink lg:text-4xl">

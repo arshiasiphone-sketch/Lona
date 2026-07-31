@@ -8,6 +8,8 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 interface Plate {
   eyebrow: string;
@@ -21,6 +23,7 @@ interface Plate {
     | "gradient-lona-rose"
     | "gradient-lona-pearl";
   align: "left" | "right";
+  image: string;
 }
 
 const plates: Plate[] = [
@@ -30,6 +33,7 @@ const plates: Plate[] = [
     body: "سوتین ابریشمی کرم، شورت هماهنگ، و یک لباس خواب گشاد — اولین ساعت روز، آرام.",
     gradient: "gradient-lona-pearl",
     align: "right",
+    image: LONA_MOCK_IMAGES.editorialFashion,
   },
   {
     eyebrow: "نگاه ۰۲",
@@ -37,6 +41,7 @@ const plates: Plate[] = [
     body: "بادی نخی، شلوارک خانگی، یک فنجان چای کنار پنجره.",
     gradient: "gradient-rose-quartz",
     align: "left",
+    image: LONA_MOCK_IMAGES.wardrobe,
   },
   {
     eyebrow: "نگاه ۰۳",
@@ -44,6 +49,7 @@ const plates: Plate[] = [
     body: "لباس خواب حریر مشکی، یک شمع خاموش، و یک کتاب نیمه‌خوانده.",
     gradient: "gradient-deep",
     align: "right",
+    image: LONA_MOCK_IMAGES.editorialFashion,
   },
 ];
 
@@ -79,11 +85,14 @@ export function Lookbook() {
               p.align === "right" && "lg:[&>*:first-child]:order-2"
             )}
           >
-            <div
+            <EditorialImage
+              src={p.image}
+              alt={`${p.title} — لوک‌بوک لونا`}
               className={cn(
                 "relative aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/35",
-                p.gradient
               )}
+              imgClassName="opacity-90"
+              fallbackClassName={p.gradient}
             >
               <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 p-8 lg:p-12">
                 <p
@@ -105,7 +114,7 @@ export function Lookbook() {
                   {p.title}
                 </span>
               </div>
-            </div>
+            </EditorialImage>
             <div className="relative">
               <span className="font-display text-7xl font-light leading-none text-ink/15 lg:text-9xl">
                 {String(i + 1).padStart(2, "0")}

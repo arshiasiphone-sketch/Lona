@@ -15,6 +15,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { EASE_LUXURY } from "@/lib/motion";
 import { useReducedMotionStrict } from "@/hooks/use-prefers-reduced-motion";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 export function Hero() {
   const reduced = useReducedMotionStrict();
@@ -30,7 +32,13 @@ export function Hero() {
         transition={{ duration: 1.4, ease: EASE_LUXURY }}
         className="relative aspect-[4/5] w-full overflow-hidden rounded-[2rem] ring-1 ring-inset ring-white/35 shadow-glass lg:aspect-auto lg:h-[82vh] lg:w-[68%]"
       >
-        <div className="gradient-lona-rose absolute inset-0" />
+        <EditorialImage
+          src={LONA_MOCK_IMAGES.editorialPortrait}
+          alt="تصویر ادیتوریال کالکشن جدید لونا"
+          priority
+          className="absolute inset-0 h-full w-full"
+          fallbackClassName="gradient-lona-rose"
+        />
         {/* Sheen — soft top-light wash */}
         <div
           aria-hidden

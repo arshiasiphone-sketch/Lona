@@ -5,6 +5,8 @@ import { ProductGrid } from "@/components/product/ProductGrid";
 import { Marquee } from "@/components/editorial/Marquee";
 import { cn } from "@/lib/glass";
 import { usePageMeta } from "@/lib/seo";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 export default function Collection() {
   const { slug = "" } = useParams();
@@ -52,7 +54,12 @@ export default function Collection() {
             "relative mx-auto mt-12 flex h-[640px] max-w-[1728px] items-end overflow-hidden rounded-none px-6 lg:mt-16 lg:px-10"
           )}
         >
-          <div className={cn("absolute inset-0", gradientClass)} />
+          <EditorialImage
+            src={LONA_MOCK_IMAGES.editorialFashion}
+            alt={`${collection.name} — تصویر کالکشن لونا`}
+            className={cn("absolute inset-0", gradientClass)}
+            imgClassName="opacity-90"
+          />
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/30" />
           <nav className="absolute left-6 top-6 flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] lg:left-10 lg:top-10">
             <Link

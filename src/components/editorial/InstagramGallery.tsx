@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Instagram } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 const gradients: Array<
   "gradient-mist" | "gradient-oat" | "gradient-rose-quartz" | "gradient-deep" | "gradient-lona-rose" | "gradient-lona-pearl"
@@ -13,6 +15,15 @@ const gradients: Array<
   "gradient-lona-rose",
   "gradient-deep",
 ];
+
+const images = [
+  LONA_MOCK_IMAGES.editorialPortrait,
+  LONA_MOCK_IMAGES.silkDetail,
+  LONA_MOCK_IMAGES.softPortrait,
+  LONA_MOCK_IMAGES.laceDetail,
+  LONA_MOCK_IMAGES.fabricFlatLay,
+  LONA_MOCK_IMAGES.neutralFashion,
+] as const;
 
 const captions = [
   "صبح، در بوتیک",
@@ -59,7 +70,13 @@ export function InstagramGallery() {
             className="group relative aspect-square overflow-hidden rounded-2xl ring-1 ring-inset ring-white/35"
             aria-label={`پست اینستاگرام · ${captions[i]}`}
           >
-            <div className={cn("absolute inset-0", g)} />
+            <EditorialImage
+              src={images[i]}
+              alt={`تصویر ${captions[i]} در اینستاگرام لونا`}
+              className="absolute inset-0 h-full w-full"
+              imgClassName="opacity-90"
+              fallbackClassName={g}
+            />
             <span className="absolute right-3 top-3 rounded-full bg-ink/85 px-2 py-1 font-latin-display text-[9px] tracking-[0.36em] text-canvas opacity-0 transition group-hover:opacity-100">
               LONA
             </span>

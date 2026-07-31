@@ -6,6 +6,15 @@ import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatDate } from "@/lib/format";
+import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+
+const PRESS_IMAGES = [
+  LONA_MOCK_IMAGES.editorialFashion,
+  LONA_MOCK_IMAGES.silkDetail,
+  LONA_MOCK_IMAGES.wardrobe,
+  LONA_MOCK_IMAGES.neutralFashion,
+] as const;
 
 const gradientMap: Record<string, string> = {
   mist: "gradient-mist",
@@ -44,7 +53,12 @@ export default function Press() {
           to={`/press/${hero.slug}`}
           className="group mt-16 block overflow-hidden rounded-3xl focus-luxury"
         >
-          <div className={cn("relative aspect-[16/8]", gradientFor(hero.cover))}>
+          <EditorialImage
+            src={PRESS_IMAGES[0]}
+            alt={`${hero.title} — مجله لونا`}
+            className={cn("relative aspect-[16/8]", gradientFor(hero.cover))}
+            imgClassName="opacity-90"
+          >
             <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" />
             <div className="absolute inset-x-0 bottom-0 p-8 lg:p-14">
               <p className="type-eyebrow text-ink/70">
@@ -61,7 +75,7 @@ export default function Press() {
                 <ArrowUpRight className="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
               </span>
             </div>
-          </div>
+          </EditorialImage>
         </Link>
       </Reveal>
 
@@ -76,10 +90,14 @@ export default function Press() {
             transition={{ duration: 0.7, ease: EASE_LUXURY, delay: i * 0.06 }}
           >
             <Link to={`/press/${e.slug}`} className="group block overflow-hidden rounded-2xl">
-              <div                className={cn(
-                    "relative aspect-[4/5] transition duration-700 group-hover:scale-[1.03]",
-                    gradientFor(e.cover)
-                  )}
+              <EditorialImage
+                src={PRESS_IMAGES[(i + 1) % PRESS_IMAGES.length]}
+                alt={`${e.title} — مجله لونا`}
+                className={cn(
+                  "relative aspect-[4/5] transition duration-700 group-hover:scale-[1.03]",
+                  gradientFor(e.cover)
+                )}
+                imgClassName="opacity-90"
               >
                 <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" />
                 <div className="absolute inset-x-0 bottom-0 p-6 text-canvas">
@@ -109,7 +127,7 @@ export default function Press() {
                     <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 rtl:group-hover:translate-x-0 rtl:group-hover:-translate-x-0.5" />
                   </span>
                 </div>
-              </div>
+              </EditorialImage>
             </Link>
           </motion.article>
         ))}
