@@ -28,7 +28,7 @@ import {
   LINGERIE_SIZES,
   ACCESSORY_SIZES,
   type LonaCategorySlug,
-} from "@/data/lona-catalog";
+} from "../data/lona-catalog";
 
 interface SeedResult {
   categories: number;
