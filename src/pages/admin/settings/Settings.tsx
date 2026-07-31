@@ -657,6 +657,7 @@ function Toggle({
  * ──────────────────────────────────────────────────────────────── */
 
 const IMAGE_GROUPS: { title: string; keys: HomepageImageSlot[] }[] = [
+  { title: "برند", keys: ["logo", "favicon", "og_image"] },
   { title: "هرو", keys: ["hero"] },
   {
     title: "دسته‌بندی‌ها",

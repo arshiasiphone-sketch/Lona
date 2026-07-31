@@ -483,6 +483,20 @@ const schema = defineSchema(
       filename: v.string(),
       alt: v.string(),
       caption: v.optional(v.string()),
+      /**
+       * Phase 7.4 — asset type taxonomy so admins can filter the
+       * library by usage: brand assets, editorial covers, Instagram
+       * shots, banners, or general purpose.
+       */
+      section: v.optional(
+        v.union(
+          v.literal("brand"),
+          v.literal("editorial"),
+          v.literal("instagram"),
+          v.literal("banner"),
+          v.literal("general")
+        )
+      ),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
       contentType: v.optional(v.string()),

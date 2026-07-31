@@ -4,6 +4,9 @@ import { api } from "@/convex/_generated/api";
 import { LONA_MOCK_IMAGES } from "@/data/mock-images";
 
 export const HOMEPAGE_IMAGE_SLOTS = [
+  { key: "logo", label: "لوگو برند" },
+  { key: "favicon", label: "فاوآیکون (آیکون مرورگر)" },
+  { key: "og_image", label: "تصویر اشتراک‌گذاری (OpenGraph)" },
   { key: "hero", label: "تصویر اصلی هرو" },
   { key: "category_1", label: "دسته‌بندی ۱ · سوتین" },
   { key: "category_2", label: "دسته‌بندی ۲ · شورت" },
@@ -45,6 +48,9 @@ export type HomepageImageOverrides = Partial<Record<HomepageImageSlot, string>>;
 export type HomepageImageMap = Record<HomepageImageSlot, string>;
 
 export const DEFAULT_HOMEPAGE_IMAGES: HomepageImageMap = {
+  logo: "/logo.svg",
+  favicon: "/logo.svg",
+  og_image: "/logo.svg",
   hero: LONA_MOCK_IMAGES.editorialPortrait,
   category_1: LONA_MOCK_IMAGES.softGarment,
   category_2: LONA_MOCK_IMAGES.flatLay,

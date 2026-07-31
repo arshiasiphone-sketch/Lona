@@ -19,6 +19,9 @@ const vHomepageBlock = v.object({
 });
 
 const HOMEPAGE_IMAGE_KEYS = [
+  "logo",
+  "favicon",
+  "og_image",
   "hero",
   "category_1",
   "category_2",

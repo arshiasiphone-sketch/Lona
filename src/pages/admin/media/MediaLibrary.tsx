@@ -29,6 +29,7 @@ import {
   ImagePlus,
   LayoutGrid,
   List as ListIcon,
+  Loader2,
   Package,
   RefreshCw,
   Search,
@@ -51,6 +52,8 @@ type LibraryRow = {
   source: "library" | "product";
   filename: string;
   alt: string;
+  caption?: string | null;
+  section?: string | null;
   url: string | null;
   width: number | null;
   height: number | null;
@@ -58,6 +61,23 @@ type LibraryRow = {
   contentType?: string | null;
   productSlug?: string | null;
   productName?: string | null;
+};
+
+const SECTION_OPTS = [
+  ["all", "همه"],
+  ["brand", "برند"],
+  ["editorial", "ادیتوریال"],
+  ["instagram", "اینستاگرام"],
+  ["banner", "بنر"],
+  ["general", "عمومی"],
+] as const;
+
+const SECTION_LABEL: Record<string, string> = {
+  brand: "برند",
+  editorial: "ادیتوریال",
+  instagram: "اینستاگرام",
+  banner: "بنر",
+  general: "عمومی",
 };
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
@@ -77,6 +97,7 @@ export default function MediaLibrary() {
 
   const [term, setTerm] = React.useState("");
   const [source, setSource] = React.useState<"all" | "library" | "product">("all");
+  const [section, setSection] = React.useState<string>("all");
   const [view, setView] = React.useState<"grid" | "list">("grid");
   const [uploads, setUploads] = React.useState<UploadRow[]>([]);
   const [dragging, setDragging] = React.useState(false);
@@ -89,14 +110,15 @@ export default function MediaLibrary() {
     const needle = term.trim().toLowerCase();
     return all
       .filter((row) => source === "all" || row.source === source)
+      .filter((row) => section === "all" || row.section === section)
       .filter((row) => {
         if (!needle) return true;
-        return [row.filename, row.alt, row.productName ?? ""]
+        return [row.filename, row.alt, row.caption ?? "", row.productName ?? ""]
           .join(" ")
           .toLowerCase()
           .includes(needle);
       });
-  }, [list, term, source]);
+  }, [list, term, source, section]);
 
   const selected = filtered.find((r) => r.id === selectedId) ?? null;
 
@@ -334,6 +356,23 @@ export default function MediaLibrary() {
                 className={cn(
                   "rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em]",
                   source === k
+                    ? "bg-ink text-canvas"
+                    : "text-ink-soft hover:bg-white",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 rounded-full hairline bg-canvas/70 p-1">
+            {SECTION_OPTS.map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setSection(k)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.16em]",
+                  section === k
                     ? "bg-ink text-canvas"
                     : "text-ink-soft hover:bg-white",
                 )}
@@ -598,6 +637,19 @@ function MediaDetailsPanel({
   onDelete: () => void;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const [altDraft, setAltDraft] = React.useState(row.alt);
+  const [captionDraft, setCaptionDraft] = React.useState(row.caption ?? "");
+  const [metaBusy, setMetaBusy] = React.useState(false);
+  const [replaceBusy, setReplaceBusy] = React.useState(false);
+  const [replaceError, setReplaceError] = React.useState<string | null>(null);
+  const replaceInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const updateAlt = useMutation(api.admin_media.updateLibraryAlt);
+  const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
+  const replaceAsset = useMutation(api.admin_media.replaceLibraryAsset);
+
+  const isLibrary = row.source === "library";
+
   const copyUrl = async () => {
     if (!row.url) return;
     try {
@@ -608,6 +660,44 @@ function MediaDetailsPanel({
       /* clipboard unavailable */
     }
   };
+
+  const saveMeta = async () => {
+    setMetaBusy(true);
+    try {
+      await updateAlt({
+        id: row.id as Id<"media_library">,
+        alt: altDraft.trim(),
+        caption: captionDraft.trim(),
+      });
+    } finally {
+      setMetaBusy(false);
+    }
+  };
+
+  const replace = async (file: File) => {
+    setReplaceBusy(true);
+    setReplaceError(null);
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { storageId: Id<"_storage"> };
+      const result = await replaceAsset({
+        id: row.id as Id<"media_library">,
+        storageId: data.storageId,
+        contentType: file.type,
+        size: file.size,
+      });
+      if (!result?.url) throw new Error("فایل جایگزین ذخیره نشد");
+    } catch (err) {
+      setReplaceError((err as Error).message ?? "جایگزینی ناموفق بود");
+    } finally {
+      setReplaceBusy(false);
+    }
+  };
+
   const sizeLabel = row.width && row.height ? `${row.width}×${row.height}` : "—";
   return (
     <div className="overflow-hidden rounded-3xl border border-edge bg-white/85">
@@ -638,7 +728,7 @@ function MediaDetailsPanel({
       </div>
       <dl className="space-y-3 px-6 py-5 text-sm">
         <Pair label="نام فایل" value={row.filename} />
-        <Pair label="متن جایگزین" value={row.alt} />
+        {!isLibrary ? <Pair label="متن جایگزین" value={row.alt} /> : null}
         <Pair label="ابعاد" value={sizeLabel} />
         <Pair
           label="تاریخ بارگذاری"
@@ -648,12 +738,61 @@ function MediaDetailsPanel({
           label="مأخذ"
           value={row.source === "library" ? "کتابخانه آزاد" : "متصل به محصول"}
         />
+        {isLibrary ? (
+          <Pair
+            label="دسته"
+            value={row.section ? SECTION_LABEL[row.section] ?? "عمومی" : "عمومی"}
+          />
+        ) : null}
         {row.productName ? (
           <Pair label="محصول مرتبط" value={`${row.productName}${row.productSlug ? ` (${row.productSlug})` : ""}`} />
         ) : null}
         <Pair label="نوع MIME" value={row.contentType ?? "نامشخص"} />
       </dl>
-      <div className="flex items-center justify-between gap-2 border-t border-edge px-6 py-4">
+
+      {isLibrary ? (
+        <div className="space-y-3 border-t border-edge px-6 py-5">
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              متن جایگزین (SEO)
+            </span>
+            <input
+              dir="rtl"
+              value={altDraft}
+              onChange={(e) => setAltDraft(e.target.value)}
+              placeholder="مثال: سوتین گیپور مشکی زنانه لونا"
+              className="w-full rounded-xl border border-edge bg-canvas/60 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+              عنوان / توضیح کوتاه
+            </span>
+            <input
+              dir="rtl"
+              value={captionDraft}
+              onChange={(e) => setCaptionDraft(e.target.value)}
+              placeholder="توضیح استفاده از این تصویر…"
+              className="w-full rounded-xl border border-edge bg-canvas/60 px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void saveMeta()}
+            disabled={metaBusy}
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary disabled:opacity-60"
+          >
+            {metaBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            ذخیره توضیحات
+          </button>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-edge px-6 py-4">
         <button
           type="button"
           onClick={copyUrl}
@@ -663,6 +802,34 @@ function MediaDetailsPanel({
           <Copy className="h-3.5 w-3.5" />
           {copied ? "کپی شد" : "کپی URL"}
         </button>
+        {isLibrary ? (
+          <>
+            <button
+              type="button"
+              onClick={() => replaceInputRef.current?.click()}
+              disabled={replaceBusy}
+              className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white disabled:opacity-50"
+            >
+              {replaceBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              جایگزینی تصویر
+            </button>
+            <input
+              ref={replaceInputRef}
+              type="file"
+              hidden
+              accept="image/png,image/jpeg,image/webp,image/avif"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void replace(file);
+                e.target.value = "";
+              }}
+            />
+          </>
+        ) : null}
         <button
           type="button"
           onClick={onDelete}
@@ -672,6 +839,11 @@ function MediaDetailsPanel({
           حذف
         </button>
       </div>
+      {replaceError ? (
+        <p className="border-t border-edge px-6 py-3 text-[11px] text-rose-700">
+          {replaceError}
+        </p>
+      ) : null}
     </div>
   );
 }

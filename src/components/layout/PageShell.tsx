@@ -5,6 +5,7 @@ import { Footer } from "./Footer";
 import { MobileNav } from "./MobileNav";
 import { BottomNav } from "./BottomNav";
 import { GlobalOverlays } from "@/components/global/GlobalOverlays";
+import { BrandAssetsApplier } from "@/components/global/BrandAssetsApplier";
 import { useState, useCallback } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { RouteProgressBar, SmoothScrollProvider } from "@/components/motion/RouteProgressBar";
@@ -22,6 +23,7 @@ export function PageShell() {
     <SmoothScrollProvider>
       <ScrollProgress />
       <RouteProgressBar />
+      <BrandAssetsApplier />
       <Cursor />
       <FlyToBagRenderer />
       <div className="min-h-screen pb-16 lg:pb-0">

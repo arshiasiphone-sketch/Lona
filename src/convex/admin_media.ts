@@ -44,6 +44,15 @@ export const attachToLibrary = mutation({
     filename: v.string(),
     alt: v.string(),
     caption: v.optional(v.string()),
+    section: v.optional(
+      v.union(
+        v.literal("brand"),
+        v.literal("editorial"),
+        v.literal("instagram"),
+        v.literal("banner"),
+        v.literal("general")
+      )
+    ),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     contentType: v.optional(v.string()),
@@ -86,6 +95,8 @@ export const listLibrary = query({
         source: "library" as const,
         filename: row.filename,
         alt: row.alt,
+        caption: row.caption ?? null,
+        section: row.section ?? null,
         url: await ctx.storage.getUrl(row.storageId),
         width: row.width ?? null,
         height: row.height ?? null,
@@ -129,6 +140,37 @@ export const listLibrary = query({
       : all;
 
     return limit ? filtered.slice(0, limit) : filtered;
+  },
+});
+
+/* ────────────────────────────────────────────────────────────
+ * REPLACE  — swap the file behind an existing library entry.
+ * Keeps the same row (alt, caption, section, dimensions) so
+ * placements that reference this asset keep working; the old
+ * storage file is deleted to avoid orphans.
+ * ──────────────────────────────────────────────────────────── */
+
+export const replaceLibraryAsset = mutation({
+  args: {
+    id: v.id("media_library"),
+    storageId: v.id("_storage"),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    contentType: v.optional(v.string()),
+    size: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, storageId, ...meta }) => {
+    const user = await requirePermission(ctx, "manage_media");
+    const row = await ctx.db.get(id);
+    if (!row) return null;
+    const oldStorage = row.storageId;
+    await ctx.db.patch(id, { storageId, ...meta });
+    if (oldStorage && oldStorage !== storageId) {
+      await ctx.storage.delete(oldStorage);
+    }
+    const url = await ctx.storage.getUrl(storageId);
+    await audit(ctx, user, "media.library.replace", "media_library", id);
+    return { id, url };
   },
 });
 

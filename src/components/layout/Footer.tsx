@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, Instagram, Mail } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { LonaLogo } from "@/components/brand/LonaLogo";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 const sections: { title: string; links: { label: string; to: string }[] }[] = [
   {
@@ -39,6 +40,7 @@ const sections: { title: string; links: { label: string; to: string }[] }[] = [
 export function Footer() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const images = useHomepageImages();
 
   return (
     <footer className="relative mt-32 overflow-hidden">
@@ -113,7 +115,11 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <div className="flex items-center gap-3">
-              <LonaLogo variant="default" size={44} />
+              {images.logo && images.logo !== "/logo.svg" ? (
+                <img src={images.logo} alt="لونا" className="h-11 w-auto" />
+              ) : (
+                <LonaLogo variant="default" size={44} />
+              )}
               <div className="flex flex-col items-start leading-tight">
                 <span className="font-latin-display text-2xl tracking-[0.32em] text-ink">
                   LONA
