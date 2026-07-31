@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   ChevronLeft,
@@ -73,6 +73,23 @@ export default function Product() {
     toast.added(`${product.name} · ${currentColor.name} · ${currentSize.label}`);
   };
 
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
+
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry?.isIntersecting),
+      { rootMargin: "-80px 0px 0px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const selectedColorName = product.colors.find((c) => c.id === color)?.name ?? product.colors[0].name;
+  const selectedSizeLabel = product.sizes.find((s) => s.id === size)?.label ?? product.sizes[0].label;
+
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
       {/* Breadcrumb */}
@@ -145,8 +162,9 @@ export default function Product() {
             />
           </motion.div>
 
-          {/* Quantity + CTA */}
+          {/* Quantity + CTA (desktop) */}
           <motion.div
+            ref={stickyRef}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: EASE_LUXURY, delay: 0.05 }}
@@ -275,6 +293,35 @@ export default function Product() {
 
       {/* Bundle suggestions */}
       <BundleSuggestions primaryId={product.id} />
+
+      {/* ── Mobile Sticky Purchase Bar ── */}
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: stickyVisible ? 0 : "100%" }}
+        transition={{ duration: 0.35, ease: EASE_LUXURY }}
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-edge bg-canvas/95 px-4 py-3 backdrop-blur-2xl lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
+        dir="rtl"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="type-caption text-lg text-ink">
+              {formatPrice(product.price * qty)}
+            </p>
+            <p className="truncate text-[11px] text-ink-muted">
+              {selectedColorName} · {selectedSizeLabel}
+            </p>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handleAdd}
+            className="flex shrink-0 items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            افزودن به سبد
+          </motion.button>
+        </div>
+      </motion.div>
 
       {/* Recently viewed */}
       <RecentlyViewed excludeId={product.id} />

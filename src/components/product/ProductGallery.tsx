@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripHorizontal } from "lucide-react";
 import { ProductImage } from "@/components/ui/ProductImage";
 import {
   Dialog,
@@ -103,7 +103,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
           {/* zoom hint */}
           <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center opacity-0 transition group-hover:opacity-100">
             <span className="glass rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-ink">
-              Hover to zoom
+              لمس برای بزرگ‌نمایی
             </span>
           </div>
         </motion.div>
