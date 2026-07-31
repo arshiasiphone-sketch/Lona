@@ -6,7 +6,7 @@ import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { EASE_LUXURY } from "@/lib/motion";
 import { usePageMeta } from "@/lib/seo";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 const stores = [
   {
@@ -33,6 +33,7 @@ export default function About() {
     canonical: `${window.location.origin}/about`,
     ogType: "website",
   });
+  const images = useHomepageImages();
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="max-w-4xl">
@@ -57,7 +58,7 @@ export default function About() {
           className="grid gap-12 lg:grid-cols-2"
         >
           <EditorialImage
-            src={LONA_MOCK_IMAGES.editorialFashion}
+            src={images.about_workshop}
             alt="تصویر کارگاه تهران لونا"
             className="gradient-rose aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/45"
             imgClassName="opacity-90"

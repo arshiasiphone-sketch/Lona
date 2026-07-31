@@ -6,13 +6,13 @@ import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { usePageMeta } from "@/lib/seo";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
-const COLLECTION_IMAGES = [
-  LONA_MOCK_IMAGES.editorialFashion,
-  LONA_MOCK_IMAGES.silkDetail,
-  LONA_MOCK_IMAGES.wardrobe,
-  LONA_MOCK_IMAGES.neutralFashion,
+const COLLECTION_SLOTS = [
+  "collections_1",
+  "collections_2",
+  "collections_3",
+  "collections_4",
 ] as const;
 
 export default function Collections() {
@@ -22,6 +22,7 @@ export default function Collections() {
     canonical: `${window.location.origin}/collections`,
     ogType: "website",
   });
+  const images = useHomepageImages();
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>
@@ -49,7 +50,7 @@ export default function Collections() {
               className="group focus-luxury block overflow-hidden rounded-3xl"
             >
               <EditorialImage
-                  src={COLLECTION_IMAGES[i % COLLECTION_IMAGES.length]}
+                  src={images[COLLECTION_SLOTS[i % COLLECTION_SLOTS.length]]}
                   alt={`${c.name} — تصویر کالکشن لونا`}
                   className={cn(
                     "relative aspect-[4/3] w-full transition duration-700 group-hover:scale-[1.03]",

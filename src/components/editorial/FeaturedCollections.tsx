@@ -5,12 +5,12 @@ import type { Collection } from "@/data/catalog";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
-const COLLECTION_IMAGES = [
-  LONA_MOCK_IMAGES.softGarment,
-  LONA_MOCK_IMAGES.silkDetail,
-  LONA_MOCK_IMAGES.neutralFashion,
+const COLLECTION_SLOTS = [
+  "featured_collection_1",
+  "featured_collection_2",
+  "featured_collection_3",
 ] as const;
 
 interface Props {
@@ -24,6 +24,8 @@ export function FeaturedCollections({
   title = "Volume XII",
   eyebrow = "Collections",
 }: Props) {
+  const images = useHomepageImages();
+
   return (
     <section className="mx-auto mt-24 max-w-[1728px] px-6 lg:px-10">
       <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -53,7 +55,7 @@ export function FeaturedCollections({
             >
               <div className="relative aspect-[4/5] w-full">
                 <EditorialImage
-                  src={COLLECTION_IMAGES[i % COLLECTION_IMAGES.length]}
+                  src={images[COLLECTION_SLOTS[i % COLLECTION_SLOTS.length]]}
                   alt={`${c.name} — کالکشن لونا`}
                   className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-105"
                   imgClassName="opacity-90"

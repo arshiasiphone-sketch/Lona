@@ -22,17 +22,26 @@ import {
   Check,
   Globe,
   Hash,
+  Images,
   Loader2,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
+  RotateCcw,
   Save,
   Send,
   ShoppingBag,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import {
+  DEFAULT_HOMEPAGE_IMAGES,
+  HOMEPAGE_IMAGE_SLOTS,
+  type HomepageImageSlot,
+} from "@/lib/homepage-images";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 
@@ -50,7 +59,9 @@ export default function Settings() {
     [rows],
   );
 
-  const [tab, setTab] = React.useState<"brand" | "store" | "seo" | "notifications">("brand");
+  const [tab, setTab] = React.useState<
+    "brand" | "store" | "seo" | "images" | "notifications"
+  >("brand");
   const [pending, setPending] = React.useState<string | null>(null);
 
   const save = React.useCallback(
@@ -85,6 +96,7 @@ export default function Settings() {
     { id: "brand" as const, label: "اطلاعات برند", icon: Sparkles },
     { id: "store" as const, label: "فروشگاه", icon: ShoppingBag },
     { id: "seo" as const, label: "SEO", icon: Globe },
+    { id: "images" as const, label: "تصاویر", icon: Images },
     { id: "notifications" as const, label: "اعلان‌ها", icon: Bell },
   ];
 
@@ -156,6 +168,8 @@ export default function Settings() {
               pending={pending}
               onSave={(value) => save("seo", value)}
             />
+          ) : tab === "images" ? (
+            <ImagesPanel />
           ) : (
             <NotificationsPanel
               value={v("notifications")}
@@ -632,5 +646,272 @@ function Toggle({
         />
       </span>
     </button>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Images — every storefront/editorial image slot, editable in one
+ * place. Upload lands in the Convex media library first, then the
+ * returned URL is stored as the homepage slot override. Empty URL
+ * resets to the luxury default imagery.
+ * ──────────────────────────────────────────────────────────────── */
+
+const IMAGE_GROUPS: { title: string; keys: HomepageImageSlot[] }[] = [
+  { title: "هرو", keys: ["hero"] },
+  {
+    title: "دسته‌بندی‌ها",
+    keys: [
+      "category_1",
+      "category_2",
+      "category_3",
+      "category_4",
+      "category_5",
+      "category_6",
+      "category_7",
+      "category_8",
+      "category_9",
+      "category_10",
+    ],
+  },
+  { title: "لوک‌بوک", keys: ["lookbook_1", "lookbook_2", "lookbook_3"] },
+  {
+    title: "اینستاگرام",
+    keys: [
+      "instagram_1",
+      "instagram_2",
+      "instagram_3",
+      "instagram_4",
+      "instagram_5",
+      "instagram_6",
+    ],
+  },
+  {
+    title: "کالکشن‌های منتخب",
+    keys: [
+      "featured_collection_1",
+      "featured_collection_2",
+      "featured_collection_3",
+    ],
+  },
+  {
+    title: "درباره، کالکشن‌ها و مجله",
+    keys: [
+      "about_workshop",
+      "collections_1",
+      "collections_2",
+      "collections_3",
+      "collections_4",
+      "collection_hero",
+      "press_hero",
+      "press_1",
+      "press_2",
+      "press_3",
+      "press_4",
+    ],
+  },
+];
+
+const slotLabel = (key: HomepageImageSlot): string =>
+  HOMEPAGE_IMAGE_SLOTS.find((s) => s.key === key)?.label ?? key;
+
+function ImagesPanel() {
+  const raw = useQuery(api.admin_settings.getPublicHomepageImages, {});
+  const overrides = (raw ?? {}) as Record<string, string | undefined>;
+
+  return (
+    <Section
+      title="تصاویر صفحات فروشگاه"
+      description="همه تصاویر لندینگ، دسته‌بندی‌ها، لوک‌بوک، اینستاگرام و صفحات دیگر — از همین‌جا قابل تغییر هستند. بارگذاری مستقیم یا وارد کردن آدرس تصویر، همان لحظه در سایت اعمال می‌شود."
+      icon={Images}
+    >
+      {IMAGE_GROUPS.map((group) => (
+        <div key={group.title}>
+          <p className="mb-3 mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            {group.title}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {group.keys.map((key) => (
+              <ImageSlotCard
+                key={key}
+                slotKey={key}
+                label={slotLabel(key)}
+                current={overrides[key] ?? DEFAULT_HOMEPAGE_IMAGES[key]}
+                overridden={Boolean(overrides[key])}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+function ImageSlotCard({
+  slotKey,
+  label,
+  current,
+  overridden,
+}: {
+  slotKey: HomepageImageSlot;
+  label: string;
+  current: string;
+  overridden: boolean;
+}) {
+  const [draft, setDraft] = React.useState(current);
+  const [busy, setBusy] = React.useState<"url" | "upload" | "reset" | null>(
+    null,
+  );
+  const [error, setError] = React.useState<string | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
+  const attachToLibrary = useMutation(api.admin_media.attachToLibrary);
+  const setImage = useMutation(api.admin_settings.setHomepageImage);
+
+  React.useEffect(() => {
+    setDraft(current);
+  }, [current]);
+
+  const applyDraft = async () => {
+    const url = draft.trim();
+    if (!url) return;
+    setBusy("url");
+    setError(null);
+    try {
+      await setImage({ key: slotKey, url });
+      setDraft(url);
+    } catch (err) {
+      setError((err as Error).message ?? "خطا در ذخیره آدرس");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const reset = async () => {
+    setBusy("reset");
+    setError(null);
+    try {
+      await setImage({ key: slotKey, url: "" });
+      setDraft("");
+    } catch (err) {
+      setError((err as Error).message ?? "خطا در بازگشت به پیش‌فرض");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const upload = async (file: File) => {
+    setBusy("upload");
+    setError(null);
+    try {
+      const uploadUrl = await generateUploadUrl();
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { storageId: Id<"_storage"> };
+      const attached = await attachToLibrary({
+        storageId: data.storageId,
+        filename: file.name,
+        alt: label,
+      });
+      if (!attached.url) throw new Error("آدرس تصویر دریافت نشد");
+      await setImage({ key: slotKey, url: attached.url });
+      setDraft(attached.url);
+    } catch (err) {
+      setError((err as Error).message ?? "بارگذاری ناموفق بود");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl border bg-white/80 transition",
+        overridden ? "border-primary/40" : "border-edge",
+      )}
+    >
+      <div className="relative aspect-[4/3] bg-canvas-soft">
+        <img
+          src={current}
+          alt={label}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+        {overridden ? (
+          <span className="absolute right-2 top-2 rounded-full bg-ink/85 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] text-canvas">
+            سفارشی
+          </span>
+        ) : null}
+        {busy === "upload" ? (
+          <div className="absolute inset-0 grid place-items-center bg-ink/40 backdrop-blur-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-canvas" />
+          </div>
+        ) : null}
+      </div>
+      <div className="space-y-2 p-3">
+        <p className="text-[12px] font-medium text-ink">{label}</p>
+        <div className="flex items-center gap-1.5">
+          <input
+            dir="ltr"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="https://… یا خالی برای پیش‌فرض"
+            className="h-8 w-full rounded-lg border border-edge bg-canvas/60 px-2 text-[11px] text-ink focus:border-primary focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => void applyDraft()}
+            disabled={busy !== null || !draft.trim()}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink text-canvas transition hover:bg-primary disabled:opacity-50"
+            aria-label="ذخیره آدرس"
+            title="ذخیره آدرس"
+          >
+            {busy === "url" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy !== null}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg hairline text-ink-soft transition hover:bg-white hover:text-ink disabled:opacity-50"
+            aria-label="بارگذاری تصویر"
+            title="بارگذاری از دستگاه"
+          >
+            <Upload className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void reset()}
+            disabled={busy !== null || !overridden}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg hairline text-ink-soft transition hover:bg-white hover:text-ink disabled:opacity-40"
+            aria-label="بازگشت به پیش‌فرض"
+            title="بازگشت به پیش‌فرض"
+          >
+            {busy === "reset" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            hidden
+            accept="image/png,image/jpeg,image/webp,image/avif"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void upload(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        {error ? <p className="text-[11px] text-rose-700">{error}</p> : null}
+      </div>
+    </div>
   );
 }

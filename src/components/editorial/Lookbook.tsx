@@ -4,6 +4,10 @@
  * Three editorial plates rendered with maximum whitespace. Each plate
  * pairs a gradient image with a quiet caption + large translucent
  * numeral. The numerals animate in via Reveal-style masking.
+ *
+ * Every plate image is an admin-editable homepage slot — overrides are
+ * resolved through `useHomepageImages` and fall back to the default
+ * luxury imagery when unset.
  */
 import { motion } from "framer-motion";
 import { cn } from "@/lib/glass";
@@ -33,7 +37,7 @@ const plates: Plate[] = [
     body: "سوتین ابریشمی کرم، شورت هماهنگ، و یک لباس خواب گشاد — اولین ساعت روز، آرام.",
     gradient: "gradient-lona-pearl",
     align: "right",
-    image: LONA_MOCK_IMAGES.editorialFashion,
+    slot: "lookbook_1",
   },
   {
     eyebrow: "نگاه ۰۲",
@@ -49,7 +53,7 @@ const plates: Plate[] = [
     body: "لباس خواب حریر مشکی، یک شمع خاموش، و یک کتاب نیمه‌خوانده.",
     gradient: "gradient-deep",
     align: "right",
-    image: LONA_MOCK_IMAGES.editorialFashion,
+    slot: "lookbook_3",
   },
 ];
 

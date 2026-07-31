@@ -6,12 +6,13 @@ import { Marquee } from "@/components/editorial/Marquee";
 import { cn } from "@/lib/glass";
 import { usePageMeta } from "@/lib/seo";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 export default function Collection() {
   const { slug = "" } = useParams();
   const collection = useCollection(slug);
   const items = useCollectionProducts(slug) ?? [];
+  const images = useHomepageImages();
 
   usePageMeta({
     title: collection ? `کالکسیون ${collection.name}` : "کالکسیون یافت نشد",
@@ -55,7 +56,7 @@ export default function Collection() {
           )}
         >
           <EditorialImage
-            src={LONA_MOCK_IMAGES.editorialFashion}
+            src={images.collection_hero}
             alt={`${collection.name} — تصویر کالکشن لونا`}
             className={cn("absolute inset-0", gradientClass)}
             imgClassName="opacity-90"

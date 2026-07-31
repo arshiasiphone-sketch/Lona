@@ -7,14 +7,9 @@ import { EASE_LUXURY } from "@/lib/motion";
 import { Reveal } from "@/components/motion/Reveal";
 import { formatDate } from "@/lib/format";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
-const PRESS_IMAGES = [
-  LONA_MOCK_IMAGES.editorialFashion,
-  LONA_MOCK_IMAGES.silkDetail,
-  LONA_MOCK_IMAGES.wardrobe,
-  LONA_MOCK_IMAGES.neutralFashion,
-] as const;
+const PRESS_SLOTS = ["press_1", "press_2", "press_3", "press_4"] as const;
 
 const gradientMap: Record<string, string> = {
   mist: "gradient-mist",
@@ -33,6 +28,7 @@ const categoryLabel: Record<string, string> = {
 
 export default function Press() {
   const [hero, ...rest] = editorials;
+  const images = useHomepageImages();
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
@@ -54,7 +50,7 @@ export default function Press() {
           className="group mt-16 block overflow-hidden rounded-3xl focus-luxury"
         >
           <EditorialImage
-            src={PRESS_IMAGES[0]}
+            src={images.press_hero}
             alt={`${hero.title} — مجله لونا`}
             className={cn("relative aspect-[16/8]", gradientFor(hero.cover))}
             imgClassName="opacity-90"
@@ -91,7 +87,7 @@ export default function Press() {
           >
             <Link to={`/press/${e.slug}`} className="group block overflow-hidden rounded-2xl">
               <EditorialImage
-                src={PRESS_IMAGES[(i + 1) % PRESS_IMAGES.length]}
+                src={images[PRESS_SLOTS[i % PRESS_SLOTS.length]]}
                 alt={`${e.title} — مجله لونا`}
                 className={cn(
                   "relative aspect-[4/5] transition duration-700 group-hover:scale-[1.03]",
