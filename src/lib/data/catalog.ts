@@ -137,6 +137,7 @@ function adaptProduct(row: ConvexProduct): Product {
     secondaryGradient: row.secondaryGradient
       ? coverGradientKey(row.secondaryGradient)
       : undefined,
+    imageUrls: row.imageUrls?.filter((url): url is string => Boolean(url)),
   };
 }
 
