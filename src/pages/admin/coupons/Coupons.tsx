@@ -138,7 +138,7 @@ export default function CouponsAdmin() {
         <AdminEmptyState
           icon={<Tag className="h-6 w-6" />}
           title="کوپنی وجود ندارد"
-          description={needle ? "کوپنی با این جستجو یافت نشد." : "برای شروع، یک کوپن تخفیف ایجاد کنید."}
+          body={needle ? "کوپنی با این جستجو یافت نشد." : "برای شروع، یک کوپن تخفیف ایجاد کنید."}
           action={{ label: "ایجاد اولین کوپن", onClick: openCreate }}
         />
       ) : (
@@ -258,6 +258,7 @@ export default function CouponsAdmin() {
 
       <ConfirmDialog
         open={confirm.open}
+        onOpenChange={(o) => !o && setConfirm({ ...confirm, open: false })}
         title={
           confirm.action === "delete"
             ? "حذف کوپن"
@@ -265,7 +266,7 @@ export default function CouponsAdmin() {
               ? "غیرفعال‌سازی کوپن"
               : "فعال‌سازی کوپن"
         }
-        description={
+        body={
           confirm.action === "delete"
             ? `آیا از حذف کوپن «${confirm.row?.code ?? ""}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.`
             : confirm.action === "archive"
@@ -275,7 +276,6 @@ export default function CouponsAdmin() {
         tone={confirm.action === "delete" ? "destructive" : "info"}
         confirmLabel={confirm.action === "delete" ? "حذف نهایی" : "تأیید"}
         onConfirm={runConfirm}
-        onCancel={() => setConfirm({ ...confirm, open: false })}
       />
     </div>
   );

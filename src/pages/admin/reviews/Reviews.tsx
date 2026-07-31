@@ -136,7 +136,7 @@ export default function ReviewsAdmin() {
         <AdminEmptyState
           icon={<Star className="h-6 w-6" />}
           title="نظری یافت نشد"
-          description={needle || status !== "all" ? "با فیلتر فعلی نظری پیدا نشد." : "هنوز نظری ثبت نشده است."}
+          body={needle || status !== "all" ? "با فیلتر فعلی نظری پیدا نشد." : "هنوز نظری ثبت نشده است."}
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -225,6 +225,7 @@ export default function ReviewsAdmin() {
 
       <ConfirmDialog
         open={confirm.open}
+        onOpenChange={(o) => !o && setConfirm({ open: false, row: null, action: null })}
         title={
           confirm.action === "approve"
             ? "تأیید نظر"
@@ -232,7 +233,7 @@ export default function ReviewsAdmin() {
               ? "مخفی‌سازی نظر"
               : "حذف نظر"
         }
-        description={
+        body={
           confirm.action === "approve"
             ? "این نظر در سایت نمایش داده خواهد شد."
             : confirm.action === "hide"
@@ -248,7 +249,6 @@ export default function ReviewsAdmin() {
               : "حذف نهایی"
         }
         onConfirm={run}
-        onCancel={() => setConfirm({ open: false, row: null, action: null })}
       />
     </div>
   );

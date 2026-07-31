@@ -38,8 +38,8 @@ export interface ProductPickerDialogProps {
 
 type ProductSummary = Pick<
   Doc<"products">,
-  "_id" | "slug" | "name" | "priceCents" | "category" | "badge"
->;
+  "_id" | "slug" | "name" | "priceCents" | "category"
+> & { badge?: string };
 
 export function ProductPickerDialog({
   open,

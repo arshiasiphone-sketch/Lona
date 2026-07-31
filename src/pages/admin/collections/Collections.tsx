@@ -399,7 +399,7 @@ function CollectionEditDrawer({
         eyebrow,
         description,
         productSlugs: productSlugs as string[],
-        gradient: gradient as "oat" | "mist" | "deep" | "rose-quartz",
+        gradient: gradient as "oat" | "mist" | "deep" | "rose",
         coverGradient: undefined,
         kind,
         season: season || undefined,

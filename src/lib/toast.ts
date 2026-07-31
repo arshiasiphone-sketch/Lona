@@ -68,4 +68,4 @@ export const toast = {
         duration: 4000,
       }),
   },
-} as const;
+export const useToast = () => toast;

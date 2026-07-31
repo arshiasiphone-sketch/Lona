@@ -35,3 +35,9 @@ export const PRODUCT_GRADIENTS = {
 } as const;
 
 export type GradientKey = keyof typeof PRODUCT_GRADIENTS;
+
+/** Legacy glass surface tokens — used by admin pages. */
+export const glass = {
+  surface: "rounded-2xl border border-white/60 bg-white/75 backdrop-blur-lg",
+  modal: "rounded-2xl border border-white/60 bg-white/90 backdrop-blur-2xl",
+} as const;

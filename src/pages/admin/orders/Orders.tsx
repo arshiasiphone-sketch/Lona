@@ -38,12 +38,12 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 const STATUS_TONE: Record<OrderStatus, StatusKind> = {
-  pending: "warning",
-  processing: "info",
-  shipped: "info",
-  delivered: "success",
-  returning: "warning",
-  cancelled: "danger",
+  pending: "pending",
+  processing: "processing",
+  shipped: "shipped",
+  delivered: "delivered",
+  returning: "returning",
+  cancelled: "cancelled",
 };
 
 const NEXT_VALID: Record<OrderStatus, OrderStatus[]> = {
@@ -131,11 +131,10 @@ export default function OrdersAdmin() {
         <AdminEmptyState
           icon={<Receipt className="h-6 w-6" />}
           title="سفارشی یافت نشد"
-          description={
+          body={
             needle || status !== "all"
               ? "با فیلتر فعلی هیچ سفارشی پیدا نشد. فیلتر را تغییر دهید."
               : "هنوز سفارشی ثبت نشده است."
-          }
         />
       ) : (
         <div className={`overflow-hidden rounded-2xl ${glass.surface}`}>
@@ -299,7 +298,7 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
                 label="تاریخ ثبت"
                 value={order.placedAt ? toFaDate(Number(order.placedAt)) : "—"}
               />
-              <InfoRow icon={<User className="h-4 w-4" />} label="مشتری" value={String(order.customerName ?? order.shipping?.fullName ?? "—")} />
+              <InfoRow icon={<User className="h-4 w-4" />} label="مشتری" value={String(order.customerName ?? (order.shipping as any)?.fullName ?? "—")} />
               <div>
                 <div className="mb-1 text-xs text-neutral-500">وضعیت</div>
                 <StatusBadge status={STATUS_TONE[s] ?? "neutral"} label={STATUS_LABEL[s] ?? "—"} />

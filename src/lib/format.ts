@@ -128,7 +128,8 @@ export function formatOrderNumber(n: string | number): string {
   return `LN-${String(n).padStart(8, "0")}`;
 }
 
-/** Currency code constant for downstream places that branch on it. */
+/** Admin shorthand — same as formatPrice. */
+export const formatToman = (amount: number, decimals = false) => formatPrice(amount, decimals);
 export const CURRENCY_CODE = "IRT" as const;
 /** Display label. */
 export const CURRENCY_LABEL = "تومان" as const;

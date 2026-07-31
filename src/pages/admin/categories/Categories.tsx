@@ -334,6 +334,7 @@ function RowActions({
   onDelete: () => void;
 }) {
   const archive = useMutation(api.admin_catalog.archiveCategory);
+  const deleteCategory = useMutation(api.admin_catalog.deleteCategory);
   const restore = useMutation(api.admin_catalog.restoreCategory);
   const reorder = useMutation(api.admin_catalog.reorderCategories);
   const [busy, setBusy] = React.useState(false);

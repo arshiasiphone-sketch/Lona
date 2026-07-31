@@ -61,7 +61,7 @@ export default function CustomersAdmin() {
         <AdminEmptyState
           icon={<User className="h-6 w-6" />}
           title="مشتری یافت نشد"
-          description={needle ? "با عبارت جستجو فعلی مشتری پیدا نشد." : "هنوز مشتری ثبت نکرده است."}
+          body={needle ? "با عبارت جستجو فعلی مشتری پیدا نشد." : "هنوز مشتری ثبت نکرده است."}
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

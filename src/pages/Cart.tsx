@@ -304,7 +304,7 @@ function CouponInput({
             <button
               onClick={() => {
                 const result = onApply(code);
-                if (result) toast.coupon.applied(result.code);
+                if (result) toast.coupon.applied(result.code, result.percentOff);
                 else toast.coupon.invalid();
               }}
               className="rounded-full bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
