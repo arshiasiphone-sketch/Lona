@@ -22,7 +22,7 @@
  * one-time CLI-only seed or a server-side env-gated allowlist.
  */
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { vRole } from "./validators";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -141,3 +141,57 @@ export const promoteLatest = mutation({
     };
   },
 });
+
+/** One-shot diagnostic: list all admin/owner users so the developer
+ *  can see which email was bootstrapped. */
+export const listAdmins = query({
+  args: {},
+  handler: async (ctx) => {
+    const admins = await ctx.db
+      .query("users")
+      .filter((q) =>
+        q.or(q.eq(q.field("role"), "admin"), q.eq(q.field("role"), "owner")),
+      )
+      .collect();
+    return admins.map((a) => ({
+      email: a.email,
+      name: a.name,
+      role: a.role,
+    }));
+  },
+});
+
+/** Override: promote/update a specific email to a given role regardless
+ *  of whether admins already exist. Safe in dev; disable for production. */
+export const forcePromote = mutation({
+  args: {
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.optional(vRole),
+  },
+  handler: async (ctx, args) => {
+    const lowered = args.email.trim().toLowerCase();
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", lowered))
+      .unique();
+    const role = args.role ?? "admin";
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        role,
+        ...(args.name ? { name: args.name } : {}),
+      });
+      return { id: existing._id, email: lowered, name: args.name ?? existing.name, role, created: false };
+    }
+
+    const id = await ctx.db.insert("users", {
+      email: lowered,
+      name: args.name,
+      role,
+      isAnonymous: false,
+    });
+    return { id, email: lowered, name: args.name, role, created: true };
+  },
+});
+
