@@ -21,7 +21,7 @@
  *     6 requirement is satisfied per product from a hand-curated
  *     pool of stable, editorial fashion photo IDs.
  */
-import type { GradientKey } from "@/lib/glass";
+export type GradientKey = "mist" | "oat" | "rose" | "blush" | "pearl" | "deep" | "noir";
 
 // ──────────────────────────────────────────────────────────────
 // IDENTITY — categories, colors, sizes
