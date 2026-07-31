@@ -120,11 +120,11 @@ export default function Product() {
     <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
       {/* JSON‑LD */}
       {seoProduct && <ProductJsonLd {...seoProduct} />}
-      <BreadcrumbJsonLd items={[
+      {BreadcrumbJsonLd([
         { name: "خانه", url: `${window.location.origin}/` },
         { name: "فروشگاه", url: `${window.location.origin}/shop` },
         { name: product.name, url: `${window.location.origin}/shop/${product.slug}` },
-      ]} />
+      ])}
       {/* Breadcrumb */}
       <nav
         aria-label="مسیر صفحه"
