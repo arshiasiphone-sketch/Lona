@@ -540,5 +540,3 @@ function KindButton({
     </button>
   );
 }
-</content>
-</invoke>

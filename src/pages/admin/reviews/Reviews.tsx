@@ -303,5 +303,3 @@ function SkeletonList() {
     </div>
   );
 }
-</content>
-</invoke>

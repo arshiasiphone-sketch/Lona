@@ -286,5 +286,3 @@ function CustomerDrawer({ id, onClose }: { id: string; onClose: () => void }) {
     </motion.div>
   );
 }
-</content>
-</invoke>
