@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, GripHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { ProductImage } from "@/components/ui/ProductImage";
 import {
   Dialog,
@@ -51,34 +51,81 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
   const [active, setActive] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const [fullZoom, setFullZoom] = useState(false);
+
+  // Swipe state
+  const dragStart = useRef(0);
+  const [dragX, setDragX] = useState(0);
+  const SWIPE_THRESHOLD = 60;
 
   // Phase 5.8.1 — prefer real photo URLs when the catalog carries them.
   const galleryUrls: (string | undefined)[] =
     product.imageUrls && product.imageUrls.length > 0
       ? product.imageUrls.slice(0, 4)
       : [];
-  // 4 frame angles for the active color (rotate the cycle through the gradient to imply angle changes).
   const FRAMES = [0, 1, 2, 3];
+
+  const goNext = useCallback(() => setActive((a) => (a + 1) % FRAMES.length), [FRAMES.length]);
+  const goPrev = useCallback(() => setActive((a) => (a === 0 ? FRAMES.length - 1 : a - 1)), [FRAMES.length]);
+
+  const handleDoubleTap = useCallback(() => {
+    setZoomed((z) => !z);
+  }, []);
 
   return (
     <>
       <div className="space-y-4">
+        {/* ── Main image with swipe + zoom ── */}
         <motion.div
           key={active}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_LUXURY }}
           onClick={() => setFullscreen(true)}
+          onDoubleClick={handleDoubleTap}
           onMouseEnter={() => setZoom(true)}
           onMouseLeave={() => setZoom(false)}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          onDragStart={(_e, info) => {
+            dragStart.current = info.point.x;
+            setDragX(0);
+          }}
+          onDrag={(_e, info) => {
+            setDragX(info.point.x - dragStart.current);
+          }}
+          onDragEnd={(_e, info) => {
+            const delta = info.point.x - dragStart.current;
+            setDragX(0);
+            if (Math.abs(delta) > SWIPE_THRESHOLD) {
+              // RTL: drag right (negative delta in our coords) = next
+              if (delta < 0) goNext();
+              else goPrev();
+            }
+          }}
           className={cn(
-            "group relative aspect-[4/5] cursor-zoom-in overflow-hidden rounded-3xl ring-1 ring-inset ring-white/40"
+            "group relative aspect-[4/5] cursor-zoom-in overflow-hidden rounded-3xl ring-1 ring-inset ring-white/40 touch-pan-y select-none",
           )}
         >
           <motion.div
-            animate={{ scale: zoom ? 1.06 : 1 }}
-            transition={{ duration: 1.0, ease: EASE_LUXURY }}
-            className={cn("absolute inset-0", gradientOf(colorGradient))}
+            animate={{
+              scale: zoomed ? 1.6 : zoom ? 1.06 : 1,
+              x: zoomed ? dragX * -0.3 : 0,
+            }}
+            transition={{ duration: zoomed ? 0.3 : 1.0, ease: EASE_LUXURY }}
+            className={cn(
+              "absolute inset-0",
+              gradientOf(colorGradient),
+              zoomed && "cursor-zoom-out z-10",
+            )}
+            onClick={(e) => {
+              if (zoomed) {
+                e.stopPropagation();
+                setZoomed(false);
+              }
+            }}
           >
             <ProductImage
               gradient={colorGradient}
@@ -90,24 +137,61 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
               className="h-full w-full [&>div.rounded-xl]:rounded-3xl"
             />
           </motion.div>
+
+          {/* Fullscreen button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setFullscreen(true);
             }}
-            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full glass-strong text-ink transition hover:bg-ink hover:text-canvas"
-            aria-label="باز کردن"
+            className="absolute right-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-full glass-strong text-ink transition hover:bg-ink hover:text-canvas"
+            aria-label="باز کردن تمام‌صفحه"
           >
-            <Maximize2 className="h-4 w-4" />
+            <ZoomIn className="h-4 w-4" />
           </button>
-          {/* zoom hint */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center opacity-0 transition group-hover:opacity-100">
+
+          {/* Zoom hint */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center opacity-0 transition group-hover:opacity-100">
             <span className="glass rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-ink">
-              لمس برای بزرگ‌نمایی
+              {zoomed ? "دو بار لمس برای بازگشت" : "دو بار لمس برای بزرگ‌نمایی"}
             </span>
+          </div>
+
+          {/* Swipe arrows on mobile */}
+          <div className="absolute inset-y-0 left-0 z-20 flex items-center px-1 lg:hidden">
+            <button
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+              className="grid h-9 w-9 place-items-center rounded-full bg-canvas/40 text-ink backdrop-blur-sm"
+              aria-label="تصویر قبلی"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="absolute inset-y-0 right-0 z-20 flex items-center px-1 lg:hidden">
+            <button
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+              className="grid h-9 w-9 place-items-center rounded-full bg-canvas/40 text-ink backdrop-blur-sm"
+              aria-label="تصویر بعدی"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Dots indicator */}
+          <div className="absolute inset-x-0 bottom-3 z-20 flex justify-center gap-1.5 lg:hidden">
+            {FRAMES.map((f) => (
+              <span
+                key={f}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  f === active ? "w-5 bg-ink" : "w-1.5 bg-ink/30",
+                )}
+              />
+            ))}
           </div>
         </motion.div>
 
+        {/* ── Thumbnails ── */}
         <div className="grid grid-cols-4 gap-3">
           {FRAMES.map((frame) => {
             const cycle: GradientKey[] = ["oat", "mist", "rose", "deep"];
@@ -123,7 +207,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                 onClick={() => setActive(frame)}
                 className={cn(
                   "relative aspect-square overflow-hidden rounded-xl ring-1 ring-inset ring-white/40 transition",
-                  isActive && "ring-2 ring-ink"
+                  isActive && "ring-2 ring-ink",
                 )}
                 aria-label={`نمای تصویر ${frame + 1}`}
               >
@@ -155,7 +239,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                   {product.name}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-canvas/70">
-                  {product.collection.replace("-", " ")} · {product.colors.length} colorways
+                  {product.collection.replace("-", " ")} · {product.colors.length.toLocaleString("fa-IR")} رنگ
                 </DialogDescription>
               </div>
               <button
@@ -172,12 +256,14 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                 <motion.div
                   key={active}
                   initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  animate={{ opacity: 1, scale: fullZoom ? 1.5 : 1 }}
                   exit={{ opacity: 0, scale: 1.04 }}
                   transition={{ duration: 0.4, ease: EASE_LUXURY }}
+                  onDoubleClick={() => setFullZoom((z) => !z)}
                   className={cn(
-                    "relative aspect-[4/5] h-full max-h-[80vh] w-auto overflow-hidden rounded-3xl",
-                    gradientOf(colorGradient)
+                    "relative aspect-[4/5] h-full max-h-[80vh] w-auto overflow-hidden rounded-3xl transition-transform",
+                    fullZoom ? "cursor-zoom-out" : "cursor-zoom-in",
+                    gradientOf(colorGradient),
                   )}
                 >
                   <ProductImage
@@ -214,7 +300,7 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                   onClick={() => setActive(f)}
                   className={cn(
                     "h-2 w-8 rounded-full transition",
-                    f === active ? "bg-canvas" : "bg-canvas/30 hover:bg-canvas/50"
+                    f === active ? "bg-canvas" : "bg-canvas/30 hover:bg-canvas/50",
                   )}
                   aria-label={`تصویر ${f + 1}`}
                 />

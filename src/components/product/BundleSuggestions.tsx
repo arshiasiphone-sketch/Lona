@@ -95,16 +95,15 @@ export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.8, ease: EASE_LUXURY }}
       className="mt-16"
-    >
-      <div className="flex items-end justify-between">
+    >        <div className="flex items-end justify-between">
         <div>
           <p className="type-eyebrow text-ink-muted">هماهنگ انتخاب‌شده</p>
           <h2 className="mt-3 font-display text-3xl text-ink lg:text-4xl">
-            Frequently with
+            ست‌های پیشنهادی
           </h2>
         </div>
         <span className="text-xs text-ink-muted">
-          Customers often add these together.
+          مشتریان معمولاً این محصولات را با هم خریداری می‌کنند.
         </span>
       </div>
 
@@ -165,7 +164,7 @@ export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
             </p>
             {pickExtras && (
               <p className="text-[11px] uppercase tracking-[0.18em] text-primary">
-                −10% with bundle
+                −۱۰٪ با خرید ست
               </p>
             )}
           </div>
@@ -176,7 +175,7 @@ export function BundleSuggestions({ primaryId }: BundleSuggestionsProps) {
             }}
             className="rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
           >
-            Add Selection
+            افزودن انتخاب‌ها
           </button>
         </div>
       </div>
