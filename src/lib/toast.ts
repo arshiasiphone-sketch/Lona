@@ -58,6 +58,12 @@ export const toast = {
   copy: (label: string) =>
     sonner.success("کپی شد", { description: label, duration: 2000 }),
 
+  /** Generic admin and system feedback. */
+  success: (message: string, description?: string) =>
+    sonner.success(message, { description, duration: 3500 }),
+  error: (message: string, description?: string) =>
+    sonner.error(message, { description, duration: 4500 }),
+
   /** Auth. */
   auth: {
     signedIn: () => sonner.success("خوش آمدید", { duration: 3500 }),

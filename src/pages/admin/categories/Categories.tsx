@@ -49,6 +49,7 @@ type CategoryRow = Doc<"categories"> & { _count?: number };
 
 export default function Categories() {
   const flat = useQuery(api.admin_catalog.listCategories, {});
+  const deleteCategory = useMutation(api.admin_catalog.deleteCategory);
 
   const [query, setQuery] = React.useState("");
   const [showArchived, setShowArchived] = React.useState(false);

@@ -59,7 +59,7 @@ export default function CouponsAdmin() {
   );
 
   const rows = useMemo(() => {
-    const list = (coupons ?? []) as Coupon[];
+    const list = (coupons ?? []) as unknown as Coupon[];
     return list.filter((row) => {
       if (!showArchived && (row.enabled === false || row.archived)) return false;
       if (!needle) return true;
@@ -139,7 +139,15 @@ export default function CouponsAdmin() {
           icon={<Tag className="h-6 w-6" />}
           title="کوپنی وجود ندارد"
           body={needle ? "کوپنی با این جستجو یافت نشد." : "برای شروع، یک کوپن تخفیف ایجاد کنید."}
-          action={{ label: "ایجاد اولین کوپن", onClick: openCreate }}
+          action={
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
+            >
+              ایجاد اولین کوپن
+            </button>
+          }
         />
       ) : (
         <div className={`overflow-hidden rounded-2xl ${glass.surface}`}>

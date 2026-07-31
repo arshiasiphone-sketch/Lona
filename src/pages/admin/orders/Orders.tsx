@@ -154,8 +154,9 @@ export default function OrdersAdmin() {
               {rows.map((row, i) => {
                 const id = String(row._id ?? idx(i));
                 const orderNumber = String(row.orderNumber ?? row.code ?? `ORD-${id.slice(-6)}`);
-                const name = String(row.customerName ?? row.shippingName ?? row.shipping?.fullName ?? "—");
-                const email = String(row.customerEmail ?? row.shipping?.email ?? "");
+                const shipping = row.shipping as { fullName?: unknown; email?: unknown } | undefined;
+                const name = String(row.customerName ?? row.shippingName ?? shipping?.fullName ?? "—");
+                const email = String(row.customerEmail ?? shipping?.email ?? "");
                 const totalCents = Number(row.totalCents ?? row.subtotalCents ?? 0);
                 const s = String(row.status ?? "pending") as OrderStatus;
                 const placedAt = Number(row.placedAt ?? row.createdAt ?? row._creationTime ?? 0);
