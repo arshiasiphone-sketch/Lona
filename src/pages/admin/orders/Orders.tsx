@@ -135,6 +135,7 @@ export default function OrdersAdmin() {
             needle || status !== "all"
               ? "با فیلتر فعلی هیچ سفارشی پیدا نشد. فیلتر را تغییر دهید."
               : "هنوز سفارشی ثبت نشده است."
+          }
         />
       ) : (
         <div className={`overflow-hidden rounded-2xl ${glass.surface}`}>
