@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { cn, type GradientKey } from "@/lib/glass";
+import { LONA_MOCK_FALLBACK } from "@/data/mock-images";
 
 /** Accept either the unprefixed key ("mist") or the full class ("gradient-mist"). */
 type GradientInput =
@@ -240,6 +242,12 @@ export function ProductImage({
   alt,
   ...rest
 }: ProductImageProps) {
+  const [imageSrc, setImageSrc] = useState(src ?? LONA_MOCK_FALLBACK);
+
+  useEffect(() => {
+    setImageSrc(src ?? LONA_MOCK_FALLBACK);
+  }, [src]);
+
   return (
     <div
       {...rest}
@@ -254,9 +262,8 @@ export function ProductImage({
       {/* Silhouette — sits beneath the photo so it remains the branded fallback */}
       <div className="text-ink/55">{silhouetteFor(silhouette)}</div>
       {/* Real product photography — falls back to the silhouette on error */}
-      {src ? (
-        <img
-          src={src}
+      <img
+          src={imageSrc}
           srcSet={srcSet}
           sizes={sizes}
           alt={alt ?? ""}
@@ -268,12 +275,15 @@ export function ProductImage({
           draggable={false}
           className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700"
           onError={(e) => {
-            // Hide the broken image so the gradient + silhouette fallback shines through.
+            // Switch to local mock artwork before falling back to the branded silhouette.
+            if (imageSrc !== LONA_MOCK_FALLBACK) {
+              setImageSrc(LONA_MOCK_FALLBACK);
+              return;
+            }
             const el = e.currentTarget;
             el.style.opacity = "0";
           }}
         />
-      ) : null}
       {withMark && (
         <span className="absolute bottom-3 start-3 font-display text-[10px] tracking-[0.4em] text-ink/50">
           LONA
