@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 interface Category {
   name: string;
@@ -26,19 +26,6 @@ interface Category {
     | "gradient-lona-pearl";
   tone: "ink" | "canvas";
 }
-
-const CATEGORY_IMAGES = [
-  LONA_MOCK_IMAGES.softGarment,
-  LONA_MOCK_IMAGES.flatLay,
-  LONA_MOCK_IMAGES.laceDetail,
-  LONA_MOCK_IMAGES.silkDetail,
-  LONA_MOCK_IMAGES.wardrobe,
-  LONA_MOCK_IMAGES.neutralFashion,
-  LONA_MOCK_IMAGES.editorialFashion,
-  LONA_MOCK_IMAGES.activeMood,
-  LONA_MOCK_IMAGES.fabricFlatLay,
-  LONA_MOCK_IMAGES.bridalMood,
-] as const;
 
 const CATEGORIES: Category[] = [
   { name: "سوتین",               path: "/shop?category=bras",       gradient: "gradient-oat",         tone: "ink" },
@@ -54,6 +41,20 @@ const CATEGORIES: Category[] = [
 ];
 
 export function CategoryGrid() {
+  const images = useHomepageImages();
+  const categoryImages = [
+    images.category_1,
+    images.category_2,
+    images.category_3,
+    images.category_4,
+    images.category_5,
+    images.category_6,
+    images.category_7,
+    images.category_8,
+    images.category_9,
+    images.category_10,
+  ];
+
   return (
     <section
       className="mx-auto mt-32 max-w-[1728px] px-6 lg:px-10"
@@ -86,7 +87,7 @@ export function CategoryGrid() {
               aria-label={cat.name}
             >
               <EditorialImage
-                src={CATEGORY_IMAGES[i % CATEGORY_IMAGES.length]}
+                src={categoryImages[i]}
                 alt={`تصویر دسته‌بندی ${cat.name} لونا`}
                 className="absolute inset-0 h-full w-full transition-transform duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
                 imgClassName="opacity-85"

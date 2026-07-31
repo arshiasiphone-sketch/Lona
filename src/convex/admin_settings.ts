@@ -5,33 +5,10 @@
  * row in the existing `settings` table. Each block is keyed:
  *
  *   { id, type, title, enabled, payload }
- *
- * `type` discriminates which storefront component renders it
- * (`hero`, `featured_collections`, `trending_products`,
- * `brand_manifesto`, `testimonials`, `lookbook`, `journal`,
- * `instagram`, `newsletter`). The FE renders based on the
- * discriminator so the backend doesn't need to evolve.
- *
- * We chose the JSON-in-settings approach over a dedicated
- * `homepage_blocks` table because:
- *   1. The storefront doesn't read blocks per-row — it reads
- *      the array once on load.
- *   2. New block kinds ship without a schema migration.
- *   3. Reorder is just a `value` patch.
- *
- * Other settings (site name, default currency, social handles)
- * use the same table under different keys. The FE calls
- * `getAll()` to hydrate one seed object.
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePermission, audit } from "./admin";
-
-/* ────────────────────────────────────────────────────────────
- * Block shapes — kept loose with `payload` as a free-form
- * object so we can introduce new fields without redeploying
- * the backend. The FE renders per-type.
- * ──────────────────────────────────────────────────────────── */
 
 const vHomepageBlock = v.object({
   id: v.string(),
@@ -41,11 +18,53 @@ const vHomepageBlock = v.object({
   payload: v.any(),
 });
 
-/* ────────────────────────────────────────────────────────────
- * READ
- * ──────────────────────────────────────────────────────────── */
+const HOMEPAGE_IMAGE_KEYS = [
+  "hero",
+  "category_1",
+  "category_2",
+  "category_3",
+  "category_4",
+  "category_5",
+  "category_6",
+  "category_7",
+  "category_8",
+  "category_9",
+  "category_10",
+  "lookbook_1",
+  "lookbook_2",
+  "lookbook_3",
+  "instagram_1",
+  "instagram_2",
+  "instagram_3",
+  "instagram_4",
+  "instagram_5",
+  "instagram_6",
+  "featured_collection_1",
+  "featured_collection_2",
+  "featured_collection_3",
+  "about_workshop",
+  "collections_1",
+  "collections_2",
+  "collections_3",
+  "collections_4",
+  "collection_hero",
+  "press_hero",
+  "press_1",
+  "press_2",
+  "press_3",
+  "press_4",
+] as const;
 
-/** Every settings row, including homepage blocks + global knobs. */
+type HomepageImageKey = (typeof HOMEPAGE_IMAGE_KEYS)[number];
+
+const isHomepageImageKey = (key: string): key is HomepageImageKey =>
+  (HOMEPAGE_IMAGE_KEYS as readonly string[]).includes(key);
+
+const isImageUrl = (url: string) =>
+  /^https:\/\//i.test(url) ||
+  /^http:\/\//i.test(url) ||
+  /^data:image\//i.test(url);
+
 export const getAll = query({
   args: {},
   handler: async (ctx) => {
@@ -54,7 +73,69 @@ export const getAll = query({
   },
 });
 
-/** Typed homepage blocks, hydrated. */
+export const getPublicHomepageImages = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "homepage_images"))
+      .unique();
+    return row?.value ?? {};
+  },
+});
+
+export const setHomepageImage = mutation({
+  args: {
+    key: v.string(),
+    url: v.optional(v.string()),
+  },
+  handler: async (ctx, { key, url }) => {
+    const user = await requirePermission(ctx, "manage_settings");
+    if (!isHomepageImageKey(key)) {
+      throw new Error("HOMEPAGE_IMAGE_KEY_INVALID");
+    }
+    if (url !== undefined && url.trim() !== "" && !isImageUrl(url.trim())) {
+      throw new Error("HOMEPAGE_IMAGE_URL_INVALID");
+    }
+
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "homepage_images"))
+      .unique();
+    const current =
+      existing?.value && typeof existing.value === "object"
+        ? (existing.value as Record<string, unknown>)
+        : {};
+    const next = { ...current };
+    const normalizedUrl = url?.trim() ?? "";
+    if (normalizedUrl) next[key] = normalizedUrl;
+    else delete next[key];
+
+    if (Object.keys(next).length === 0) {
+      if (existing) await ctx.db.delete(existing._id);
+    } else if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: next,
+        updatedAt: Date.now(),
+        updatedBy: user._id,
+      });
+    } else {
+      await ctx.db.insert("settings", {
+        key: "homepage_images",
+        value: next,
+        updatedAt: Date.now(),
+        updatedBy: user._id,
+      });
+    }
+
+    await audit(ctx, user, "homepage.image.update", "settings", existing?._id, {
+      key,
+      reset: !normalizedUrl,
+    });
+    return next;
+  },
+});
+
 export const getHomepageBlocks = query({
   args: {},
   handler: async (ctx) => {
@@ -63,32 +144,18 @@ export const getHomepageBlocks = query({
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", "homepage_blocks"))
       .unique();
-    const value = (row?.value ?? []) as Array<{
+    return (row?.value ?? []) as Array<{
       id: string;
       type: string;
       title: string;
       enabled: boolean;
       payload: unknown;
     }>;
-    return value;
   },
 });
 
-/* ────────────────────────────────────────────────────────────
- * WRITE
- * ──────────────────────────────────────────────────────────── */
-
-/**
- * Replace the whole homepage composition. Validation is light:
- *  • ids must be unique
- *  • each row needs a non-empty type
- * The FE owns the schema; the admin just commits what the
- * editor produced.
- */
 export const setHomepageBlocks = mutation({
-  args: {
-    blocks: v.array(vHomepageBlock),
-  },
+  args: { blocks: v.array(vHomepageBlock) },
   handler: async (ctx, { blocks }) => {
     const user = await requirePermission(ctx, "manage_content");
     const ids = new Set<string>();
@@ -123,11 +190,6 @@ export const setHomepageBlocks = mutation({
   },
 });
 
-/**
- * Toggle a single block's enabled flag without touching the rest
- * of the composition. Saves a full commit roundtrip when the
- * admin only wants to hide / reveal a section.
- */
 export const toggleHomepageBlock = mutation({
   args: { id: v.string(), enabled: v.boolean() },
   handler: async (ctx, { id, enabled }) => {
@@ -137,10 +199,7 @@ export const toggleHomepageBlock = mutation({
       .withIndex("by_key", (q) => q.eq("key", "homepage_blocks"))
       .unique();
     if (!row) return 0;
-    const blocks = (row.value ?? []) as Array<{
-      id: string;
-      enabled: boolean;
-    }>;
+    const blocks = (row.value ?? []) as Array<{ id: string; enabled: boolean }>;
     const next = blocks.map((b) => (b.id === id ? { ...b, enabled } : b));
     await ctx.db.patch(row._id, {
       value: next,
@@ -155,10 +214,6 @@ export const toggleHomepageBlock = mutation({
   },
 });
 
-/**
- * Reorder blocks in one atomic write. The caller (drag-drop UI)
- * supplies the new ordered list of ids.
- */
 export const reorderHomepageBlocks = mutation({
   args: { order: v.array(v.string()) },
   handler: async (ctx, { order }) => {
@@ -170,7 +225,7 @@ export const reorderHomepageBlocks = mutation({
     if (!row) return 0;
     const existing = (row.value ?? []) as Array<{ id: string }>;
     const map = new Map(existing.map((b) => [b.id, b]));
-    const next = order.flatMap((id, i) => {
+    const next = order.flatMap((id) => {
       const found = map.get(id);
       return found ? [{ ...found }] : [];
     });
@@ -186,11 +241,6 @@ export const reorderHomepageBlocks = mutation({
   },
 });
 
-/**
- * Upsert a generic settings row. Used for site-name, currency,
- * social links, etc. The key/value shape is open; the FE hydrates
- * whatever keys it expects.
- */
 export const upsertSetting = mutation({
   args: {
     key: v.string(),

@@ -16,10 +16,11 @@ import { ArrowLeft } from "lucide-react";
 import { EASE_LUXURY } from "@/lib/motion";
 import { useReducedMotionStrict } from "@/hooks/use-prefers-reduced-motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 export function Hero() {
   const reduced = useReducedMotionStrict();
+  const images = useHomepageImages();
   return (
     <section
       className="relative mx-auto flex min-h-[88vh] max-w-[1728px] flex-col gap-10 px-6 pt-24 pb-20 lg:flex-row-reverse lg:items-center lg:gap-16 lg:px-10 lg:pt-32 lg:pb-28"
@@ -33,7 +34,7 @@ export function Hero() {
         className="relative aspect-[4/5] w-full overflow-hidden rounded-[2rem] ring-1 ring-inset ring-white/35 shadow-glass lg:aspect-auto lg:h-[82vh] lg:w-[68%]"
       >
         <EditorialImage
-          src={LONA_MOCK_IMAGES.editorialPortrait}
+          src={images.hero}
           alt="تصویر ادیتوریال کالکشن جدید لونا"
           priority
           className="absolute inset-0 h-full w-full"

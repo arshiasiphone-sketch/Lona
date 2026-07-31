@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 interface Plate {
   eyebrow: string;
@@ -23,7 +23,7 @@ interface Plate {
     | "gradient-lona-rose"
     | "gradient-lona-pearl";
   align: "left" | "right";
-  image: string;
+  slot: "lookbook_1" | "lookbook_2" | "lookbook_3";
 }
 
 const plates: Plate[] = [
@@ -41,7 +41,7 @@ const plates: Plate[] = [
     body: "بادی نخی، شلوارک خانگی، یک فنجان چای کنار پنجره.",
     gradient: "gradient-rose-quartz",
     align: "left",
-    image: LONA_MOCK_IMAGES.wardrobe,
+    slot: "lookbook_2",
   },
   {
     eyebrow: "نگاه ۰۳",
@@ -54,6 +54,8 @@ const plates: Plate[] = [
 ];
 
 export function Lookbook() {
+  const images = useHomepageImages();
+
   return (
     <section
       className="mx-auto mt-36 max-w-[1728px] px-6 lg:px-10"
@@ -86,7 +88,7 @@ export function Lookbook() {
             )}
           >
             <EditorialImage
-              src={p.image}
+              src={images[p.slot]}
               alt={`${p.title} — لوک‌بوک لونا`}
               className={cn(
                 "relative aspect-[4/5] overflow-hidden rounded-3xl ring-1 ring-inset ring-white/35",

@@ -3,7 +3,7 @@ import { Instagram } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
-import { LONA_MOCK_IMAGES } from "@/data/mock-images";
+import { useHomepageImages } from "@/lib/homepage-images";
 
 const gradients: Array<
   "gradient-mist" | "gradient-oat" | "gradient-rose-quartz" | "gradient-deep" | "gradient-lona-rose" | "gradient-lona-pearl"
@@ -16,15 +16,6 @@ const gradients: Array<
   "gradient-deep",
 ];
 
-const images = [
-  LONA_MOCK_IMAGES.editorialPortrait,
-  LONA_MOCK_IMAGES.silkDetail,
-  LONA_MOCK_IMAGES.softPortrait,
-  LONA_MOCK_IMAGES.laceDetail,
-  LONA_MOCK_IMAGES.fabricFlatLay,
-  LONA_MOCK_IMAGES.neutralFashion,
-] as const;
-
 const captions = [
   "صبح، در بوتیک",
   "نخ ابریشم",
@@ -35,6 +26,16 @@ const captions = [
 ];
 
 export function InstagramGallery() {
+  const images = useHomepageImages();
+  const instagramImages = [
+    images.instagram_1,
+    images.instagram_2,
+    images.instagram_3,
+    images.instagram_4,
+    images.instagram_5,
+    images.instagram_6,
+  ];
+
   return (
     <section
       className="mx-auto mt-36 max-w-[1728px] px-6 lg:px-10"
@@ -71,7 +72,7 @@ export function InstagramGallery() {
             aria-label={`پست اینستاگرام · ${captions[i]}`}
           >
             <EditorialImage
-              src={images[i]}
+              src={instagramImages[i]}
               alt={`تصویر ${captions[i]} در اینستاگرام لونا`}
               className="absolute inset-0 h-full w-full"
               imgClassName="opacity-90"
