@@ -145,13 +145,12 @@ export default function Shop() {
     setPage((p) => p + 1);
   }, [hasMore]);
 
-  return (
-    <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
+  return (      <div className="mx-auto max-w-[1728px] px-4 pt-8 pb-24 sm:px-6 lg:px-10 lg:pt-20">
       {/* Heading */}
       <header className="flex flex-col gap-4 pb-10 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="type-eyebrow text-ink-muted">کالکسیون بوتیک</p>
-          <h1 className="mt-3 font-display text-5xl leading-[1.02] tracking-[-0.02em] text-ink lg:text-7xl">
+          <h1 className="mt-3 font-display text-3xl leading-[1.08] tracking-[-0.02em] text-ink sm:text-4xl lg:text-7xl">
             محصولات
           </h1>
         </div>

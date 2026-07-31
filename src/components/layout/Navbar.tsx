@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
+  Menu,
   Search,
   ShoppingBag,
   User as UserIcon,
@@ -24,7 +25,7 @@ const PRIMARY_LINKS: { label: string; to: string }[] = [
   { label: "درباره لونا", to: "/about" },
 ];
 
-export function Navbar() {
+export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { itemCount } = useCart();
   const { ids: wishlistIds } = useWishlist();
   const { isAuthenticated } = useAuth();
@@ -66,6 +67,13 @@ export function Navbar() {
       >
         {/* Right (in RTL the visual right is the start) — primary links */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={onMenuToggle}
+            className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 lg:hidden"
+            aria-label="منو"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
           <button
             onClick={() => setMobileSearch((s) => !s)}
             className="grid h-9 w-9 place-items-center rounded-full text-ink-soft transition hover:bg-white/40 lg:hidden"
