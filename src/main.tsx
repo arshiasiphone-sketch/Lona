@@ -30,6 +30,12 @@ const About = lazy(() => import("./pages/About.tsx"));
 const Press = lazy(() => import("./pages/Press.tsx"));
 const Search = lazy(() => import("./pages/Search.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+// Trust / Legal pages
+const TermsPage = lazy(() => import("./pages/Terms.tsx"));
+const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
+const FAQPage = lazy(() => import("./pages/FAQ.tsx"));
+const ReturnsPage = lazy(() => import("./pages/Returns.tsx"));
+const ShippingPage = lazy(() => import("./pages/Shipping.tsx"));
 
 // Admin (Phase 5) — kept in their own lazy chunk so the storefront
 // bundle doesn't pay for them.
@@ -120,14 +126,25 @@ class RootErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg text-center">
-            <p className="text-sm font-semibold">Preview runtime error</p>
-            <p className="mt-2 text-xs text-muted-foreground break-words">
-              {this.state.message}
+            <p className="font-display text-2xl text-ink">مشکلی پیش آمده است</p>
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+              لطفاً صفحه را دوباره بارگذاری کنید یا به صفحه اصلی بازگردید.
             </p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button onClick={() => window.location.reload()} className="rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary">
+                تلاش دوباره
+              </button>
+              <a href="/" className="rounded-full hairline bg-canvas/60 px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-soft hover:bg-white">
+                بازگشت به خانه
+              </a>
+            </div>
             {this.state.stack && (
-              <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">
-                {this.state.stack}
-              </pre>
+              <details className="mt-6">
+                <summary className="cursor-pointer text-[10px] uppercase tracking-[0.18em] text-ink-muted">جزئیات فنی</summary>
+                <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">
+                  {this.state.stack}
+                </pre>
+              </details>
             )}
           </div>
         </div>
@@ -198,6 +215,12 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/about" element={<About />} />
                         <Route path="/press" element={<Press />} />
                         <Route path="/search" element={<Search />} />
+                        {/* Trust / Legal */}
+                        <Route path="/terms" element={<TermsPage />} />
+                        <Route path="/privacy" element={<PrivacyPage />} />
+                        <Route path="/faq" element={<FAQPage />} />
+                        <Route path="/returns" element={<ReturnsPage />} />
+                        <Route path="/shipping" element={<ShippingPage />} />
                       </Route>
 
                       {/* Account (protected) */}

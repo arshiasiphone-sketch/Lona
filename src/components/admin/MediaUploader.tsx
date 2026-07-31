@@ -190,7 +190,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
         </div>
         <p className="font-display text-lg text-ink">تصاویر تکه را در اینجا رها کنید.</p>
         <p className="mt-1 text-xs text-ink-muted">
-          PNG, JPG, WebP, AVIF — up to 8 MB each, 12 images per product.
+          PNG, JPG, WebP, AVIF — حداکثر ۸ مگابایت، ۱۲ تصویر برای هر محصول.
         </p>
         <button
           type="button"
@@ -198,7 +198,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
           className="mt-3 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
           <Upload className="h-3.5 w-3.5" />
-          Browse from device
+          انتخاب از دستگاه
         </button>
         <input
           ref={inputRef}
@@ -228,7 +228,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-ink">{row.name}</p>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                    Uploading · {row.progress}%
+                    در حال بارگذاری · {row.progress}٪
                   </p>
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-ink/10">
                     <motion.div
@@ -244,12 +244,12 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
             {row.state === "success" && (
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 overflow-hidden rounded-xl bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] uppercase">
-                  done
+                  آماده
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-ink">{row.name}</p>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-700">
-                    Attached.
+                    ذخیره شد.
                   </p>
                 </div>
                 <button
@@ -269,7 +269,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-ink">{row.name}</p>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-rose-700">
-                    Failed · {row.error}
+                    خطا · {row.error}
                   </p>
                 </div>
                 <button
@@ -297,13 +297,13 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 <img src={row.url} alt={row.alt} className="h-full w-full object-cover" />
               ) : (
                 <div className="grid h-full w-full place-items-center text-ink-muted text-sm">
-                  No preview
+                  بدون پیش‌نمایش
                 </div>
               )}
             </div>
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-ink/80 to-transparent px-3 py-2 text-canvas">
               <span className="text-[10px] uppercase tracking-[0.18em]">
-                {i === 0 ? "Primary" : `Order ${i + 1}`}
+                {i === 0 ? "اصلی" : `تصویر ${(i + 1).toLocaleString("fa-IR")}`}
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -311,7 +311,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                   onClick={() => move(i, -1)}
                   disabled={i === 0}
                   className="grid h-7 w-7 place-items-center rounded-full bg-white/20 disabled:opacity-30"
-                  aria-label="Move up"
+                  aria-label="جابه‌جایی به بالا"
                 >
                   <ChevronUp className="h-3 w-3" />
                 </button>
@@ -320,7 +320,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                   onClick={() => move(i, 1)}
                   disabled={i === persisted.length - 1}
                   className="grid h-7 w-7 place-items-center rounded-full bg-white/20 disabled:opacity-30"
-                  aria-label="Move down"
+                  aria-label="جابه‌جایی به پایین"
                 >
                   <ChevronDown className="h-3 w-3" />
                 </button>
