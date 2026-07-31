@@ -106,7 +106,7 @@ export const runAll = action({
             id: cid,
             name: lookupColorName(cid),
             gradient: lookupColorGradient(cid) as
-              | "mist" | "oat" | "rose" | "deep" | "ivory",
+              | "mist" | "oat" | "rose" | "deep" | "ivory" | "pearl",
           };
         }),
         sizes: p.sizes.map((sid) => {
@@ -122,7 +122,7 @@ export const runAll = action({
         rating: p.rating,
         reviewCount: p.reviewCount,
         secondaryGradient: p.secondaryGradient as
-          | "mist" | "oat" | "rose" | "deep" | "ivory",
+          | "mist" | "oat" | "rose" | "deep" | "ivory" | "pearl",
         imageUrls: p.imageUrls,
         status: "published",
         featured: !!p.featured,
@@ -352,6 +352,7 @@ export const upsertProduct = internalMutation({
           convV.literal("rose"),
           convV.literal("deep"),
           convV.literal("ivory"),
+          convV.literal("pearl"),
         ),
       })
     ),
@@ -374,6 +375,7 @@ export const upsertProduct = internalMutation({
         convV.literal("rose"),
         convV.literal("deep"),
         convV.literal("ivory"),
+          convV.literal("pearl"),
       )
     ),
     imageUrls: convV.optional(convV.array(convV.string())),
@@ -447,6 +449,7 @@ export const upsertCollection = internalMutation({
       convV.literal("rose"),
       convV.literal("deep"),
       convV.literal("ivory"),
+          convV.literal("pearl"),
     ),
     coverGradient: convV.optional(
       convV.union(
@@ -455,6 +458,7 @@ export const upsertCollection = internalMutation({
         convV.literal("rose"),
         convV.literal("deep"),
         convV.literal("ivory"),
+          convV.literal("pearl"),
       )
     ),
     kind: convV.union(
@@ -489,6 +493,7 @@ export const upsertEditorial = internalMutation({
       convV.literal("rose"),
       convV.literal("deep"),
       convV.literal("ivory"),
+          convV.literal("pearl"),
     ),
     kind: convV.union(
       convV.literal("journal"),

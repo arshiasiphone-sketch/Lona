@@ -35,7 +35,7 @@ export const vProductCategory = v.union(
 
 // The five gradient "tones" used by `src/lib/glass.ts` and the
 // product image placeholders. Keep these in sync.
-export const gradientLiterals = ["mist", "oat", "rose", "deep", "ivory"] as const;
+export const gradientLiterals = ["mist", "oat", "rose", "deep", "ivory", "pearl"] as const;
 export const vGradient = v.union(...gradientLiterals.map((g) => v.literal(g)));
 
 export const badgeLiterals = [
