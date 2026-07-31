@@ -15,6 +15,7 @@ import { EmptySearch } from "@/components/customer/EmptyStates";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 import { useAuth } from "@/hooks/use-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { formatPrice } from "@/lib/format";
@@ -66,6 +67,13 @@ export default function Search() {
   const collections = liveCollections ?? staticCollections;
   const results = useSearchProducts({ query: q, limit: 24 }) ?? [];
   const trending = useNewArrivals(4) ?? products.slice(0, 4);
+
+  usePageMeta({
+    title: q ? `جستجو: ${q}` : "جستجو در محصولات لونا",
+    description: q ? `نتایج جستجوی «${q}» در کالکسیون لونا` : "جستجو در میان محصولات لباس زیر، لباس خواب و پوشاک راحتی زنانه لونا",
+    ogType: "website",
+    noindex: true,
+  });
 
   const submit = (value: string) => {
     const trimmed = value.trim();

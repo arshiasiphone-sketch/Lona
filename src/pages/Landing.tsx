@@ -30,8 +30,16 @@ import {
   staticCollections,
   staticProducts,
 } from "@/lib/data/catalog";
+import { OrganizationJsonLd, usePageMeta } from "@/lib/seo";
 
 export default function Landing() {
+  usePageMeta({
+    title: "بوتیک لباس زیر زنانه لوکس",
+    description: "لونا — بوتیک آنلاین لباس زیر زنانه لوکس. طراحی‌های ظریف، پارچه‌های مرغوب و تجربه خریدی خاص برای زنان امروزی.",
+    canonical: typeof window !== "undefined" ? window.location.origin : undefined,
+    ogType: "website",
+  });
+
   const collections = useCollections();
   const newItems = useNewArrivals();
   const featured = (newItems ?? staticProducts).slice(0, 4);
@@ -39,6 +47,12 @@ export default function Landing() {
 
   return (
     <div className="relative bg-canvas text-ink">
+      <OrganizationJsonLd
+        name="لونا"
+        url={typeof window !== "undefined" ? window.location.origin : ""}
+        logo={`${typeof window !== "undefined" ? window.location.origin : ""}/logo.svg`}
+        description="لونا — بوتیک آنلاین لباس زیر زنانه لوکس. طراحی‌های ظریف، پارچه‌های مرغوب و تجربه خریدی خاص."
+      />
       {/* 1 · Hero */}
       <Hero />
 

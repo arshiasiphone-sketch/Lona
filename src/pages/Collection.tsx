@@ -4,11 +4,20 @@ import { useCollection, useCollectionProducts } from "@/lib/data/catalog";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { Marquee } from "@/components/editorial/Marquee";
 import { cn } from "@/lib/glass";
+import { usePageMeta } from "@/lib/seo";
 
 export default function Collection() {
   const { slug = "" } = useParams();
   const collection = useCollection(slug);
   const items = useCollectionProducts(slug) ?? [];
+
+  usePageMeta({
+    title: collection ? `کالکسیون ${collection.name}` : "کالکسیون یافت نشد",
+    description: collection?.description?.slice(0, 155) ?? "کالکسیون‌های لونا",
+    canonical: collection ? `${window.location.origin}/collections/${collection.slug}` : undefined,
+    ogType: "website",
+    noindex: !collection,
+  });
 
   if (!collection) {
     return (
@@ -18,7 +27,7 @@ export default function Collection() {
           to="/collections"
           className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          All Collections
+          همه کالکسیون‌ها
         </Link>
       </div>
     );
@@ -53,7 +62,7 @@ export default function Collection() {
                 onDark ? "text-canvas/80" : "text-ink/70"
               )}
             >
-              Collections
+              کالکسیون‌ها
             </Link>
             <ChevronRight
               className={cn(
@@ -97,10 +106,10 @@ export default function Collection() {
       <Marquee
         items={[
           collection.name,
-          `${items.length} pieces`,
+          `${items.length.toLocaleString("fa-IR")} محصول`,
           collection.eyebrow,
-          "Made in Europe",
-          "Limited run",
+          "دوخته‌شده در ایران",
+          "تولید محدود",
         ]}
         className="mt-0"
       />
@@ -109,10 +118,10 @@ export default function Collection() {
       <section className="mx-auto max-w-[1728px] px-6 pb-24 pt-16 lg:px-10 lg:pb-32">
         <div className="flex items-end justify-between pb-10">
           <p className="type-eyebrow text-ink-muted">
-            The Chapter · {items.length}
+            کالکسیون · {items.length.toLocaleString("fa-IR")}
           </p>
           <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Refined twice yearly
+            تولید محدود، ویرایش سالانه
           </p>
         </div>
         <ProductGrid products={items} columns={3} />

@@ -2,8 +2,14 @@ import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 
 export default function NotFound() {
+  usePageMeta({
+    title: "صفحه یافت نشد",
+    description: "صفحه مورد نظر یافت نشد. به صفحه اصلی لونا بازگردید.",
+    noindex: true,
+  });
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute -right-40 top-12 h-[640px] w-[640px] rounded-full bg-accent/40 blur-[140px]" />

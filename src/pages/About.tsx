@@ -4,6 +4,7 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 
 const stores = [
   {
@@ -24,6 +25,12 @@ const stores = [
 ];
 
 export default function About() {
+  usePageMeta({
+    title: "درباره لونا — بوتیک لباس زیر زنانه",
+    description: "لونا در سال ۱۳۹۸ در تهران آغاز شد. بوتیک آنلاین لباس زیر زنانه لوکس با تمرکز بر کیفیت پارچه، طراحی ظریف و راحتی روزمره.",
+    canonical: `${window.location.origin}/about`,
+    ogType: "website",
+  });
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header className="max-w-4xl">

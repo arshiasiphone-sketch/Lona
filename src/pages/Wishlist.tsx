@@ -7,6 +7,7 @@ import { useProducts, getProductByIdFromList } from "@/lib/data/catalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 
 export default function Wishlist() {
   const { ids, remove, clear } = useWishlist();
@@ -16,6 +17,12 @@ export default function Wishlist() {
   const items = ids
     .map((id) => getProductByIdFromList(liveProducts, id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  usePageMeta({
+    title: "علاقه‌مندی‌ها",
+    description: "محصولات ذخیره‌شده در فهرست علاقه‌مندی‌های شما در لونا",
+    noindex: true,
+  });
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">

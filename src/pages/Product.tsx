@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   ChevronLeft,
@@ -23,7 +23,8 @@ import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
-import { formatPrice } from "@/lib/format";
+import { CURRENCY_CODE, formatPrice } from "@/lib/format";
+import { BreadcrumbJsonLd, ProductJsonLd, usePageMeta } from "@/lib/seo";
 
 export default function Product() {
   const { slug = "" } = useParams();
@@ -41,6 +42,31 @@ export default function Product() {
   useEffect(() => {
     if (product) track(product.id);
   }, [product?.id, track, product]);
+
+  // ── SEO ──
+  const primaryImage = product?.imageUrls?.[0];
+  usePageMeta({
+    title: product ? `خرید ${product.name}` : "محصول یافت نشد",
+    description: product?.description?.slice(0, 155) ?? "محصول از کالکسیون لونا",
+    canonical: product ? `${window.location.origin}/shop/${product.slug}` : undefined,
+    ogImage: primaryImage,
+    ogType: "product",
+    noindex: !product,
+  });
+
+  const seoProduct = useMemo(() => product ? ({
+    name: product.name,
+    description: product.description.slice(0, 200),
+    slug: product.slug,
+    image: primaryImage,
+    price: product.price,
+    currency: CURRENCY_CODE,
+    category: product.category,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    colorName: product.colors.find((c) => c.id === color)?.name,
+    sizeLabel: product.sizes.find((s) => s.id === size)?.label,
+  }) : null, [product, color, size, primaryImage]);
 
   if (!product) {
     return (
@@ -92,6 +118,13 @@ export default function Product() {
 
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-12 pb-24 lg:px-10 lg:pt-20">
+      {/* JSON‑LD */}
+      {seoProduct && <ProductJsonLd {...seoProduct} />}
+      <BreadcrumbJsonLd items={[
+        { name: "خانه", url: `${window.location.origin}/` },
+        { name: "فروشگاه", url: `${window.location.origin}/shop` },
+        { name: product.name, url: `${window.location.origin}/shop/${product.slug}` },
+      ]} />
       {/* Breadcrumb */}
       <nav
         aria-label="مسیر صفحه"

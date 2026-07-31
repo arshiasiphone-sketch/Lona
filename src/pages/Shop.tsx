@@ -21,6 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 
 const PAGE_SIZE = 6;
 const isServer = typeof window === "undefined";
@@ -123,6 +124,13 @@ export default function Shop() {
 
   const visible = useMemo(() => sorted.slice(0, page * PAGE_SIZE), [sorted, page]);
   const hasMore = visible.length < sorted.length;
+
+  usePageMeta({
+    title: "فروشگاه — کالکسیون کامل محصولات",
+    description: "مرور کالکسیون کامل لباس زیر، لباس خواب و پوشاک راحتی زنانه لونا. طراحی ظریف، پارچه‌های مرغوب و دوخت با کیفیت.",
+    canonical: `${window.location.origin}/shop`,
+    ogType: "website",
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 240);

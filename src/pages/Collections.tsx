@@ -4,8 +4,15 @@ import { ArrowUpRight } from "lucide-react";
 import { collections } from "@/data/catalog";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { usePageMeta } from "@/lib/seo";
 
 export default function Collections() {
+  usePageMeta({
+    title: "کالکسیون‌ها",
+    description: "کالکسیون‌های لونا — مجموعه‌های فصلی و ماندگار لباس زیر، لباس خواب و پوشاک راحتی زنانه با طراحی ظریف و کیفیت بالا.",
+    canonical: `${window.location.origin}/collections`,
+    ogType: "website",
+  });
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>

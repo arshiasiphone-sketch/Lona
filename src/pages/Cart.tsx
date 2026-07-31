@@ -9,6 +9,7 @@ import { ProductImage } from "@/components/ui/ProductImage";
 import { cn, glassClass } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
+import { usePageMeta } from "@/lib/seo";
 import { toast } from "@/lib/toast";
 import { EmptyCart } from "@/components/customer/EmptyStates";
 
@@ -41,6 +42,12 @@ export default function Cart() {
   const items: EnrichedLine[] = lines.flatMap((line) => {
     const product = getProductById(line.productId);
     return product ? [{ ...line, product }] : [];
+  });
+
+  usePageMeta({
+    title: "سبد خرید",
+    description: "بررسی و تکمیل سفارش در سبد خرید لونا",
+    noindex: true,
   });
 
   const recommended: Product[] = recommendedIds
