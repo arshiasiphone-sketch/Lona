@@ -7,105 +7,119 @@
 #   • Persian content is present (لونا)
 #   • the RootErrorBoundary message is NOT shown
 #   • Suspense is not stuck on "در حال بارگذاری"
+# Routes run in parallel (up to 4 background jobs) to stay fast.
 # Usage:
 #   bash scripts/route-smoke-test.sh [BASE_URL]
-#   BASE_URL defaults to the live preview; for local dev:
-#   bash scripts/route-smoke-test.sh http://localhost:5173
 # ─────────────────────────────────────────────────────────────
 
 set -u
 
 BIN=/home/daytona/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
 BASE="${1:-https://fancy-islands-bet.freebuff.dev}"
+WORK=$(mktemp -d)
+VERDICTS="$WORK/verdicts.txt"
+: > "$VERDICTS"
 
 if [ ! -x "$BIN" ]; then
   echo "❌ chrome-headless-shell not found at: $BIN"
-  echo "   Install it first: bunx playwright@latest install chromium --only-shell"
+  rm -rf "$WORK"
   exit 1
 fi
 
-PASS=0
-FAIL=0
-WARN=0
-
-check() {
-  local name="$1" url="$2"
-  local out="/tmp/lona_route_$$.html"
-  local size
-
-  timeout 60 "$BIN" --headless --no-sandbox --disable-gpu \
-    --virtual-time-budget=15000 --dump-dom "$url" 2>/dev/null > "$out"
-
-  size=$(wc -c < "$out" 2>/dev/null || echo 0)
-
-  # ── verdicts ─────────────────────────────────────────────
-  if grep -q "Loading app preview" "$out"; then
-    echo "⏳ $name — freebuff loader shell (app not served yet)"
-    WARN=$((WARN+1))
-  elif grep -q "مشکلی پیش آمده است" "$out"; then
-    echo "❌ $name — ROOT ERROR BOUNDARY triggered"
-    FAIL=$((FAIL+1))
-  elif ! grep -q "لونا" "$out"; then
-    echo "❌ $name — no 'لونا' content rendered (${size}B)"
-    FAIL=$((FAIL+1))
-  elif grep -q "در حال بارگذاری" "$out" && [ "$size" -lt 3000 ]; then
-    echo "⚠️  $name — stuck Suspense fallback (${size}B)"
-    WARN=$((WARN+1))
-  else
-    echo "✅ $name — OK (${size}B)"
-    PASS=$((PASS+1))
-  fi
-  rm -f "$out"
-}
+# ── fast pre-check: is the Vite app actually being served? ──
+APP_CHECK=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$BASE/src/main.tsx")
+if [ "$APP_CHECK" != "200" ]; then
+  echo "⚠️  App modules not served yet: /src/main.tsx → HTTP $APP_CHECK"
+  echo "   (Freebuff sandbox still booting — results below may be loader shells)"
+fi
 
 echo "════════════════════════════════════════════════════"
 echo "  Lona Route Smoke Test — $BASE"
 echo "════════════════════════════════════════════════════"
 
-check "Homepage            /"             "$BASE/"
-check "Shop                /shop"         "$BASE/shop"
-check "Collections         /collections"  "$BASE/collections"
-check "Search              /search"       "$BASE/search"
-check "Cart                /cart"         "$BASE/cart"
-check "Wishlist            /wishlist"     "$BASE/wishlist"
-check "About               /about"        "$BASE/about"
-check "FAQ                 /faq"          "$BASE/faq"
-check "Terms               /terms"        "$BASE/terms"
-check "Shipping            /shipping"     "$BASE/shipping"
-check "Returns             /returns"      "$BASE/returns"
+run_route() {
+  local path="$1" label="$2" idx="$3" out="$WORK/route_$idx.html"
+  local size verdict
+  timeout 45 "$BIN" --headless --no-sandbox --disable-gpu \
+    --virtual-time-budget=15000 --dump-dom "$BASE$path" 2>/dev/null > "$out"
+  size=$(wc -c < "$out" 2>/dev/null || echo 0)
 
-# ── dynamic product + collection (resolve a real slug from /shop DOM)
-SHOP_OUT=/tmp/lona_shop_$$.html
-timeout 60 "$BIN" --headless --no-sandbox --disable-gpu \
-  --virtual-time-budget=15000 --dump-dom "$BASE/shop" 2>/dev/null > "$SHOP_OUT"
-PRODUCT_URL=$(grep -oE 'href="/shop/[^"]+"' "$SHOP_OUT" | head -1 | sed 's/href="//;s/"$//')
-COLL_URL=$(grep -oE 'href="/collections/[^"]+"' "$SHOP_OUT" | head -1 | sed 's/href="//;s/"$//')
-rm -f "$SHOP_OUT"
+  if grep -q "Loading app preview" "$out"; then
+    verdict="⏳ loader-shell"
+  elif grep -q "مشکلی پیش آمده است" "$out"; then
+    verdict="❌ ERROR-BOUNDARY"
+  elif ! grep -q "لونا" "$out"; then
+    verdict="❌ no-Persian-content"
+  elif grep -q "در حال بارگذاری" "$out" && [ "$size" -lt 3000 ]; then
+    verdict="⚠️ stuck-suspense"
+  else
+    verdict="✅ OK"
+  fi
+  printf '%-32s %s [%sB]\n' "$label" "$verdict" "$size" | tee -a "$VERDICTS"
+}
 
-if [ -n "$PRODUCT_URL" ]; then
-  check "Product page        $PRODUCT_URL"  "$BASE$PRODUCT_URL"
+# ── static routes ───────────────────────────────────────────
+ROUTES=(
+  "/|Homepage /"
+  "/shop|Shop /shop"
+  "/collections|Collections /collections"
+  "/search|Search /search"
+  "/cart|Cart /cart"
+  "/wishlist|Wishlist /wishlist"
+  "/about|About /about"
+  "/faq|FAQ /faq"
+  "/terms|Terms /terms"
+  "/shipping|Shipping /shipping"
+  "/returns|Returns /returns"
+  "/checkout|Checkout (auth)"
+  "/account|Account (auth)"
+  "/admin|Admin (role gate)"
+  "/does-not-exist|NotFound 404"
+)
+
+idx=0
+pids=()
+for entry in "${ROUTES[@]}"; do
+  idx=$((idx+1))
+  path="${entry%%|*}"
+  label="${entry#*|}"
+  run_route "$path" "$label" "$idx" &
+  pids+=("$!")
+  # keep at most 4 concurrent
+  if [ "${#pids[@]}" -ge 4 ]; then
+    wait "${pids[0]}"
+    pids=("${pids[@]:1}")
+  fi
+done
+for p in "${pids[@]}"; do wait "$p"; done
+
+# ── dynamic product + collection resolved from /shop DOM ────
+timeout 45 "$BIN" --headless --no-sandbox --disable-gpu \
+  --virtual-time-budget=15000 --dump-dom "$BASE/shop" 2>/dev/null > "$WORK/shop_dom.html"
+if [ -s "$WORK/shop_dom.html" ] && ! grep -q "Loading app preview" "$WORK/shop_dom.html"; then
+  PRODUCT_URL=$(grep -oE 'href="/shop/[^"]+"' "$WORK/shop_dom.html" | head -1 | sed 's/href="//;s/"$//')
+  COLL_URL=$(grep -oE 'href="/collections/[^"]+"' "$WORK/shop_dom.html" | head -1 | sed 's/href="//;s/"$//')
+  if [ -n "$PRODUCT_URL" ]; then
+    run_route "$PRODUCT_URL" "Product: $PRODUCT_URL" 99
+  else
+    echo "⚠️  Product page — no product link in /shop" | tee -a "$VERDICTS"
+  fi
+  if [ -n "$COLL_URL" ]; then
+    run_route "$COLL_URL" "Collection: $COLL_URL" 98
+  else
+    echo "⚠️  Collection page — no collection link" | tee -a "$VERDICTS"
+  fi
 else
-  echo "⚠️  Product page — could not resolve a product link from /shop"
-  WARN=$((WARN+1))
+  echo "⚠️  Product/Collection — /shop not rendered" | tee -a "$VERDICTS"
 fi
 
-if [ -n "$COLL_URL" ]; then
-  check "Collection page     $COLL_URL" "$BASE$COLL_URL"
-else
-  echo "⚠️  Collection page — could not resolve a collection link"
-  WARN=$((WARN+1))
-fi
-
-# ── auth-gated routes (expect redirect to /auth, not a crash)
-check "Checkout (auth)     /checkout"     "$BASE/checkout"
-check "Account (auth)      /account"      "$BASE/account"
-check "Admin (role gate)   /admin"        "$BASE/admin"
-
-# ── 404 fallback
-check "NotFound (404)      /does-not-exist" "$BASE/does-not-exist"
+# ── summary accounting from actual verdict lines ───────────
+PASS=$(grep -c '✅' "$VERDICTS" || true)
+FAIL=$(grep -c '❌' "$VERDICTS" || true)
+WARN=$(grep -cE '⚠️|⏳' "$VERDICTS" || true)
 
 echo "════════════════════════════════════════════════════"
 echo "  RESULT:  ✅ $PASS passed | ❌ $FAIL failed | ⚠️ $WARN warn"
 echo "════════════════════════════════════════════════════"
-
+rm -rf "$WORK"
 [ "$FAIL" -eq 0 ]
