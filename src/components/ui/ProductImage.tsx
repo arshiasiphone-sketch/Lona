@@ -260,6 +260,8 @@ export function ProductImage({
           srcSet={srcSet}
           sizes={sizes}
           alt={alt ?? ""}
+          width={800}
+          height={1000}
           loading={priority ? "eager" : "lazy"}
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}

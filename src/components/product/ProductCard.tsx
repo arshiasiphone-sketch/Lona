@@ -11,6 +11,7 @@
  * RTL: badges sit on the top-start corner (right in RTL via `start-3`),
  * quick-add sits on the bottom edge with `inset-x-3`.
  */
+import { memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router";
 import { Heart, ShoppingBag } from "lucide-react";
@@ -68,18 +69,18 @@ interface ProductCardProps {
 
 const HOVER_EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
 
-export function ProductCard({ product, priority, className }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, priority, className }: ProductCardProps) {
   const { has, toggle } = useWishlist();
   const { add } = useCart();
   const favorite = has(product.id);
   const primary = product.colors[0];
   const secondary = product.colors[1] ?? primary;
-  const discount = formatDiscount(product.price, product.compareAt);
+  const discount = useMemo(() => formatDiscount(product.price, product.compareAt), [product.price, product.compareAt]);
   // Phase 5.8.1 — real photo URLs from the live catalog layer; falls back to silhouette if missing.
   const primaryImage = product.imageUrls?.[0];
   const hoverImage = product.imageUrls?.[1] ?? primaryImage;
 
-  const handleQuickAdd = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleQuickAdd = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     add({
@@ -111,7 +112,20 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
       );
     }
     toast.added(product.name);
-  };
+  }, [add, product.id, product.sizes, product.colors, product.name]);
+
+  const handleWishlistToggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle(product.id);
+    favorite ? toast.unwished(product.name) : toast.wished(product.name);
+  }, [toggle, product.id, product.name, favorite]);
+
+  const gradientKey = useMemo(() => gradientClass(primary.gradient).replace("gradient-", "") as TProduct["colors"][number]["gradient"], [primary.gradient]);
+  const secondaryGradientKey = useMemo(() => {
+    const g = (product.secondaryGradient ?? secondary.gradient) as TProduct["colors"][number]["gradient"];
+    return gradientClass(g).replace("gradient-", "") as TProduct["colors"][number]["gradient"];
+  }, [product.secondaryGradient, secondary.gradient]);
 
   return (
     <motion.article
@@ -141,7 +155,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
             style={{ transitionTimingFunction: HOVER_EASE }}
           >
             <ProductImage
-              gradient={gradientClass(primary.gradient).replace("gradient-", "") as TProduct["colors"][number]["gradient"]}
+              gradient={gradientKey}
               silhouette={SILHOUETTE_MAP[product.category]}
               src={primaryImage}
               alt={product.name}
@@ -159,7 +173,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
                 style={{ transitionTimingFunction: HOVER_EASE }}
               >
                 <ProductImage
-                  gradient={gradientClass((product.secondaryGradient ?? secondary.gradient) as TProduct["colors"][number]["gradient"]).replace("gradient-", "") as TProduct["colors"][number]["gradient"]}
+                  gradient={secondaryGradientKey}
                   silhouette={SILHOUETTE_MAP[product.category]}
                   src={hoverImage}
                   alt={product.name}
@@ -220,12 +234,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
               <ShoppingBag className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggle(product.id);
-                favorite ? toast.unwished(product.name) : toast.wished(product.name);
-              }}
+              onClick={handleWishlistToggle}
               className={cn(
                 "grid h-9 w-9 place-items-center rounded-full glass-subtle transition hover:bg-white/85",
                 favorite && "text-primary"
@@ -269,7 +278,7 @@ export function ProductCard({ product, priority, className }: ProductCardProps) 
       </div>
     </motion.article>
   );
-}
+});
 
 function SilhouetteBlock({ category }: { category: TProduct["category"] }) {
   const silhouette = SILHOUETTE_MAP[category];

@@ -78,7 +78,7 @@ function RouteLoading() {
   return (
     <div className="min-h-screen grid place-items-center">
       <div className="glass rounded-full px-5 py-2.5 text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-        Loading
+        در حال بارگذاری
       </div>
     </div>
   );
