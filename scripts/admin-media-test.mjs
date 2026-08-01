@@ -1,7 +1,22 @@
 #!/usr/bin/env node
 /**
  * Lona — Admin media pipeline browser test (CDP via chrome-headless-shell).
- * Usage:  node scripts/admin-media-test.mjs [BASE_URL]
+ *
+ * Covers (Phase 7.4):
+ *   • real OTP login (email → DB hash → brute-force 6-digit code)
+ *   • forcePromote to owner
+ *   • /admin/settings → تصاویر tab: brand logo/favicon/og_image override
+ *   • live storefront verification (header/footer logo, favicon)
+ *   • /admin/media: upload, replace, edit alt, delete
+ *
+ * The Freebuff preview shell blocks rendering while its dev server is
+ * cold ("Loading application…" / "Server is taking longer…"), so every
+ * navigation self-heals: poll for the real app, reload, retry.
+ *
+ * Usage:
+ *   node scripts/admin-media-test.mjs [BASE_URL]          # full flow
+ *   PHASE=settings node scripts/admin-media-test.mjs      # login + images tab + live check
+ *   PHASE=media    node scripts/admin-media-test.mjs      # login + media library flow
  */
 import { spawn, execSync } from "node:child_process";
 import { writeFileSync, appendFileSync, mkdtempSync } from "node:fs";
@@ -10,6 +25,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 
 const BASE = process.env.BASE_URL || "https://fancy-islands-bet.freebuff.dev";
+const PHASE = process.env.PHASE || "all";
 const BIN =
   "/home/daytona/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell";
 const PORT = 9341;
@@ -18,6 +34,12 @@ const LOG = "/tmp/admin-media-test.log";
 
 const PNG_1x1 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+const SVG_URI = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="#f5e9da"/><circle cx="12" cy="12" r="9" fill="#c98a5a"/></svg>',
+)}`;
+const ALT_A = `lona-${Date.now()}-a`; // uploaded tile alt (filename minus extension)
+const PNG_A = `${ALT_A}.png`;
+const PNG_B = `lona-${Date.now()}-b.png`;
 
 const results = [];
 const consoleErrors = [];
@@ -129,7 +151,7 @@ class CDP {
       return "state eval failed: " + e.message;
     }
   }
-  async goto(url, waitMs = 6000) {
+  async goto(url, waitMs = 4000) {
     await this.send("Page.navigate", { url });
     await sleep(waitMs);
     await this.waitFor(`document.readyState === 'complete'`, 15000).catch(() => {});
@@ -190,9 +212,241 @@ const bruteForceCode = (hash) => {
   return null;
 };
 
+/**
+ * Navigate to a path and wait until the REAL app renders. The Freebuff
+ * shell blocks with several loader states while its dev server
+ * cold-starts / reconfigures Convex:
+ *   • "Loading application…"
+ *   • "Server is taking longer…"
+ *   • "Configuring Convex… Step N of 4"
+ * Reload + retry until `expectExpr` matches or we run out of attempts.
+ */
+async function gotoApp(cdp, path, expectExpr, attempts = 10) {
+  let ok = false;
+  for (let i = 0; i < attempts && !ok; i++) {
+    await cdp.goto(BASE + path, 4000);
+    try {
+      await cdp.waitFor(
+        `!!document.body && !document.body.innerText.includes('Loading application') && !document.body.innerText.includes('Server is taking longer') && !document.body.innerText.includes('Configuring Convex')`,
+        16000,
+        1200,
+      );
+    } catch {
+      /* shell may have changed wording — the expect check decides */
+    }
+    await sleep(1500);
+    ok = await cdp.eval(`!!(${expectExpr})`).catch(() => false);
+    if (!ok) {
+      log(`  gotoApp ${path}: attempt ${i + 1} not ready — reloading…`);
+      await cdp.send("Page.reload", { ignoreCache: true }).catch(() => {});
+      await sleep(9000);
+    }
+  }
+  if (!ok)
+    throw new Error(
+      `app did not render for ${path} (expect ${expectExpr}): ${await cdp.pageState()}`,
+    );
+}
+
+const BRAND_LABELS = [
+  "لوگو برند",
+  "فاوآیکون (آیکون مرورگر)",
+  "تصویر اشتراک‌گذاری (OpenGraph)",
+];
+
+/** Find a slot card by its label `<p>` and return a small handle object. */
+const slotCardEval = (cdp, label, action) =>
+  cdp.eval(`(() => {
+    const p = [...document.querySelectorAll('p')].find(p => p.textContent.trim() === ${JSON.stringify(label)});
+    if (!p) return false;
+    const card = p.parentElement.parentElement;
+    ${action}
+    return true;
+  })()`);
+
+async function loginFlow(cdp) {
+  log("loading /auth…");
+  await gotoApp(cdp, "/auth", `document.querySelector('input[name="email"]')`, 8);
+  ok("auth page renders email form");
+
+  await setInput(cdp, 'input[name="email"]', EMAIL);
+  await cdp.eval(`document.querySelector('form').requestSubmit()`);
+  log("email submitted, waiting for OTP code row…");
+  await sleep(2500);
+
+  let hash = null;
+  for (let i = 0; i < 6 && !hash; i++) {
+    try {
+      const rows = convexInline(
+        'const rows = await ctx.db.query("authVerificationCodes").take(100); return rows',
+      );
+      const mine = rows.filter((r) => r.emailVerified === EMAIL);
+      hash = mine.length ? mine[mine.length - 1].code : null;
+    } catch {}
+    if (!hash) await sleep(1200);
+  }
+  if (!hash) throw new Error("no verification code row found in DB");
+  const code = bruteForceCode(hash);
+  if (!code) throw new Error("OTP brute force failed");
+
+  try {
+    await cdp.waitFor(
+      `document.querySelector('input[inputmode="numeric"], input[name="otp"], [data-slot="otp-input"]')`,
+      15000,
+    );
+  } catch (e) {
+    fail("otp step appears", await cdp.pageState());
+    throw e;
+  }
+  await cdp.eval(
+    `document.querySelector('input[inputmode="numeric"], input[name="otp"], [data-slot="otp-input"]').focus()`,
+  );
+  await cdp.send("Input.insertText", { text: code });
+  await sleep(400);
+  await cdp.eval(`document.querySelector('form').requestSubmit()`);
+  await cdp.waitFor(`location.pathname !== '/auth'`, 20000);
+  ok("login via OTP", `→ ${await cdp.eval("location.pathname")}`);
+}
+
+async function settingsPhase(cdp) {
+  /* ── SETTINGS → IMAGES TAB ── */
+  await gotoApp(cdp, "/admin/settings", `document.querySelector('nav[role="tablist"]')`);
+  const clicked = await findButton(cdp, "تصاویر");
+  if (!clicked) throw new Error("images tab not found");
+  await cdp.waitFor(
+    `[...document.querySelectorAll('p')].some(p => p.textContent.trim() === 'برند')`,
+    12000,
+  );
+  ok("settings → images tab renders brand group");
+
+  // Idempotent: reset any brand overrides left by earlier runs.
+  for (const label of BRAND_LABELS) {
+    await slotCardEval(cdp, label, `{
+      const hasBadge = [...card.querySelectorAll('span')].some(s => s.textContent.trim() === 'سفارشی');
+      if (hasBadge) {
+        const btns = card.querySelectorAll('button');
+        if (btns[2]) btns[2].click();
+      }
+    }`);
+    await sleep(700);
+  }
+  await cdp.waitFor(
+    `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length === 0`,
+    10000,
+  ).catch(() => {});
+  const badge0 = await cdp.eval(
+    `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length`,
+  );
+  ok("brand slots reset (0 custom badges)", `count=${badge0}`);
+
+  const slotCount = await cdp.eval(
+    `document.querySelectorAll('input[placeholder*="https"]').length`,
+  );
+  slotCount === 37
+    ? ok("37 image slot cards", `count=${slotCount}`)
+    : fail("37 image slot cards", `count=${slotCount}`);
+
+  /* ── SET LOGO / FAVICON / OG IMAGE ── */
+  for (const label of BRAND_LABELS) {
+    const did = await slotCardEval(cdp, label, `{
+      const input = card.querySelector('input');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(SVG_URI)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      card.querySelectorAll('button')[0].click();
+    }`);
+    if (!did) throw new Error("slot card not found: " + label);
+    await sleep(1500);
+  }
+  await cdp.waitFor(
+    `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length === 3`,
+    15000,
+  );
+  ok("logo/favicon/og overrides saved", "3 سفارشی badges");
+
+  /* ── HOMEPAGE LIVE VERIFICATION ── */
+  await gotoApp(cdp, "/", `document.querySelector('header, link[rel="icon"]')`);
+  await cdp.waitFor(
+    `!!document.querySelector('header img') && (document.querySelector('link[rel="icon"]')?.href || '').startsWith('data:image/svg+xml')`,
+    20000,
+  );
+  const headerLogo = await cdp.eval(`document.querySelector('header img').src`);
+  headerLogo.startsWith("data:image/svg+xml")
+    ? ok("header logo override live", headerLogo.slice(0, 30))
+    : fail("header logo override live", headerLogo.slice(0, 40));
+  const favicon = await cdp.eval(
+    `document.querySelector('link[rel="icon"]')?.href ?? null`,
+  );
+  favicon.startsWith("data:image/svg+xml")
+    ? ok("favicon override live", favicon.slice(0, 30))
+    : fail("favicon override live", favicon);
+  const footerLogo = await cdp.eval(
+    `[...document.querySelectorAll('footer img')].map(i => i.src)`,
+  );
+  (footerLogo[0] || "").startsWith("data:")
+    ? ok("footer logo override live")
+    : fail("footer logo override live", JSON.stringify(footerLogo.map((s) => s.slice(0, 20))));
+}
+
+async function mediaPhase(cdp) {
+  /* ── MEDIA LIBRARY — UPLOAD ── */
+  await gotoApp(cdp, "/admin/media", `document.querySelector('input[type="file"]')`);
+  const pngA = join(tmpdir(), PNG_A);
+  const pngB = join(tmpdir(), PNG_B);
+  writeFileSync(pngA, Buffer.from(PNG_1x1, "base64"));
+  writeFileSync(pngB, Buffer.from(PNG_1x1, "base64"));
+
+  await uploadFile(cdp, 'input[type="file"]', pngA);
+  await cdp.waitFor(`document.querySelector('img[alt="${ALT_A}"]')`, 40000);
+  ok("media upload works", `tile ${ALT_A} appeared`);
+
+  /* ── REPLACE ── */
+  await cdp.eval(
+    `document.querySelector('img[alt="${ALT_A}"]').closest('button').click()`,
+  );
+  await cdp.waitFor(`document.querySelector('aside input[type="file"]')`, 12000);
+  const before = await cdp.eval(`document.querySelector('aside img')?.src ?? ''`);
+  await uploadFile(cdp, 'aside input[type="file"]', pngB);
+  let replaced = false;
+  for (let i = 0; i < 40; i++) {
+    const now = await cdp.eval(`document.querySelector('aside img')?.src ?? ''`);
+    if (now && now !== before) {
+      replaced = true;
+      break;
+    }
+    await sleep(500);
+  }
+  replaced ? ok("media replace works") : fail("media replace works", "src unchanged");
+
+  /* ── EDIT ALT ── */
+  const metaSet = await cdp.eval(`(() => {
+    const input = [...document.querySelectorAll('input')].find(i => (i.placeholder || '').includes('سوتین گیپور'));
+    if (!input) return false;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'تست جایگزینی تصویر');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  })()`);
+  if (!metaSet) throw new Error("alt input not found");
+  await findButton(cdp, "ذخیره توضیحات");
+  await cdp.waitFor(
+    `document.querySelector('aside h2')?.textContent.includes('تست جایگزینی تصویر')`,
+    15000,
+  );
+  ok("alt metadata edit works", "h2 updated");
+
+  /* ── DELETE ── */
+  await findButton(cdp, "حذف");
+  await cdp.waitFor(
+    `[...document.querySelectorAll('button')].some(b => b.textContent.includes('حذف از کتابخانه'))`,
+    10000,
+  );
+  await findButton(cdp, "حذف از کتابخانه");
+  await cdp.waitFor(`!document.querySelector('img[alt="${ALT_A}"]')`, 20000);
+  ok("media delete works", "tile gone");
+}
+
 async function main() {
-  appendFileSync(LOG, `\n===== Lona Admin Media Test — ${new Date().toISOString()} =====\n`);
-  log(`BASE=${BASE}  EMAIL=${EMAIL}`);
+  appendFileSync(LOG, `\n===== Lona Admin Media Test (${PHASE}) — ${new Date().toISOString()} =====\n`);
+  log(`BASE=${BASE}  PHASE=${PHASE}  EMAIL=${EMAIL}`);
 
   try {
     convexInline('const r = await ctx.db.query("users").take(1); return r');
@@ -202,19 +456,14 @@ async function main() {
     return;
   }
 
-  // Warm up the Vite dev server so the first browser hit isn't a cold compile
-  // (the Freebuff preview shell shows "Loading application…" until the app boots).
+  // Warm up the Vite dev server so the first browser hit isn't a cold
+  // compile (the Freebuff preview shell blocks until the app boots).
   try {
     const w = await fetch(BASE + "/src/main.tsx", { signal: AbortSignal.timeout(45000) });
     log(`warm-up /src/main.tsx → HTTP ${w.status}`);
   } catch (e) {
     log("warm-up fetch failed (continuing): " + e.message);
   }
-
-  const pngA = join(tmpdir(), "lona-test-a.png");
-  const pngB = join(tmpdir(), "lona-test-b.png");
-  writeFileSync(pngA, Buffer.from(PNG_1x1, "base64"));
-  writeFileSync(pngB, Buffer.from(PNG_1x1, "base64"));
 
   const profile = mkdtempSync(join(tmpdir(), "lona-cdp-"));
   const proc = spawn(
@@ -240,7 +489,6 @@ async function main() {
     return;
   }
 
-  // Create the tab and connect to THAT tab (not a random page tab).
   const created = await fetch(
     `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(BASE + "/auth")}`,
     { method: "PUT" },
@@ -253,231 +501,33 @@ async function main() {
   log("chrome-headless-shell connected ✓");
 
   try {
-    /* ── 1. LOGIN (real OTP flow, resilient to dev-server cold starts) ── */
-    log("loading /auth…");
-    await cdp.goto(BASE + "/auth", 5000);
+    await loginFlow(cdp);
 
-    // The Freebuff shell shows "Loading application…" (booting) or
-    // "Server is taking longer…" (dev server cold start / 503). Both
-    // mean the app hasn't mounted yet. Loop: reload until the real app
-    // renders, up to ~2.5 minutes, so a flaky sandbox doesn't kill the run.
-    let emailForm = false;
-    for (let attempt = 0; attempt < 9 && !emailForm; attempt++) {
-      const booted = await cdp.eval(
-        `!!document.body && !document.body.innerText.includes('Loading application') && !document.body.innerText.includes('Server is taking longer')`,
-      );
-      if (booted) {
-        // shell gone — give React a beat, then check for the email input
-        await sleep(1200);
-        emailForm = await cdp.eval(`!!document.querySelector('input[name="email"]')`);
-      }
-      if (!emailForm) {
-        const state = await cdp.pageState();
-        log(
-          `attempt ${attempt + 1}: not booted (${state.slice(0, 120)}) — reloading…`,
-        );
-        await cdp.send("Page.reload", { ignoreCache: true });
-        await sleep(14000);
-      }
-    }
-    try {
-      await cdp.waitFor(`document.querySelector('input[name="email"]')`, 15000);
-    } catch (e) {
-      fail("auth page renders email form", await cdp.pageState());
-      throw e;
-    }
-    ok("auth page renders email form");
-
-    await setInput(cdp, 'input[name="email"]', EMAIL);
-    await cdp.eval(`document.querySelector('form').requestSubmit()`);
-    log("email submitted, waiting for OTP code row…");
-    await sleep(4000);
-
-    let hash = null;
-    for (let i = 0; i < 6 && !hash; i++) {
-      try {
-        const rows = convexInline(
-          'const rows = await ctx.db.query("authVerificationCodes").take(100); return rows',
-        );
-        const mine = rows.filter((r) => r.emailVerified === EMAIL);
-        hash = mine.length ? mine[mine.length - 1].code : null;
-      } catch {}
-      if (!hash) await sleep(1500);
-    }
-    if (!hash) throw new Error("no verification code row found in DB");
-    const code = bruteForceCode(hash);
-    if (!code) throw new Error("OTP brute force failed");
-
-    try {
-      await cdp.waitFor(
-        `document.querySelector('input[inputmode="numeric"], input[name="otp"], [data-slot="otp-input"]')`,
-        15000,
-      );
-    } catch (e) {
-      fail("otp step appears", await cdp.pageState());
-      throw e;
-    }
-    await cdp.eval(
-      `document.querySelector('input[inputmode="numeric"], input[name="otp"], [data-slot="otp-input"]').focus()`,
-    );
-    await cdp.send("Input.insertText", { text: code });
-    await sleep(500);
-    await cdp.eval(`document.querySelector('form').requestSubmit()`);
-    await cdp.waitFor(`location.pathname !== '/auth'`, 20000);
-    ok("login via OTP", `→ ${await cdp.eval("location.pathname")}`);
-
-    /* ── 2. PROMOTE TO OWNER ── */
-    // `promote` is self-locking (throws BOOTSTRAPPED once an admin exists);
-    // `forcePromote` bypasses the guard — dev-only, which is what a test needs.
+    // forcePromote bypasses the self-locking bootstrap guard (dev-only).
     execSync(
       `bunx convex run admin_bootstrap:forcePromote '{"email":"${EMAIL}","role":"owner"}'`,
       { timeout: 60000, maxBuffer: 10 * 1024 * 1024 },
     );
     log("promoted to owner ✓");
-    await sleep(2500);
+    await sleep(1500);
 
-    /* ── 3. /admin renders ── */
-    await cdp.goto(BASE + "/admin", 6000);
-    await sleep(3000);
-    const adminText = await cdp.eval(`document.body.innerText.slice(0, 400)`);
-    const adminOk =
-      (await cdp.eval(`location.pathname.startsWith('/admin')`)) &&
-      !adminText.includes("مشکلی پیش آمده");
-    adminOk
-      ? ok("admin dashboard renders", adminText.replace(/\n/g, " ").slice(0, 90))
-      : fail("admin dashboard renders", adminText.slice(0, 200));
+    if (PHASE === "all" || PHASE === "settings") {
+      await gotoApp(cdp, "/admin", `location.pathname.startsWith('/admin')`);
+      await sleep(2500);
+      const adminText = await cdp.eval(`document.body.innerText.slice(0, 400)`);
+      const adminOk =
+        (await cdp.eval(`location.pathname.startsWith('/admin')`)) &&
+        !adminText.includes("مشکلی پیش آمده");
+      adminOk
+        ? ok("admin dashboard renders", adminText.replace(/\n/g, " ").slice(0, 90))
+        : fail("admin dashboard renders", adminText.slice(0, 200));
 
-    /* ── 4. SETTINGS → IMAGES TAB ── */
-    await cdp.goto(BASE + "/admin/settings", 6000);
-    await cdp.waitFor(`document.querySelector('nav[role="tablist"]')`, 15000);
-    const clicked = await findButton(cdp, "تصاویر");
-    if (!clicked) throw new Error("images tab not found");
-    await cdp.waitFor(
-      `[...document.querySelectorAll('p')].some(p => p.textContent.trim() === 'برند')`,
-      10000,
-    );
-    ok("settings → images tab renders brand group");
-
-    const slotCount = await cdp.eval(
-      `document.querySelectorAll('input[placeholder*="https"]').length`,
-    );
-    slotCount === 37
-      ? ok("37 image slot cards", `count=${slotCount}`)
-      : fail("37 image slot cards", `count=${slotCount}`);
-    const badgeCount = await cdp.eval(
-      `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length`,
-    );
-    ok("custom badges initially 0", `count=${badgeCount}`);
-
-    /* ── 5. SET LOGO / FAVICON / OG IMAGE ── */
-    const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="#f5e9da"/><circle cx="12" cy="12" r="9" fill="#c98a5a"/></svg>',
-    )}`;
-    for (const [label, value] of [
-      ["لوگو برند", dataUri],
-      ["فاوآیکون (آیکون مرورگر)", dataUri],
-      ["تصویر اشتراک‌گذاری (OpenGraph)", dataUri],
-    ]) {
-      const did = await cdp.eval(`(() => {
-        const p = [...document.querySelectorAll('p')].find(p => p.textContent.trim() === ${JSON.stringify(label)});
-        if (!p) return false;
-        const controls = p.parentElement;
-        const input = controls.querySelector('input');
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)});
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        controls.querySelector('button').click();
-        return true;
-      })()`);
-      if (!did) throw new Error("slot card not found: " + label);
-      await sleep(1500);
+      await settingsPhase(cdp);
     }
-    await cdp.waitFor(
-      `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length === 3`,
-      12000,
-    );
-    ok("logo/favicon/og overrides saved", "3 سفارشی badges");
 
-    /* ── 6. HOMEPAGE LIVE VERIFICATION ── */
-    await cdp.goto(BASE + "/", 6000);
-    await cdp.waitFor(`document.querySelector('header img, link[rel="icon"]')`, 12000);
-    await sleep(2000);
-    const headerLogo = await cdp.eval(
-      `document.querySelector('header img') ? document.querySelector('header img').src.slice(0, 20) : null`,
-    );
-    const favicon = await cdp.eval(
-      `document.querySelector('link[rel="icon"]')?.href?.slice(0, 20) ?? null`,
-    );
-    headerLogo === "data:image/svg+xml"
-      ? ok("header logo override live", headerLogo)
-      : fail("header logo override live", headerLogo);
-    favicon === "data:image/svg+xml"
-      ? ok("favicon override live", favicon)
-      : fail("favicon override live", favicon);
-    const footerLogo = await cdp.eval(
-      `[...document.querySelectorAll('footer img')].map(i => i.src.slice(0, 20))`,
-    );
-    (footerLogo[0] || "").startsWith("data:")
-      ? ok("footer logo override live")
-      : fail("footer logo override live", JSON.stringify(footerLogo));
-
-    /* ── 7. MEDIA LIBRARY — UPLOAD ── */
-    await cdp.goto(BASE + "/admin/media", 6000);
-    await cdp.waitFor(`document.querySelector('input[type="file"]')`, 15000);
-    await uploadFile(cdp, 'input[type="file"]', pngA);
-    await cdp.waitFor(`document.querySelector('img[alt="lona-test-a"]')`, 30000);
-    ok("media upload works", "tile lona-test-a appeared");
-
-    /* ── 8. REPLACE ── */
-    await cdp.eval(`document.querySelector('img[alt="lona-test-a"]').closest('button').click()`);
-    await cdp.waitFor(
-      `[...document.querySelectorAll('button')].some(b => b.textContent.includes('جایگزینی تصویر'))`,
-      10000,
-    );
-    const before = await cdp.eval(
-      `document.querySelector('aside img')?.src ?? document.querySelector('img[alt="lona-test-a"]')?.src`,
-    );
-    await findButton(cdp, "جایگزینی تصویر");
-    await sleep(500);
-    await uploadFile(cdp, 'aside input[type="file"]', pngB);
-    let replaced = false;
-    for (let i = 0; i < 30; i++) {
-      const now = await cdp.eval(
-        `document.querySelector('aside img')?.src ?? document.querySelector('img[alt="lona-test-a"]')?.src`,
-      );
-      if (now && now !== before) {
-        replaced = true;
-        break;
-      }
-      await sleep(500);
+    if (PHASE === "all" || PHASE === "media") {
+      await mediaPhase(cdp);
     }
-    replaced ? ok("media replace works") : fail("media replace works", "src unchanged");
-
-    /* ── 9. EDIT ALT ── */
-    const metaSet = await cdp.eval(`(() => {
-      const input = [...document.querySelectorAll('input')].find(i => (i.placeholder || '').includes('سوتین گیپور'));
-      if (!input) return false;
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'تست جایگزینی تصویر');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
-    })()`);
-    if (!metaSet) throw new Error("alt input not found");
-    await findButton(cdp, "ذخیره توضیحات");
-    await sleep(2000);
-    const h2Text = await cdp.eval(`document.querySelector('aside h2')?.textContent ?? ''`);
-    h2Text.includes("تست جایگزینی تصویر")
-      ? ok("alt metadata edit works", h2Text)
-      : fail("alt metadata edit works", h2Text);
-
-    /* ── 10. DELETE ── */
-    await findButton(cdp, "حذف");
-    await cdp.waitFor(
-      `[...document.querySelectorAll('button')].some(b => b.textContent.includes('حذف از کتابخانه'))`,
-      8000,
-    );
-    await findButton(cdp, "حذف از کتابخانه");
-    await sleep(2000);
-    const gone = await cdp.eval(`!document.querySelector('img[alt="lona-test-a"]')`);
-    gone ? ok("media delete works") : fail("media delete works", "tile still present");
   } catch (e) {
     fail("test flow crashed", e.message);
   }
