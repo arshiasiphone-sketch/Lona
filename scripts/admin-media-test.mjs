@@ -458,12 +458,22 @@ async function main() {
 
   // Warm up the Vite dev server so the first browser hit isn't a cold
   // compile (the Freebuff preview shell blocks until the app boots).
-  try {
-    const w = await fetch(BASE + "/src/main.tsx", { signal: AbortSignal.timeout(45000) });
-    log(`warm-up /src/main.tsx → HTTP ${w.status}`);
-  } catch (e) {
-    log("warm-up fetch failed (continuing): " + e.message);
+  // The platform dev server cold-starts after each edit cycle and can
+  // take minutes, so retry until the module server answers 200.
+  let warmed = false;
+  for (let i = 0; i < 20 && !warmed; i++) {
+    try {
+      const w = await fetch(BASE + "/src/main.tsx", {
+        signal: AbortSignal.timeout(25000),
+      });
+      log(`warm-up ${i + 1}: /src/main.tsx → HTTP ${w.status}`);
+      if (w.status === 200) warmed = true;
+    } catch (e) {
+      log("warm-up fetch failed: " + e.message);
+    }
+    if (!warmed) await sleep(6000);
   }
+  log(warmed ? "dev server warm ✓" : "dev server still cold — proceeding anyway");
 
   const profile = mkdtempSync(join(tmpdir(), "lona-cdp-"));
   const proc = spawn(
