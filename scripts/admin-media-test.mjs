@@ -387,6 +387,35 @@ async function settingsPhase(cdp) {
     : fail("footer logo override live", JSON.stringify(footerLogo.map((s) => s.slice(0, 20))));
 }
 
+async function cleanupBrandSlots(cdp) {
+  await gotoApp(cdp, "/admin/settings", `document.querySelector('nav[role="tablist"]')`);
+  await findButton(cdp, "تصاویر");
+  await cdp.waitFor(
+    `[...document.querySelectorAll('p')].some(p => p.textContent.trim() === 'برند')`,
+    12000,
+  );
+  for (const label of BRAND_LABELS) {
+    await slotCardEval(cdp, label, `{
+      const hasBadge = [...card.querySelectorAll('span')].some(s => s.textContent.trim() === 'سفارشی');
+      if (hasBadge) {
+        const btns = card.querySelectorAll('button');
+        if (btns[2]) btns[2].click();
+      }
+    }`);
+    await sleep(700);
+  }
+  await cdp.waitFor(
+    `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length === 0`,
+    10000,
+  ).catch(() => {});
+  const remaining = await cdp.eval(
+    `[...document.querySelectorAll('span')].filter(s => s.textContent.trim() === 'سفارشی').length`,
+  );
+  remaining === 0
+    ? ok("temporary brand overrides cleaned up")
+    : fail("temporary brand overrides cleaned up", `remaining=${remaining}`);
+}
+
 async function mediaPhase(cdp) {
   /* ── MEDIA LIBRARY — UPLOAD ── */
   await gotoApp(cdp, "/admin/media", `document.querySelector('input[type="file"]')`);
@@ -533,6 +562,7 @@ async function main() {
         : fail("admin dashboard renders", adminText.slice(0, 200));
 
       await settingsPhase(cdp);
+      if (process.env.CLEANUP === "1") await cleanupBrandSlots(cdp);
     }
 
     if (PHASE === "all" || PHASE === "media") {
