@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { editorials } from "@/data/catalog";
+import { editorials as staticEditorials } from "@/data/catalog";
+import { useEditorials } from "@/lib/data/catalog";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { Reveal } from "@/components/motion/Reveal";
@@ -27,6 +28,8 @@ const categoryLabel: Record<string, string> = {
 };
 
 export default function Press() {
+  const live = useEditorials();
+  const editorials = live && live.length > 0 ? live : staticEditorials;
   const [hero, ...rest] = editorials;
   const images = useHomepageImages();
 
@@ -50,7 +53,7 @@ export default function Press() {
           className="group mt-16 block overflow-hidden rounded-3xl focus-luxury"
         >
           <EditorialImage
-            src={images.press_hero}
+            src={hero.coverImage || images.press_hero}
             alt={`${hero.title} — مجله لونا`}
             className={cn("relative aspect-[16/8]", gradientFor(hero.cover))}
             imgClassName="opacity-90"
@@ -87,7 +90,7 @@ export default function Press() {
           >
             <Link to={`/press/${e.slug}`} className="group block overflow-hidden rounded-2xl">
               <EditorialImage
-                src={images[PRESS_SLOTS[i % PRESS_SLOTS.length]]}
+                src={e.coverImage || images[PRESS_SLOTS[i % PRESS_SLOTS.length]]}
                 alt={`${e.title} — مجله لونا`}
                 className={cn(
                   "relative aspect-[4/5] transition duration-700 group-hover:scale-[1.03]",

@@ -151,6 +151,7 @@ function adaptCollection(row: ConvexCollection): Collection {
     productIds: row.productSlugs,
     gradient: coverGradientKey(row.gradient),
     cover: row.coverGradient ? coverGradientKey(row.coverGradient) : undefined,
+    coverImage: row.coverImage ?? undefined,
   };
 }
 
@@ -164,6 +165,7 @@ function adaptEditorial(row: ConvexEditorial): Editorial {
     author: row.author,
     publishedAt: isoFromMs(row.publishedAt),
     cover: coverGradientKey(row.coverGradient),
+    coverImage: row.coverImage ?? undefined,
   };
 }
 

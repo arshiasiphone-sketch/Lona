@@ -82,6 +82,8 @@ export interface Collection {
   productIds: string[];
   gradient: GradientKey;
   cover?: string;
+  /** Phase 7.4 — real cover image URL (admin-uploaded); gradient remains fallback. */
+  coverImage?: string;
 }
 
 export interface Editorial {
@@ -93,6 +95,8 @@ export interface Editorial {
   author: string;
   publishedAt: string;
   cover: string;
+  /** Phase 7.4 — real cover image URL (admin-uploaded); gradient remains fallback. */
+  coverImage?: string;
 }
 
 export interface Testimonial {
@@ -162,6 +166,7 @@ function adaptCollection(c: (typeof LONA_COLLECTIONS)[number]): Collection {
     productIds: LONA_PRODUCTS.filter((p) => p.collectionSlug === c.slug).map((p) => p.slug),
     gradient: c.gradient,
     cover: undefined,
+    coverImage: undefined,
   };
 }
 
@@ -175,6 +180,7 @@ function adaptEditorial(e: (typeof LONA_EDITORIALS)[number]): Editorial {
     author: e.author,
     publishedAt: new Date(e.publishedAt).toISOString().slice(0, 10),
     cover: e.coverGradient,
+    coverImage: undefined,
   };
 }
 

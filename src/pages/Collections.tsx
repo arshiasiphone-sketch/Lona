@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { collections } from "@/data/catalog";
+import { collections as staticCollections } from "@/data/catalog";
+import { useCollections } from "@/lib/data/catalog";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { usePageMeta } from "@/lib/seo";
@@ -23,6 +24,8 @@ export default function Collections() {
     ogType: "website",
   });
   const images = useHomepageImages();
+  const live = useCollections();
+  const collections = live && live.length > 0 ? live : staticCollections;
   return (
     <div className="mx-auto max-w-[1728px] px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
       <header>
@@ -50,7 +53,7 @@ export default function Collections() {
               className="group focus-luxury block overflow-hidden rounded-3xl"
             >
               <EditorialImage
-                  src={images[COLLECTION_SLOTS[i % COLLECTION_SLOTS.length]]}
+                  src={c.coverImage || images[COLLECTION_SLOTS[i % COLLECTION_SLOTS.length]]}
                   alt={`${c.name} — تصویر کالکشن لونا`}
                   className={cn(
                     "relative aspect-[4/3] w-full transition duration-700 group-hover:scale-[1.03]",

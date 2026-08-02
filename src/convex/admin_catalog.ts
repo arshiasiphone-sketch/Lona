@@ -273,6 +273,7 @@ export const upsertCollection = mutation({
     productSlugs: v.array(v.string()),
     gradient: vGradient,
     coverGradient: v.optional(vGradient),
+    coverImage: v.optional(v.string()),
     kind: v.union(
       v.literal("seasonal"),
       v.literal("campaign"),
@@ -405,6 +406,7 @@ export const upsertEditorial = mutation({
     excerpt: v.string(),
     body: v.optional(v.string()),
     coverGradient: vGradient,
+    coverImage: v.optional(v.string()),
     kind: vEditorialKind,
     author: v.string(),
     publishedAt: v.number(),

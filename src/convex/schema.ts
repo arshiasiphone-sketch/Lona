@@ -158,6 +158,12 @@ const schema = defineSchema(
       productSlugs: v.array(v.string()),
       gradient: vGradient,
       coverGradient: v.optional(vGradient),
+      /**
+       * Phase 7.4 — real cover image (Convex storage URL or any http
+       * URL) uploaded from the admin CMS. Rendered on the collection
+       * hero when present; the gradient remains the fallback.
+       */
+      coverImage: v.optional(v.string()),
       kind: v.union(
         v.literal("seasonal"),
         v.literal("campaign"),
@@ -387,6 +393,12 @@ const schema = defineSchema(
       body: v.optional(v.string()),
       coverGradient: vGradient,
       coverImageId: v.optional(v.id("product_images")),
+      /**
+       * Phase 7.4 — real cover image URL uploaded from the admin CMS.
+       * Displayed on magazine cards and the article page when present;
+       * the gradient remains the fallback.
+       */
+      coverImage: v.optional(v.string()),
       kind: vEditorialKind,
       author: v.string(),
       publishedAt: v.number(),

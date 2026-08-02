@@ -56,7 +56,7 @@ export default function Collection() {
           )}
         >
           <EditorialImage
-            src={images.collection_hero}
+            src={collection.coverImage || images.collection_hero}
             alt={`${collection.name} — تصویر کالکشن لونا`}
             className={cn("absolute inset-0", gradientClass)}
             imgClassName="opacity-90"

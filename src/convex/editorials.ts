@@ -55,6 +55,7 @@ export const upsertBySlug = mutation({
     body: v.optional(v.string()),
     coverGradient: vGradient,
     coverImageId: v.optional(v.id("product_images")),
+    coverImage: v.optional(v.string()),
     kind: vEditorialKind,
     author: v.string(),
     publishedAt: v.number(),

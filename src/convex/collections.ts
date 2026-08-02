@@ -65,6 +65,7 @@ export const upsertBySlug = mutation({
     productSlugs: v.array(v.string()),
     gradient: vGradient,
     coverGradient: v.optional(vGradient),
+    coverImage: v.optional(v.string()),
     kind: v.union(
       v.literal("seasonal"),
       v.literal("campaign"),

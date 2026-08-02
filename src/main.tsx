@@ -28,6 +28,7 @@ const Collections = lazy(() => import("./pages/Collections.tsx"));
 const Collection = lazy(() => import("./pages/Collection.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Press = lazy(() => import("./pages/Press.tsx"));
+const PressArticle = lazy(() => import("./pages/PressArticle.tsx"));
 const Search = lazy(() => import("./pages/Search.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 // Trust / Legal pages
@@ -54,6 +55,9 @@ const CategoriesPage = lazy(() =>
 );
 const CollectionsPage = lazy(() =>
   import("./pages/admin/collections/Collections.tsx"),
+);
+const EditorialsPage = lazy(() =>
+  import("./pages/admin/editorials/Editorials.tsx"),
 );
 const MediaLibraryPage = lazy(() =>
   import("./pages/admin/media/MediaLibrary.tsx"),
@@ -214,6 +218,7 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/wishlist" element={<Wishlist />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/press" element={<Press />} />
+                        <Route path="/press/:slug" element={<PressArticle />} />
                         <Route path="/search" element={<Search />} />
                         {/* Trust / Legal */}
                         <Route path="/terms" element={<TermsPage />} />
@@ -319,6 +324,14 @@ createRoot(document.getElementById("root")!).render(
                             element={
                               <Suspense fallback={<RouteLoading />}>
                                 <CollectionsPage />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="editorial"
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <EditorialsPage />
                               </Suspense>
                             }
                           />

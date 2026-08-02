@@ -37,6 +37,7 @@ import {
 } from "@/components/admin";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ProductPickerDialog } from "@/components/admin/ProductPickerDialog";
+import { CoverImageField } from "@/components/admin/CoverImageField";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 
@@ -367,6 +368,7 @@ function CollectionEditDrawer({
   const [season, setSeason] = React.useState("");
   const [productSlugs, setProductSlugs] = React.useState<Id<"products">[]>([]);
   const [gradient, setGradient] = React.useState("oat");
+  const [coverImage, setCoverImage] = React.useState("");
   const [visible, setVisible] = React.useState(true);
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -380,6 +382,7 @@ function CollectionEditDrawer({
     setKind(editingRow?.kind ?? "seasonal");
     setSeason(editingRow?.season ?? "");
     setGradient(editingRow?.gradient ?? "oat");
+    setCoverImage(editingRow?.coverImage ?? "");
     setProductSlugs(
       (editingRow?.productSlugs ?? []).filter(Boolean) as Id<"products">[],
     );
@@ -401,6 +404,7 @@ function CollectionEditDrawer({
         productSlugs: productSlugs as string[],
         gradient: gradient as "oat" | "mist" | "deep" | "rose",
         coverGradient: undefined,
+        coverImage: coverImage || undefined,
         kind,
         season: season || undefined,
         order: editingRow?.order ?? 0,
@@ -572,6 +576,15 @@ function CollectionEditDrawer({
                 dir="rtl"
                 rows={3}
                 className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+              />
+            </Field>
+            <Field label="تصویر کاور" full>
+              <CoverImageField
+                label={`کاور ${name || "کالکسیون"} — لونا`}
+                value={coverImage}
+                onChange={setCoverImage}
+                section="general"
+                aspect="aspect-[16/9]"
               />
             </Field>
             <Field label="محصولات کالکسیون" full>
