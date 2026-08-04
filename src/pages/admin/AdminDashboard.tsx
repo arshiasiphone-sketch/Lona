@@ -222,7 +222,7 @@ function RecentOrdersCard({
                 </div>
                 <StatusBadge status={order.status as "pending" | "processing" | "shipped" | "delivered" | "returning" | "cancelled"} />
                 <span className="font-display text-base text-ink type-caption">
-                  {formatPrice(order.totalCents / 100)}
+                  {formatPrice(order.totalCents)}
                 </span>
               </div>
             </motion.li>

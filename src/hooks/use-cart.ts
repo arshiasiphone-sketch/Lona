@@ -14,7 +14,7 @@
  * is folded into the user's permanent one.
  */
 import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import {
   createContext,
   createElement,
@@ -22,6 +22,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { useDeviceSession } from "@/lib/data/session";
@@ -50,6 +51,21 @@ const sameLine = (a: CartLine, b: { productId: string; size: string; color: stri
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const sessionId = useDeviceSession();
+  const { isAuthenticated } = useConvexAuth();
+  const mergeFromLocal = useMutation(api.cart.mergeFromLocal);
+  const mergedRef = useRef(false);
+
+  // Phase 7.5: guest → auth cart merge. The device cart (keyed by
+  // `g:<deviceToken>`) is folded into the user cart exactly once per
+  // session. Safe to re-run — `mergeFromLocal` deletes the guest row,
+  // so repeat calls are no-ops.
+  useEffect(() => {
+    if (!sessionId || !isAuthenticated || mergedRef.current) return;
+    mergedRef.current = true;
+    void mergeFromLocal({ deviceSessionId: sessionId, localLines: [] }).catch(
+      () => {}
+    );
+  }, [sessionId, isAuthenticated, mergeFromLocal]);
 
   // Live subscription — null until sessionId resolves.
   const remoteCart = useQuery(

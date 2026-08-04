@@ -196,6 +196,10 @@ const schema = defineSchema(
       reviewCount: v.optional(v.number()),
       secondaryGradient: v.optional(vGradient),
       imageUrls: v.optional(v.array(v.string())),
+      /** Phase 7.5 — dedicated SEO metadata (previously the SEO step
+       *  clobbered `description`). Read by the storefront SEO layer. */
+      seoTitle: v.optional(v.string()),
+      seoDescription: v.optional(v.string()),
       status: vProductStatus,
       featured: v.boolean(),
       trending: v.boolean(),

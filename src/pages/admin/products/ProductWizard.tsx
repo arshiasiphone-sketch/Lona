@@ -59,6 +59,25 @@ const STEPS = [
   { key: "publishing", label: "انتشار نهایی" },
 ] as const;
 
+/**
+ * Phase 7.5: the wizard previously used a made-up category list
+ * (outerwear / knitwear / …) that does not exist in `vProductCategory`
+ * — every save except "accessories" failed with a Convex validation
+ * error. These are the canonical schema literals.
+ */
+const CATEGORY_OPTIONS: { value: Doc<"products">["category"]; label: string }[] = [
+  { value: "bras", label: "سوتین" },
+  { value: "briefs", label: "شورت" },
+  { value: "sets", label: "ست لباس زیر" },
+  { value: "sleepwear", label: "لباس خواب" },
+  { value: "loungewear", label: "لانژری" },
+  { value: "bodysuits", label: "بادی‌سوت" },
+  { value: "shapewear", label: "شکل‌دهنده" },
+  { value: "sportswear", label: "ورزشی" },
+  { value: "accessories", label: "اکسسوری" },
+  { value: "bridal", label: "عروس" },
+];
+
 type StepKey = (typeof STEPS)[number]["key"];
 
 /* ===================================================================
@@ -368,7 +387,7 @@ function BasicInfoStep({
             className="admin-input"
           />
         </Field>
-        <Field label="Category">
+        <Field label="دسته‌بندی">
           <select
             value={form.category}
             onChange={(e) =>
@@ -376,22 +395,14 @@ function BasicInfoStep({
             }
             className="admin-input"
           >
-            {[
-              "outerwear",
-              "knitwear",
-              "shirting",
-              "trousers",
-              "dresses",
-              "leather",
-              "accessories",
-            ].map((c) => (
-              <option key={c} value={c}>
-                {c[0].toUpperCase() + c.slice(1)}
+            {CATEGORY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Collection">
+        <Field label="Collection (اسلاگ کالکسیون)">
           <input
             value={form.collectionSlug}
             onChange={(e) => set("collectionSlug", e.target.value.toLowerCase())}
@@ -472,40 +483,31 @@ function CategoriesStep({
   const updateBasics = useMutation(api.admin_products.updateBasics);
   const [category, setCategory] = React.useState(product.category);
   const [busy, setBusy] = React.useState(false);
-  const categories = [
-    "outerwear",
-    "knitwear",
-    "shirting",
-    "trousers",
-    "dresses",
-    "leather",
-    "accessories",
-  ];
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۳ از ۸</p>
       <h3 className="mt-2 font-display text-2xl text-ink">دسته‌بندی‌ها</h3>
       <p className="mt-2 text-sm text-ink-soft">
-        Storefront indexing puts each piece in one primary category.
-        Collections layer on top for grouping.
+        هر محصول در یک دستهٔ اصلی ایندکس می‌شود؛ کالکسیون‌ها برای گروه‌بندی
+        داستانی روی آن لایه می‌شوند.
       </p>
       <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((c) => (
+        {CATEGORY_OPTIONS.map((c) => (
           <label
-            key={c}
+            key={c.value}
             className={cn(
               "flex cursor-pointer items-center gap-3 rounded-2xl border border-edge bg-canvas-soft px-3 py-2.5 text-sm transition",
-              category === c && "ring-2 ring-primary bg-white",
+              category === c.value && "ring-2 ring-primary bg-white",
             )}
           >
             <input
               type="radio"
               name="category"
               className="h-4 w-4 accent-primary"
-              checked={category === c}
-              onChange={() => setCategory(c as Doc<"products">["category"])}
+              checked={category === c.value}
+              onChange={() => setCategory(c.value)}
             />
-            <span className="capitalize">{c}</span>
+            <span>{c.label}</span>
           </label>
         ))}
       </div>
@@ -542,13 +544,10 @@ function CollectionsStep({
   onAdvance: () => void;
 }) {
   const updateBasics = useMutation(api.admin_products.updateBasics);
-  const collections = [
-    "essentials",
-    "autumn-winter",
-    "evening",
-    "objects",
-    "resort",
-  ];
+  // Phase 7.5: read live collections instead of a hardcoded demo list
+  // that drifted from the seeded data.
+  const liveCollections = useQuery(api.collections.listAll, {});
+  const collections = (liveCollections ?? []).sort((a, b) => a.order - b.order);
   const [picked, setPicked] = React.useState<string[]>(
     product.collectionSlug ? [product.collectionSlug] : [],
   );
@@ -557,32 +556,36 @@ function CollectionsStep({
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۴ از ۸</p>
       <h3 className="mt-2 font-display text-2xl text-ink">کالکسیون‌ها</h3>
       <p className="mt-2 text-sm text-ink-soft">
-        Use collections to bundle the piece into seasonal stories and
-        merchandising modules.
+        محصول را به کالکسیون اصلی وصل کنید تا در صفحهٔ کالکسیون و ماژول‌های
+        فروشگاهی ظاهر شود.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
-        {collections.map((c) => {
-          const on = picked.includes(c);
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() =>
-                setPicked((prev) =>
-                  prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
-                )
-              }
-              className={cn(
-                "rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] transition",
-                on
-                  ? "bg-ink text-canvas"
-                  : "hairline bg-canvas/60 text-ink-soft hover:bg-white",
-              )}
-            >
-              {c}
-            </button>
-          );
-        })}
+        {collections.length === 0 ? (
+          <p className="text-sm text-ink-muted">کالکسیونی یافت نشد.</p>
+        ) : (
+          collections.map((c) => {
+            const on = picked.includes(c.slug);
+            return (
+              <button
+                key={c.slug}
+                type="button"
+                onClick={() =>
+                  setPicked(
+                    on ? [] : [c.slug],
+                  )
+                }
+                className={cn(
+                  "rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] transition",
+                  on
+                    ? "bg-ink text-canvas"
+                    : "hairline bg-canvas/60 text-ink-soft hover:bg-white",
+                )}
+              >
+                {c.name} ({c.slug})
+              </button>
+            );
+          })
+        )}
       </div>
       <div className="mt-6 flex justify-end">
         <button
@@ -591,7 +594,7 @@ function CollectionsStep({
             if (picked.length) {
               await updateBasics({
                 id: product._id,
-                collectionSlug: picked[picked.length - 1],
+                collectionSlug: picked[0],
               });
             }
             onAdvance();
@@ -649,30 +652,31 @@ function PricingInventoryStep({
   onAdvance: () => void;
 }) {
   const updatePricing = useMutation(api.admin_products.updatePricing);
-  const [price, setPrice] = React.useState(product.priceCents / 100);
+  const [price, setPrice] = React.useState(product.priceCents);
   const [compare, setCompare] = React.useState(
-    product.compareAtCents !== undefined ? product.compareAtCents / 100 : 0,
+    product.compareAtCents !== undefined ? product.compareAtCents : 0,
   );
   const [busy, setBusy] = React.useState(false);
+  const [pricingError, setPricingError] = React.useState<string | null>(null);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۶ از ۸</p>
       <h3 className="mt-2 font-display text-2xl text-ink">قیمت‌گذاری و موجودی</h3>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Field label="Price (USD)">
+        <Field label="قیمت فروش (تومان)">
           <input
             type="number"
-            step="0.01"
+            step="1000"
             min={0}
             value={price}
             onChange={(e) => setPrice(Number(e.target.value) || 0)}
             className="admin-input"
           />
         </Field>
-        <Field label="Compare-at (USD)" hint="Optional strike-through price">
+        <Field label="قیمت اصلی (تومان)" hint="بزرگ‌تر از قیمت فروش">
           <input
             type="number"
-            step="0.01"
+            step="1000"
             min={0}
             value={compare || ""}
             onChange={(e) => setCompare(Number(e.target.value) || 0)}
@@ -680,6 +684,11 @@ function PricingInventoryStep({
           />
         </Field>
       </div>
+      {pricingError && (
+        <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+          {pricingError}
+        </p>
+      )}
       <div className="mt-6 rounded-2xl bg-canvas-soft p-4 text-sm text-ink-soft">
         <p>
           <strong className="text-ink">موجودی:</strong> stock is owned by
@@ -693,11 +702,22 @@ function PricingInventoryStep({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setPricingError(null);
             try {
+              // Toman is stored directly in `priceCents` (Phase 5.5
+              // convention); there is no cent sub-unit in toman.
+              const sale = Math.max(0, Math.round(price));
+              const original = compare > 0 ? Math.round(compare) : undefined;
+              if (original !== undefined && original <= sale) {
+                setPricingError(
+                  "قیمت اصلی باید از قیمت فروش بزرگ‌تر باشد.",
+                );
+                return;
+              }
               await updatePricing({
                 id: product._id,
-                priceCents: Math.max(0, Math.round(price * 100)),
-                compareAtCents: compare > 0 ? Math.round(compare * 100) : undefined,
+                priceCents: sale,
+                compareAtCents: original,
               });
               onAdvance();
             } finally {
@@ -724,25 +744,27 @@ function SeoStep({
   onAdvance: () => void;
 }) {
   const updateSeo = useMutation(api.admin_products.updateSeo);
-  const [seoTitle, setSeoTitle] = React.useState(product.name);
-  const [seoDescription, setSeoDescription] = React.useState(product.description);
+  const [seoTitle, setSeoTitle] = React.useState(product.seoTitle ?? product.name);
+  const [seoDescription, setSeoDescription] = React.useState(
+    product.seoDescription ?? "",
+  );
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۷ از ۸</p>
       <h3 className="mt-2 font-display text-2xl text-ink">سئو</h3>
       <p className="mt-2 text-sm text-ink-soft">
-        Search and social metadata. Description is mirrored into the
-        long-form copy until dedicated SEO fields land.
+        متادیتای جست‌وجو و شبکه‌های اجتماعی. این فیلدها مستقل از توضیحات
+        بلند محصول ذخیره می‌شوند و آن را بازنویسی نمی‌کنند.
       </p>
       <div className="mt-5 grid gap-5">
-        <Field label="Title tag">
+        <Field label="عنوان سئو">
           <input
             value={seoTitle}
             onChange={(e) => setSeoTitle(e.target.value)}
             className="admin-input"
           />
         </Field>
-        <Field label="Description">
+        <Field label="توضیحات سئو">
           <textarea
             value={seoDescription}
             onChange={(e) => setSeoDescription(e.target.value)}
@@ -941,9 +963,9 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
         ) : null}
 
         <p className="mt-5 rounded-xl bg-canvas-soft px-3 py-2 text-[12px] text-ink-soft">
-          List price preview:{" "}
+          پیش‌نمایش قیمت:{" "}
           <strong className="text-ink type-caption">
-            {formatPrice(product.priceCents / 100)}
+            {formatPrice(product.priceCents)}
           </strong>
         </p>
       </div>

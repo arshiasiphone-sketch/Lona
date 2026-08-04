@@ -157,7 +157,7 @@ export default function ProductList() {
       header: "قیمت",
       cell: (row) => (
         <span className="font-medium text-ink type-caption">
-          {row.priceCents > 0 ? formatPrice(row.priceCents / 100) : "—"}
+          {row.priceCents > 0 ? formatPrice(row.priceCents) : "—"}
         </span>
       ),
     },

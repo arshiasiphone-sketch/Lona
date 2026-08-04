@@ -1,9 +1,13 @@
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, X, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCart, type CartLine } from "@/hooks/use-cart";
 import { useCoupon, type UseCouponReturn } from "@/hooks/use-coupon";
+import { useProducts } from "@/lib/data/catalog";
+import { useDeviceSession } from "@/lib/data/session";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { getProductById, products, type Product } from "@/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn, glassClass } from "@/lib/glass";
@@ -38,11 +42,32 @@ export default function Cart() {
   const { lines, update, remove, clear } = useCart();
   const { applied, apply, remove: removeCoupon } = useCoupon();
   const [gift, setGift] = useState("");
+  const sessionId = useDeviceSession();
+  const setMeta = useMutation(api.cart.setMeta);
+
+  // Phase 7.5: enrich from the live Convex catalog so prices never
+  // drift from what the server will charge at checkout.
+  const liveProducts = useProducts();
+  const productMap = useMemo(() => {
+    const m = new Map<string, Product>();
+    (liveProducts ?? []).forEach((p) => m.set(p.slug, p));
+    return m;
+  }, [liveProducts]);
 
   const items: EnrichedLine[] = lines.flatMap((line) => {
-    const product = getProductById(line.productId);
+    const product = productMap.get(line.productId) ?? getProductById(line.productId);
     return product ? [{ ...line, product }] : [];
   });
+
+  // Persist the applied coupon to the cart row so Checkout can restore
+  // it — otherwise the discount silently disappears on navigation.
+  const persistCoupon = useMemo(
+    () => (code: string | null) => {
+      if (!sessionId) return;
+      void setMeta({ sessionId, couponCode: code ?? undefined }).catch(() => {});
+    },
+    [sessionId, setMeta],
+  );
 
   usePageMeta({
     title: "سبد خرید",
@@ -248,7 +273,12 @@ export default function Cart() {
               </motion.div>
             </dl>
 
-            <CouponInput applied={applied} onApply={apply} onRemove={removeCoupon} />
+            <CouponInput
+              applied={applied}
+              onApply={apply}
+              onRemove={removeCoupon}
+              onPersist={persistCoupon}
+            />
 
             <GiftNoteInput value={gift} onChange={setGift} />
 
@@ -273,10 +303,12 @@ function CouponInput({
   applied,
   onApply,
   onRemove,
+  onPersist,
 }: {
   applied: UseCouponReturn["applied"];
   onApply: UseCouponReturn["apply"];
   onRemove: UseCouponReturn["remove"];
+  onPersist: (code: string | null) => void;
 }) {
   const [code, setCode] = useState(applied?.code ?? "");
   return (
@@ -291,6 +323,7 @@ function CouponInput({
             <button
               onClick={() => {
                 onRemove();
+                onPersist(null);
                 toast.coupon.removed();
                 setCode("");
               }}
@@ -311,8 +344,12 @@ function CouponInput({
             <button
               onClick={() => {
                 const result = onApply(code);
-                if (result) toast.coupon.applied(result.code, result.percentOff);
-                else toast.coupon.invalid();
+                if (result) {
+                  onPersist(result.code);
+                  toast.coupon.applied(result.code, result.percentOff);
+                } else {
+                  toast.coupon.invalid();
+                }
               }}
               className="rounded-full bg-ink px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
             >

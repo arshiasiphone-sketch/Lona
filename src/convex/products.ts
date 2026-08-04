@@ -37,14 +37,27 @@ export const list = query({
   },
 });
 
+/**
+ * Phase 7.5: shared visibility gate — storefront listings must never
+ * leak drafts / archived rows. Applied to the flag-driven queries that
+ * previously returned every row matching the flag regardless of
+ * `status` / `visible`.
+ */
+async function publishedOnly<T extends { visible: boolean; status: string }>(
+  rows: T[]
+): Promise<T[]> {
+  return rows.filter((p) => p.visible && p.status === "published");
+}
+
 /** Featured products — drives the home FeaturedCollections block. */
 export const featured = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const rows = await ctx.db
       .query("products")
       .withIndex("by_featured", (q) => q.eq("featured", true))
       .collect();
+    return await publishedOnly(rows);
   },
 });
 
@@ -52,10 +65,11 @@ export const featured = query({
 export const trending = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const rows = await ctx.db
       .query("products")
       .withIndex("by_trending", (q) => q.eq("trending", true))
       .collect();
+    return await publishedOnly(rows);
   },
 });
 
@@ -63,10 +77,11 @@ export const trending = query({
 export const editorial = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const rows = await ctx.db
       .query("products")
       .withIndex("by_editorial", (q) => q.eq("editorial", true))
       .collect();
+    return await publishedOnly(rows);
   },
 });
 
@@ -74,10 +89,11 @@ export const editorial = query({
 export const byCategory = query({
   args: { category: vProductCategory },
   handler: async (ctx, { category }) => {
-    return await ctx.db
+    const rows = await ctx.db
       .query("products")
       .withIndex("by_category", (q) => q.eq("category", category))
       .collect();
+    return await publishedOnly(rows);
   },
 });
 

@@ -195,7 +195,7 @@ export function ProductPickerDialog({
                       </span>
                       <span className="type-caption text-ink">
                         {p.priceCents > 0
-                          ? formatPrice(p.priceCents / 100)
+                          ? formatPrice(p.priceCents)
                           : "—"}
                       </span>
                       <button
@@ -269,7 +269,7 @@ export function ProductPickerDialog({
                           </span>
                           <span className="type-caption text-ink">
                             {row.priceCents > 0
-                              ? formatPrice(row.priceCents / 100)
+                              ? formatPrice(row.priceCents)
                               : "—"}
                           </span>
                         </button>

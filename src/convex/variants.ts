@@ -58,7 +58,15 @@ export const upsertBySku = mutation({
   },
 });
 
-/** Decrement stock atomically — used by checkout on confirmed order. */
+/**
+ * Decrement stock atomically — used by checkout on confirmed order.
+ *
+ * Phase 7.5 security hardening: this endpoint used to let any signed-in
+ * caller decrement arbitrary stock. Checkout now owns its own
+ * pre-validated decrement inside `orders.place`; this surface is
+ * admin-only (restock reconciliation, manual adjustments) so it is
+ * gated with `requireAdmin`.
+ */
 export const reserve = mutation({
   args: {
     productId: v.id("products"),
@@ -67,6 +75,10 @@ export const reserve = mutation({
     quantity: v.number(),
   },
   handler: async (ctx, { productId, size, color, quantity }) => {
+    await requireAdmin(ctx);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new Error("INVALID_QUANTITY");
+    }
     const variant = await ctx.db
       .query("variants")
       .withIndex("by_product", (q) => q.eq("productId", productId))

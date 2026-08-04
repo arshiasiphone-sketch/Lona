@@ -90,9 +90,3 @@ export function cartSessionId(
 ): string {
   return userId ? `u:${userId}` : `g:${deviceToken}`;
 }
-
-/**
- * Choose a stable client session token. Until the device resolves a
- * signed-in user, this is a UUID-ish string persisted in localStorage.
- * Once auth lands, the cart merges and uses `"u:<userId>"` instead.
- */

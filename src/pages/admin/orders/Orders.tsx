@@ -153,7 +153,9 @@ export default function OrdersAdmin() {
             <tbody className="divide-y divide-white/60">
               {rows.map((row, i) => {
                 const id = String(row._id ?? idx(i));
-                const orderNumber = String(row.orderNumber ?? row.code ?? `ORD-${id.slice(-6)}`);
+                // Phase 7.5: map the real order doc fields — `number` (not
+                // orderNumber/code), shipping.fullName, no customer email.
+                const orderNumber = String(row.number ?? row.code ?? `ORD-${id.slice(-6)}`);
                 const shipping = row.shipping as { fullName?: unknown; email?: unknown } | undefined;
                 const name = String(row.customerName ?? row.shippingName ?? shipping?.fullName ?? "—");
                 const email = String(row.customerEmail ?? shipping?.email ?? "");
@@ -273,7 +275,7 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
           <div>
             <div className="text-xs text-neutral-500">سفارش</div>
             <h2 className="text-lg font-semibold text-neutral-900 font-mono">
-              {order?.orderNumber ?? order?.code ?? id.slice(-8)}
+              {order?.number ?? order?.code ?? id.slice(-8)}
             </h2>
           </div>
           <button
@@ -294,13 +296,13 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
         ) : (
           <div className="space-y-6 p-6">
             <div className="grid grid-cols-2 gap-3">
-              <InfoRow icon={<Hash className="h-4 w-4" />} label="کد سفارش" value={String(order.orderNumber ?? order.code ?? "—")} />
+              <InfoRow icon={<Hash className="h-4 w-4" />} label="کد سفارش" value={String(order.number ?? order.code ?? "—")} />
               <InfoRow
                 icon={<Calendar className="h-4 w-4" />}
                 label="تاریخ ثبت"
                 value={order.placedAt ? toFaDate(Number(order.placedAt)) : "—"}
               />
-              <InfoRow icon={<User className="h-4 w-4" />} label="مشتری" value={String(order.customerName ?? (order.shipping as any)?.fullName ?? "—")} />
+              <InfoRow icon={<User className="h-4 w-4" />} label="مشتری" value={String((order.shipping as any)?.fullName ?? "—")} />
               <div>
                 <div className="mb-1 text-xs text-neutral-500">وضعیت</div>
                 <StatusBadge status={STATUS_TONE[s] ?? "neutral"} label={STATUS_LABEL[s] ?? "—"} />
@@ -316,13 +318,17 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
                   {items.map((it, i) => (
                     <li key={String(it._id ?? i)} className="flex items-center justify-between text-sm">
                       <div className="flex-1 text-neutral-800">
-                        <div className="font-medium">{String(it.title ?? it.name ?? "محصول")}</div>
+                        <div className="font-medium">
+                          {String(it.productNameSnapshot ?? it.title ?? it.name ?? "محصول")}
+                        </div>
                         <div className="text-xs text-neutral-500">
-                          {it.variantTitle ?? it.color ?? it.size ?? ""}
+                          {[it.color, it.size, it.quantity ? `${Number(it.quantity).toLocaleString("fa-IR")} عدد` : ""]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </div>
                       </div>
                       <div className="text-neutral-700">
-                        {formatToman(Number(it.totalCents ?? it.priceCents ?? 0))}
+                        {formatToman(Number(it.lineTotalCents ?? it.totalCents ?? 0))}
                       </div>
                     </li>
                   ))}

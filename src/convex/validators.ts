@@ -91,8 +91,10 @@ export const vOrderStatus = v.union(
   ...orderStatusLiterals.map((s) => v.literal(s))
 );
 
+// Mirror of `carts.lines[number]` — productId stays an opaque string
+// (catalog ids / slugs), matching the schema.
 export const vCartLine = v.object({
-  productId: v.id("products"),
+  productId: v.string(),
   size: v.string(),
   color: v.string(),
   quantity: v.number(),

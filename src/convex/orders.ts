@@ -108,7 +108,6 @@ async function resolveProduct(
 }
 
 /** Place an order from the current cart line set. */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 export const place = mutation({
   args: {
     lines: v.array(
@@ -141,7 +140,23 @@ export const place = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Snapshot each line: load product docs for current price/name.
+    /* ── Phase 7.5 hardening ───────────────────────────────────────
+     * Convex mutations are NOT transactional: a throw mid-write leaves
+     * partial rows behind. The old implementation inserted the order,
+     * then decremented stock per line — an INSUFFICIENT_STOCK throw
+     * could orphan a half-written order with partially-decremented
+     * stock. We now run a full validation pass (products + variants +
+     * coupon) BEFORE writing anything, so every failure happens
+     * atomically from the reader's perspective.
+     *
+     * Oversell protection: when a `variants` row exists for the
+     * (size, color) pair we require `stock >= quantity` before any
+     * write. Products without variant rows are allowed through (the
+     * row is the source of truth for those), which matches the
+     * pre-existing reconcile-cron contract.
+     */
+
+    // ── PASS 1: snapshot + validate every line (no writes) ──
     const items: Array<{
       productId: string;
       size: string;
@@ -154,6 +169,9 @@ export const place = mutation({
     let subtotal = 0;
 
     for (const line of args.lines) {
+      if (!Number.isInteger(line.quantity) || line.quantity < 1) {
+        throw new Error(`INVALID_QUANTITY:${line.productId}`);
+      }
       const product = await resolveProduct(ctx, line.productId);
       if (!product) {
         throw new Error(`PRODUCT_MISSING:${line.productId}`);
@@ -161,6 +179,25 @@ export const place = mutation({
       if (!product.visible || product.status !== "published") {
         throw new Error(`PRODUCT_UNLISTED:${product.slug}`);
       }
+      if (product.priceCents <= 0) {
+        throw new Error(`PRODUCT_NO_PRICE:${product.slug}`);
+      }
+
+      // Oversell guard — variant row exists ⇒ stock must cover qty.
+      const variant = await ctx.db
+        .query("variants")
+        .withIndex("by_product", (q) => q.eq("productId", product._id))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("size"), line.size),
+            q.eq(q.field("color"), line.color)
+          )
+        )
+        .unique();
+      if (variant && (!variant.available || variant.stock < line.quantity)) {
+        throw new Error(`INSUFFICIENT_STOCK:${product.slug}/${line.size}/${line.color}`);
+      }
+
       const lineTotal = product.priceCents * line.quantity;
       subtotal += lineTotal;
       items.push({
@@ -174,9 +211,10 @@ export const place = mutation({
       });
     }
 
-    // Discount.
+    // ── PASS 2: coupon validation (no writes) ──
     let discount = 0;
-    if (args.couponCode) {
+    let couponRow: Doc<"coupons"> | null = null;
+    if (args.couponCode && args.couponCode.trim()) {
       const code = args.couponCode.trim().toUpperCase();
       const coupon = await ctx.db
         .query("coupons")
@@ -185,27 +223,38 @@ export const place = mutation({
       if (!coupon || !coupon.active) {
         throw new Error("INVALID_COUPON");
       }
+      if (coupon.validFrom && Date.now() < coupon.validFrom) {
+        throw new Error("COUPON_NOT_STARTED");
+      }
+      if (coupon.validUntil && Date.now() > coupon.validUntil) {
+        throw new Error("COUPON_EXPIRED");
+      }
       if (coupon.maxUses !== undefined && coupon.usedCount >= coupon.maxUses) {
         throw new Error("COUPON_EXHAUSTED");
       }
-      discount = Math.round(subtotal * coupon.percentOff);
-      await ctx.db.patch(coupon._id, { usedCount: coupon.usedCount + 1 });
+      const rate = Math.min(Math.max(coupon.percentOff, 0), 1);
+      discount = Math.round(subtotal * rate);
+      couponRow = coupon;
     }
 
     // Shipping cost by method — co-located here for the demo; future
-    // shipping zone tables can replace this.
-    const shippingMap = { standard: 1200, express: 2400, white_glove: 4800 };
+    // shipping zone tables can replace this. Toman amounts.
+    const shippingMap = { standard: 120000, express: 250000, white_glove: 650000 };
     const shippingCost = shippingMap[args.shipping.method];
-    const tax = Math.round((subtotal - discount) * 0.08);
-    const total = subtotal - discount + shippingCost + tax;
+    const tax = 0; // VAT is included in Iranian retail pricing; kept 0.
+    const total = Math.max(0, subtotal - discount) + shippingCost;
 
-    // Order number — Æ-YYMMDD-####.
+    // Order number — Æ-YYMMDD-XXXX + 2-char random suffix so two
+    // orders placed in the same millisecond cannot collide on the
+    // `by_number` unique index.
     const now = new Date();
     const y = String(now.getUTCFullYear()).slice(2);
     const m = String(now.getUTCMonth() + 1).padStart(2, "0");
     const d = String(now.getUTCDate()).padStart(2, "0");
-    const number = `Æ-${y}${m}${d}-${String(now.getUTCMilliseconds()).slice(-4)}`;
+    const rand = Math.random().toString(36).slice(2, 4).toUpperCase();
+    const number = `Æ-${y}${m}${d}-${String(now.getUTCMilliseconds()).slice(-4)}${rand}`;
 
+    // ── PASS 3: writes (order → items → stock → history → coupon) ──
     const orderDoc = await ctx.db.insert("orders", {
       userId: user._id,
       number,
@@ -217,7 +266,7 @@ export const place = mutation({
       shippingCents: shippingCost,
       taxCents: tax,
       totalCents: total,
-      couponCode: args.couponCode,
+      couponCode: args.couponCode?.trim().toUpperCase(),
       giftNote: args.giftNote,
       shipping: {
         fullName: args.shipping.fullName,
@@ -237,42 +286,43 @@ export const place = mutation({
         orderId: orderDoc,
       });
 
-      // Decrement variant stock. Resolution mirrors the snapshot above.
-      const productForVariant = await resolveProduct(ctx, item.productId);
-      if (productForVariant) {
-        const variant = await ctx.db
-          .query("variants")
-          .withIndex("by_product", (q) =>
-            q.eq("productId", productForVariant._id)
+      const product = await resolveProduct(ctx, item.productId);
+      if (!product) continue;
+      const variant = await ctx.db
+        .query("variants")
+        .withIndex("by_product", (q) => q.eq("productId", product._id))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("size"), item.size),
+            q.eq(q.field("color"), item.color)
           )
-          .filter((q) =>
-            q.and(
-              q.eq(q.field("size"), item.size),
-              q.eq(q.field("color"), item.color)
-            )
-          )
-          .unique();
-        if (variant) {
-          if (variant.stock < item.quantity) {
-            throw new Error(`INSUFFICIENT_STOCK:${item.productId}`);
-          }
-          await ctx.db.patch(variant._id, {
-            stock: variant.stock - item.quantity,
-            reserved: (variant.reserved ?? 0) + item.quantity,
-          });
-        }
-        // If no variant row exists yet, checkout still succeeds; the
-        // product row is the source of truth and a reconciliation
-        // cron ingests missing variants later.
-      }
+        )
+        .unique();
+      if (!variant) continue; // no variant row → product-level source of truth
+      await ctx.db.patch(variant._id, {
+        stock: variant.stock - item.quantity,
+        reserved: (variant.reserved ?? 0) + item.quantity,
+        available: variant.stock - item.quantity > 0 ? variant.available : false,
+      });
+      await ctx.db.insert("stock_movements", {
+        variantId: variant._id,
+        kind: "sale",
+        quantity: -item.quantity,
+        reason: `order:${number}`,
+        at: Date.now(),
+      });
     }
 
     await ctx.db.insert("order_status_history", {
       orderId: orderDoc,
       status: "processing",
-      note: "Order received",
+      note: "سفارش دریافت شد",
       at: now.getTime(),
     });
+
+    if (couponRow) {
+      await ctx.db.patch(couponRow._id, { usedCount: couponRow.usedCount + 1 });
+    }
 
     return { orderId: orderDoc, number, totalCents: total };
   },

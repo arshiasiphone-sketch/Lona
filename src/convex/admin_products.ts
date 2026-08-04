@@ -217,7 +217,29 @@ export const updatePricing = mutation({
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_products");
     const { id, ...patch } = args;
-    await ctx.db.patch(id, patch);
+
+    // Phase 7.5 pricing invariants: never negative, and the sale price
+    // (priceCents) can never exceed the regular/compare-at price.
+    if (!Number.isFinite(patch.priceCents) || patch.priceCents < 0) {
+      throw new Error("INVALID_PRICE:price cannot be negative");
+    }
+    if (
+      patch.compareAtCents !== undefined &&
+      patch.compareAtCents !== null &&
+      patch.compareAtCents <= patch.priceCents
+    ) {
+      throw new Error(
+        "INVALID_COMPARE_AT:compare-at price must exceed the sale price",
+      );
+    }
+
+    await ctx.db.patch(id, {
+      priceCents: Math.round(patch.priceCents),
+      compareAtCents:
+        patch.compareAtCents === undefined
+          ? undefined
+          : Math.round(patch.compareAtCents),
+    });
     await audit(ctx, user, "product.pricing.update", "products", id, patch);
     return id;
   },
@@ -226,20 +248,20 @@ export const updatePricing = mutation({
 export const updateSeo = mutation({
   args: {
     id: v.id("products"),
-    // SEO-specific fields. The product row only stores generic
-    // metadata today; we extend via copy/paste into `description` for
-    // an MVP-grade SEO surface. A later phase introduces dedicated
-    // `seo_*` columns.
     seoTitle: v.optional(v.string()),
     seoDescription: v.optional(v.string()),
   },
   handler: async (ctx, { id, seoTitle, seoDescription }) => {
     const user = await requirePermission(ctx, "manage_products");
-    // Persist as patch on the existing description if seoDescription
-    // is provided (useful for previews); a later migration adds a
-    // dedicated `seo_*` column.
-    if (seoDescription) {
-      await ctx.db.patch(id, { description: seoDescription });
+    // Phase 7.5: dedicated `seoTitle` / `seoDescription` columns — the
+    // old implementation overwrote the long-form `description` with the
+    // SEO description, destroying the storefront copy. These fields are
+    // now persisted independently (schema extended in 7.5).
+    const patch: Record<string, string> = {};
+    if (seoTitle !== undefined) patch.seoTitle = seoTitle;
+    if (seoDescription !== undefined) patch.seoDescription = seoDescription;
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(id, patch);
     }
     await audit(ctx, user, "product.seo.update", "products", id, {
       seoTitle,
@@ -385,15 +407,19 @@ export const syncVariants = mutation({
 
     // Upsert each incoming row by (size, color) against the product.
     for (const row of rows) {
+      // Phase 7.5: negative stock is never allowed — clamp to 0 and
+      // force `available` false so the storefront hides the variant.
+      const safeStock = Math.max(0, Math.round(row.stock));
+      const safeAvailable = safeStock > 0 ? row.available : false;
       const match = existingRows.find(
         (e) => e.size === row.size && e.color === row.color,
       );
       if (match) {
         await ctx.db.patch(match._id, {
           sku: row.sku,
-          stock: row.stock,
+          stock: safeStock,
           priceCentsOverride: row.priceCentsOverride,
-          available: row.available,
+          available: safeAvailable,
         });
       } else {
         await ctx.db.insert("variants", {
@@ -401,9 +427,9 @@ export const syncVariants = mutation({
           size: row.size,
           color: row.color,
           sku: row.sku,
-          stock: row.stock,
+          stock: safeStock,
           priceCentsOverride: row.priceCentsOverride,
-          available: row.available,
+          available: safeAvailable,
         });
       }
     }

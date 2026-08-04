@@ -11,7 +11,7 @@
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId, getAuthUserId as _unused } from "@convex-dev/auth/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { cartSessionId, mergeCartLines } from "./_helpers";
 
 /* -------------------------------------------------------------- */
@@ -58,11 +58,13 @@ export const addLine = mutation({
       .query("carts")
       .withIndex("by_session", (q) => q.eq("sessionId", key))
       .unique();
+    // Phase 7.5: never store degenerate quantities.
+    const safeQuantity = Math.max(1, Math.round(quantity));
     const newLine = {
       productId,
       size,
       color,
-      quantity,
+      quantity: safeQuantity,
       addedAt: Date.now(),
     };
     if (!row) {
@@ -101,7 +103,7 @@ export const updateLine = mutation({
     const next = row.lines
       .map((l) =>
         l.productId === productId && l.size === size && l.color === color
-          ? { ...l, quantity }
+          ? { ...l, quantity: Math.max(0, Math.round(quantity)) }
           : l
       )
       .filter((l) => l.quantity > 0);

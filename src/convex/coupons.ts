@@ -64,10 +64,18 @@ export const upsert = mutation({
   },
 });
 
-/** Marks a code as used. Called from order placement. */
+/**
+ * Marks a code as used.
+ *
+ * Phase 7.5 hardening: order placement increments the counter inline
+ * inside `orders.place`; this standalone counter was left publicly
+ * callable, letting any signed-in user inflate usage stats. Kept for
+ * manual admin corrections only and now admin-gated.
+ */
 export const incrementUsage = mutation({
   args: { id: v.id("coupons") },
   handler: async (ctx, { id }) => {
+    await requireAdmin(ctx);
     const row = await ctx.db.get(id);
     if (!row) return;
     await ctx.db.patch(id, { usedCount: row.usedCount + 1 });

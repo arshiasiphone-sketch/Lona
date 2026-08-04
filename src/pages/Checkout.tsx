@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Lock, MapPin, CreditCard, ShoppingBag, ArrowLeft } from "lucide-react";
+import { Check, Lock, MapPin, CreditCard, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useCoupon } from "@/hooks/use-coupon";
-import { getProductById } from "@/data/catalog";
+import { useProducts, type Product } from "@/lib/data/catalog";
+import { useDeviceSession } from "@/lib/data/session";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
-import { formatPrice, formatOrderNumber } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
 const STEPS = ["اطلاعات تماس", "ارسال", "پرداخت"] as const;
@@ -42,17 +45,43 @@ const silhouetteFor = (cat: string) => {
 
 export default function Checkout() {
   const { lines, clear } = useCart();
-  const { applied } = useCoupon();
+  const coupon = useCoupon();
+  const { applied } = coupon;
+  const sessionId = useDeviceSession();
+  const placeOrderMut = useMutation(api.orders.place);
+  const setCartMeta = useMutation(api.cart.setMeta);
+
+  // Phase 7.5: prices must mirror Convex, not the static catalog.
+  const liveProducts = useProducts();
+  const cartRow = useQuery(api.cart.getMine, sessionId ? { sessionId } : "skip");
+
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [placed, setPlaced] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string>(() =>
-    formatOrderNumber(Math.floor(24000 + Math.random() * 9999))
-  );
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string>("");
   const [shippingMethod, setShippingMethod] = useState<"std" | "exp" | "white">("exp");
+  const [couponRestored, setCouponRestored] = useState(false);
+
+  // Restore a coupon that was applied on the Cart page (persisted via
+  // `cart.setMeta`). Without this the discount silently disappears.
+  useEffect(() => {
+    if (couponRestored || applied) return;
+    const code = cartRow?.couponCode;
+    if (!code) return;
+    coupon.apply(code);
+    setCouponRestored(true);
+  }, [cartRow?.couponCode, applied, couponRestored, coupon]);
+
+  const productMap = useMemo(() => {
+    const m = new Map<string, Product>();
+    (liveProducts ?? []).forEach((p) => m.set(p.slug, p));
+    return m;
+  }, [liveProducts]);
 
   const items = lines
-    .map((l) => ({ ...l, product: getProductById(l.productId) }))
+    .map((l) => ({ ...l, product: productMap.get(l.productId) }))
     .filter((x): x is NonNullable<typeof x> => Boolean(x.product));
 
   const subtotal = items.reduce(
@@ -136,11 +165,51 @@ export default function Checkout() {
       setErrors(finalErrors);
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    const number = formatOrderNumber(Math.floor(24000 + Math.random() * 9999));
-    setOrderNumber(number);
-    setPlaced(true);
-    toast.placement.success(number);
+    if (!sessionId) return;
+    setPlacing(true);
+    setPlaceError(null);
+    try {
+      // Phase 7.5: the old checkout simulated success client-side. Now
+      // a real order is created: server snapshots prices, validates
+      // stock for every variant, decrements inventory, increments the
+      // coupon counter and writes the status history.
+      const method =
+        shippingMethod === "std"
+          ? "standard"
+          : shippingMethod === "exp"
+            ? "express"
+            : "white_glove";
+      const result = await placeOrderMut({
+        lines: lines.map((l) => ({
+          productId: l.productId,
+          size: l.size,
+          color: l.color,
+          quantity: l.quantity,
+        })),
+        couponCode: applied?.code,
+        shipping: {
+          fullName: `${form.firstName} ${form.lastName}`.trim(),
+          line1: form.address,
+          city: form.city,
+          region: "ایران",
+          postalCode: form.postal,
+          country: form.country,
+          method,
+        },
+      });
+      // Drop the used coupon from the cart so it doesn't stick around.
+      await setCartMeta({ sessionId, couponCode: undefined }).catch(() => {});
+      setOrderNumber(result.number);
+      setPlaced(true);
+      clear();
+      toast.placement.success(result.number);
+    } catch (err) {
+      const message = mapPlaceError((err as Error)?.message ?? "");
+      setPlaceError(message);
+      toast.error(message);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (placed) {
@@ -316,29 +385,39 @@ export default function Checkout() {
               <div className="mt-10 flex items-center justify-between">
                 <button
                   onClick={() => setStep((s) => Math.max(0, s - 1))}
-                  disabled={step === 0}
+                  disabled={step === 0 || placing}
                   className="text-[11px] uppercase tracking-[0.18em] text-ink-soft disabled:opacity-30"
                 >
                   بازگشت
                 </button>
-                <button
-                  onClick={() => {
-                    const errs = validateStep(step);
-                    if (Object.keys(errs).length > 0) {
-                      setErrors(errs);
-                      return;
-                    }
-                    if (step === STEPS.length - 1) {
-                      placeOrder();
-                    } else {
-                      setStep((s) => Math.min(STEPS.length - 1, s + 1));
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
-                >
-                  {step === STEPS.length - 1 ? "ثبت نهایی سفارش" : "ادامه"}
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                  {placeError && (
+                    <p className="text-xs text-destructive">{placeError}</p>
+                  )}
+                  <button
+                    onClick={() => {
+                      const errs = validateStep(step);
+                      if (Object.keys(errs).length > 0) {
+                        setErrors(errs);
+                        return;
+                      }
+                      if (step === STEPS.length - 1) {
+                        placeOrder();
+                      } else {
+                        setStep((s) => Math.min(STEPS.length - 1, s + 1));
+                      }
+                    }}
+                    disabled={placing}
+                    className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary disabled:opacity-50"
+                  >
+                    {placing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      step === STEPS.length - 1 ? "ثبت نهایی سفارش" : "ادامه"
+                    )}
+                    {!placing && <ArrowLeft className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </AnimatePresence>
@@ -522,6 +601,28 @@ function Success({
       </div>
     </motion.div>
   );
+}
+
+function mapPlaceError(message: string): string {
+  if (message.startsWith("INSUFFICIENT_STOCK"))
+    return "موجودی کافی برای یکی از اقلام سبد وجود ندارد.";
+  if (message.startsWith("PRODUCT_UNLISTED"))
+    return "یکی از محصولات سبد دیگر در فروشگاه منتشر نیست.";
+  if (message.startsWith("PRODUCT_MISSING"))
+    return "یکی از محصولات سبد پیدا نشد.";
+  if (message.startsWith("PRODUCT_NO_PRICE"))
+    return "قیمت یکی از محصولات سبد ثبت نشده است.";
+  if (message.startsWith("INVALID_COUPON"))
+    return "کد تخفیف معتبر نیست.";
+  if (message.startsWith("COUPON_EXHAUSTED"))
+    return "کد تخفیف به پایان رسیده است.";
+  if (message.startsWith("COUPON_EXPIRED"))
+    return "کد تخفیف منقضی شده است.";
+  if (message.startsWith("INVALID_QUANTITY"))
+    return "تعداد اقلام سبد نامعتبر است.";
+  if (message.startsWith("UNAUTHORIZED"))
+    return "برای ثبت سفارش وارد حساب خود شوید.";
+  return "ثبت سفارش ناموفق بود؛ لطفاً دوباره تلاش کنید.";
 }
 
 function formatCardNumber(v: string): string {
