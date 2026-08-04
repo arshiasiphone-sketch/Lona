@@ -8,6 +8,8 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { requireAdmin } from "./_helpers";
+import { requirePermission, audit } from "./admin";
+import { availableStock } from "./reservations";
 
 /* Variants ------------------------------------------------------- */
 
@@ -59,13 +61,14 @@ export const upsertBySku = mutation({
 });
 
 /**
- * Decrement stock atomically — used by checkout on confirmed order.
+ * Place a manual hold on a variant (admin tool).
  *
- * Phase 7.5 security hardening: this endpoint used to let any signed-in
- * caller decrement arbitrary stock. Checkout now owns its own
- * pre-validated decrement inside `orders.place`; this surface is
- * admin-only (restock reconciliation, manual adjustments) so it is
- * gated with `requireAdmin`.
+ * Phase 8.1: checkout no longer decrements stock through this path —
+ * it holds units via `inventory_reservations` and only `orders`
+ * converts them. This admin surface is for manual holds /
+ * reconciliation and now follows the same hold model: `reserved +=`
+ * without touching `stock`, so the reservation ledger stays the
+ * single source of truth.
  */
 export const reserve = mutation({
   args: {
@@ -75,7 +78,7 @@ export const reserve = mutation({
     quantity: v.number(),
   },
   handler: async (ctx, { productId, size, color, quantity }) => {
-    await requireAdmin(ctx);
+    const user = await requirePermission(ctx, "manage_inventory");
     if (!Number.isInteger(quantity) || quantity < 1) {
       throw new Error("INVALID_QUANTITY");
     }
@@ -89,19 +92,15 @@ export const reserve = mutation({
     if (!variant) {
       throw new Error(`Variant missing: ${productId}/${size}/${color}`);
     }
-    if (variant.stock < quantity) {
+    if (availableStock(variant) < quantity) {
       throw new Error("INSUFFICIENT_STOCK");
     }
     await ctx.db.patch(variant._id, {
-      stock: variant.stock - quantity,
       reserved: (variant.reserved ?? 0) + quantity,
     });
-    await ctx.db.insert("stock_movements", {
-      variantId: variant._id,
-      kind: "sale",
-      quantity: -quantity,
-      reason: "checkout_reserve",
-      at: Date.now(),
+    await audit(ctx, user, "inventory.reserve", "variants", variant._id, {
+      sku: variant.sku,
+      quantity,
     });
     return variant._id;
   },
@@ -115,7 +114,10 @@ export const restock = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, { variantId, quantity, reason }) => {
-    await requireAdmin(ctx);
+    const user = await requirePermission(ctx, "manage_inventory");
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new Error("INVALID_QUANTITY");
+    }
     const v = await ctx.db.get(variantId);
     if (!v) return;
     await ctx.db.patch(variantId, { stock: v.stock + quantity });
@@ -125,6 +127,11 @@ export const restock = mutation({
       quantity,
       reason,
       at: Date.now(),
+    });
+    await audit(ctx, user, "inventory.restock", "variants", variantId, {
+      sku: v.sku,
+      quantity,
+      reason,
     });
   },
 });

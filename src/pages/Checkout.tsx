@@ -1,20 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Lock, MapPin, CreditCard, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  Check,
+  Lock,
+  MapPin,
+  CreditCard,
+  ShoppingBag,
+  ArrowLeft,
+  Loader2,
+  ShieldCheck,
+  X,
+  Timer,
+} from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useCoupon } from "@/hooks/use-coupon";
 import { useProducts, type Product } from "@/lib/data/catalog";
 import { useDeviceSession } from "@/lib/data/session";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
-import { formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/money";
 import { toast } from "@/lib/toast";
+import { getPaymentProvider, type PaymentInit } from "@/lib/payment";
 
 const STEPS = ["اطلاعات تماس", "ارسال", "پرداخت"] as const;
+
+type PaymentPhase = "connecting" | "gateway" | "processing";
+
+interface PendingPayment {
+  orderId: string;
+  number: string;
+  reference: string;
+  amountCents: number;
+  expiresAt?: number;
+}
 
 interface FieldErrors {
   email?: string;
@@ -29,6 +52,19 @@ interface FieldErrors {
   expiry?: string;
   cvc?: string;
 }
+
+interface ShippingOption {
+  code: string;
+  name: string;
+  priceCents: number;
+  estimatedDays: number;
+}
+
+const FALLBACK_SHIPPING: ShippingOption[] = [
+  { code: "standard", name: "ارسال عادی", priceCents: 120000, estimatedDays: 7 },
+  { code: "express", name: "ارسال سریع", priceCents: 250000, estimatedDays: 3 },
+  { code: "white_glove", name: "پیک شهری", priceCents: 650000, estimatedDays: 1 },
+];
 
 const silhouetteFor = (cat: string) => {
   switch (cat) {
@@ -49,11 +85,27 @@ export default function Checkout() {
   const { applied } = coupon;
   const sessionId = useDeviceSession();
   const placeOrderMut = useMutation(api.orders.place);
+  const confirmPaymentMut = useMutation(api.orders.confirmPayment);
+  const cancelPendingMut = useMutation(api.orders.cancelPending);
   const setCartMeta = useMutation(api.cart.setMeta);
 
   // Phase 7.5: prices must mirror Convex, not the static catalog.
   const liveProducts = useProducts();
   const cartRow = useQuery(api.cart.getMine, sessionId ? { sessionId } : "skip");
+  // Phase 8.1: live shipping methods from the admin-managed table.
+  const liveShipping = useQuery(api.shipping.listActive, {});
+
+  const shippingOptions = useMemo<ShippingOption[]>(() => {
+    if (liveShipping && liveShipping.length > 0) {
+      return liveShipping.map((m) => ({
+        code: m.code,
+        name: m.name,
+        priceCents: m.priceCents,
+        estimatedDays: m.estimatedDays,
+      }));
+    }
+    return FALLBACK_SHIPPING;
+  }, [liveShipping]);
 
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -61,8 +113,20 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string>("");
-  const [shippingMethod, setShippingMethod] = useState<"std" | "exp" | "white">("exp");
+  const [shippingMethod, setShippingMethod] = useState<string>("express");
   const [couponRestored, setCouponRestored] = useState(false);
+
+  // ── Phase 8.1: pending payment state machine ─────────────────
+  const [pending, setPending] = useState<PendingPayment | null>(null);
+  const [paymentPhase, setPaymentPhase] = useState<PaymentPhase>("connecting");
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
+  const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (connectTimer.current) clearTimeout(connectTimer.current);
+    };
+  }, []);
 
   // Restore a coupon that was applied on the Cart page (persisted via
   // `cart.setMeta`). Without this the discount silently disappears.
@@ -89,7 +153,9 @@ export default function Checkout() {
     0
   );
   const discount = applied ? subtotal * applied.percentOff : 0;
-  const shippingPrice = shippingMethod === "std" ? 0 : shippingMethod === "exp" ? 250000 : 650000;
+  const shippingOption =
+    shippingOptions.find((o) => o.code === shippingMethod) ?? shippingOptions[1];
+  const shippingPrice = shippingOption?.priceCents ?? 0;
   const total = subtotal - discount + shippingPrice;
 
   const [form, setForm] = useState({
@@ -159,6 +225,40 @@ export default function Checkout() {
     );
   }
 
+  /* ── Phase 8.1 payment flow ─────────────────────────────────── */
+
+  const startPayment = async (result: {
+    orderId: string;
+    number: string;
+    paymentReference: string;
+    totalCents: number;
+    paymentExpiresAt?: number;
+  }) => {
+    setPending({
+      orderId: result.orderId,
+      number: result.number,
+      reference: result.paymentReference,
+      amountCents: result.totalCents,
+      expiresAt: result.paymentExpiresAt,
+    });
+    setGatewayError(null);
+    setPaymentPhase("connecting");
+    // Route through the provider abstraction (mock today; real
+    // gateways resolve their hosted URL here).
+    const provider = getPaymentProvider("mock");
+    void provider
+      .createPayment({
+        orderId: result.orderId,
+        reference: result.paymentReference,
+        amountCents: result.totalCents,
+        description: `سفارش ${result.number}`,
+        customer: { fullName: `${form.firstName} ${form.lastName}`.trim(), email: form.email },
+      })
+      .catch(() => {});
+    // Simulated gateway redirect.
+    connectTimer.current = setTimeout(() => setPaymentPhase("gateway"), 1400);
+  };
+
   const placeOrder = async () => {
     const finalErrors = validateStep(2);
     if (Object.keys(finalErrors).length > 0) {
@@ -169,16 +269,7 @@ export default function Checkout() {
     setPlacing(true);
     setPlaceError(null);
     try {
-      // Phase 7.5: the old checkout simulated success client-side. Now
-      // a real order is created: server snapshots prices, validates
-      // stock for every variant, decrements inventory, increments the
-      // coupon counter and writes the status history.
-      const method =
-        shippingMethod === "std"
-          ? "standard"
-          : shippingMethod === "exp"
-            ? "express"
-            : "white_glove";
+      const method = shippingOption?.code ?? "express";
       const result = await placeOrderMut({
         lines: lines.map((l) => ({
           productId: l.productId,
@@ -194,21 +285,63 @@ export default function Checkout() {
           region: "ایران",
           postalCode: form.postal,
           country: form.country,
-          method,
+          method: method as "standard" | "express" | "white_glove",
         },
       });
-      // Drop the used coupon from the cart so it doesn't stick around.
-      await setCartMeta({ sessionId, couponCode: undefined }).catch(() => {});
-      setOrderNumber(result.number);
-      setPlaced(true);
-      clear();
-      toast.placement.success(result.number);
+      await startPayment(result);
     } catch (err) {
       const message = mapPlaceError((err as Error)?.message ?? "");
       setPlaceError(message);
       toast.error(message);
     } finally {
       setPlacing(false);
+    }
+  };
+
+  const payNow = async () => {
+    if (!pending || !sessionId) return;
+    setPaymentPhase("processing");
+    setGatewayError(null);
+    try {
+      const provider = getPaymentProvider("mock");
+      const verdict = await provider.verifyPayment({
+        reference: pending.reference,
+        orderId: pending.orderId,
+      });
+      if (verdict !== "paid") throw new Error("PAYMENT_DECLINED");
+      await confirmPaymentMut({ orderId: pending.orderId as Id<"orders"> });
+      // Drop the used coupon from the cart so it doesn't stick around.
+      await setCartMeta({ sessionId, couponCode: undefined }).catch(() => {});
+      setOrderNumber(pending.number);
+      setPending(null);
+      setPlaced(true);
+      clear();
+      toast.placement.success(pending.number);
+    } catch (err) {
+      const message = mapPlaceError((err as Error)?.message ?? "");
+      setGatewayError(message);
+      setPaymentPhase("gateway");
+      toast.error(message);
+    }
+  };
+
+  const cancelPayment = async () => {
+    if (!pending) return;
+    setPaymentPhase("processing");
+    setGatewayError(null);
+    try {
+      await cancelPendingMut({
+        orderId: pending.orderId as Id<"orders">,
+        paymentStatus: "cancelled",
+        note: "انصراف مشتری از پرداخت",
+      });
+      setPlaceError("پرداخت لغو شد؛ موجودی رزرو شده آزاد شد و سبد شما حفظ شد.");
+      setPending(null);
+      toast.error("پرداخت لغو شد");
+    } catch (err) {
+      const message = mapPlaceError((err as Error)?.message ?? "");
+      setGatewayError(message);
+      setPaymentPhase("gateway");
     }
   };
 
@@ -305,43 +438,37 @@ export default function Checkout() {
                   </div>
 
                   <div className="mt-3 grid gap-2">
-                    {[
-                      { id: "std", label: "ارسال عادی · ۵ تا ۸ روز کاری", price: 0 },
-                      { id: "exp", label: "ارسال سریع · ۲ تا ۳ روز کاری", price: 250000 },
-                      { id: "white", label: "ارسال ویژه · روز بعد در شهرهای بزرگ", price: 650000 },
-                    ].map((opt) => (
+                    {shippingOptions.map((opt) => (
                       <label
-                        key={opt.id}
+                        key={opt.code}
                         className={cn(
                           "flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-edge/70 px-4 py-3 text-sm transition hover:bg-white/60",
-                          shippingMethod === opt.id && "border-primary bg-white/60"
+                          shippingMethod === opt.code && "border-primary bg-white/60"
                         )}
                       >
                         <span className="flex items-center gap-3">
                           <span
                             className={cn(
                               "grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 transition",
-                              shippingMethod === opt.id ? "border-primary" : "border-edge"
+                              shippingMethod === opt.code ? "border-primary" : "border-edge"
                             )}
                           >
-                            {shippingMethod === opt.id && (
+                            {shippingMethod === opt.code && (
                               <span className="h-2 w-2 rounded-full bg-primary" />
                             )}
                           </span>
-                          <span className="text-ink">{opt.label}</span>
+                          <span className="text-ink">{opt.name} · {opt.estimatedDays} روز کاری</span>
                         </span>
                         <span className="text-ink-muted type-caption">
-                          {opt.price === 0 ? "رایگان" : formatPrice(opt.price, true)}
+                          {opt.priceCents === 0 ? "رایگان" : formatPrice(opt.priceCents)}
                         </span>
                         <input
                           type="radio"
                           className="sr-only"
                           name="shipping"
-                          checked={shippingMethod === opt.id}
-                          onChange={() =>
-                            setShippingMethod(opt.id as typeof shippingMethod)
-                          }
-                          aria-label={opt.label}
+                          checked={shippingMethod === opt.code}
+                          onChange={() => setShippingMethod(opt.code)}
+                          aria-label={opt.name}
                         />
                       </label>
                     ))}
@@ -377,7 +504,7 @@ export default function Checkout() {
                   </div>
                   <p className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
                     <Lock className="h-3.5 w-3.5" />
-                    رمزنگاری سرتاسری. اطلاعات کارت شما ذخیره نمی‌شود.
+                    رمزنگاری سرتاسری. اطلاعات کارت شما ذخیره نمی‌شود. با ثبت سفارش، موجودی برای شما رزرو می‌شود.
                   </p>
                 </div>
               )}
@@ -392,7 +519,7 @@ export default function Checkout() {
                 </button>
                 <div className="flex flex-col items-end gap-2">
                   {placeError && (
-                    <p className="text-xs text-destructive">{placeError}</p>
+                    <p className="max-w-xs text-xs text-destructive">{placeError}</p>
                   )}
                   <button
                     onClick={() => {
@@ -459,30 +586,131 @@ export default function Checkout() {
             <dl className="mt-6 space-y-3 border-t border-edge/70 pt-6 text-sm">
               <div className="flex items-baseline justify-between">
                 <dt className="text-ink-soft">جمع جزء</dt>
-                <dd className="type-caption text-ink">{formatPrice(subtotal, true)}</dd>
+                <dd className="type-caption text-ink">{formatPrice(subtotal)}</dd>
               </div>
               {applied && (
                 <div className="flex items-baseline justify-between text-primary">
                   <dt>{applied.code}</dt>
-                  <dd className="type-caption">−{formatPrice(discount, true)}</dd>
+                  <dd className="type-caption">−{formatPrice(discount)}</dd>
                 </div>
               )}
               <div className="flex items-baseline justify-between">
                 <dt className="text-ink-soft">ارسال</dt>
                 <dd className="type-caption text-ink">
-                  {shippingPrice === 0 ? "رایگان" : formatPrice(shippingPrice, true)}
+                  {shippingPrice === 0 ? "رایگان" : formatPrice(shippingPrice)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between border-t border-edge/70 pt-3">
                 <dt className="font-display text-xl text-ink">مجموع نهایی</dt>
                 <dd className="font-display text-xl type-caption text-ink">
-                  {formatPrice(total, true)}
+                  {formatPrice(total)}
                 </dd>
               </div>
             </dl>
           </motion.div>
         </aside>
       </div>
+
+      {/* ── Phase 8.1: payment gateway overlay ────────────────── */}
+      <AnimatePresence>
+        {pending && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] grid place-items-center bg-ink/60 p-4 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.45, ease: EASE_LUXURY }}
+              className="glass-strong w-full max-w-md overflow-hidden rounded-[2rem]"
+            >
+              {paymentPhase === "connecting" && (
+                <div className="px-8 py-14 text-center">
+                  <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-ink text-canvas">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <p className="type-eyebrow mt-6 text-ink-muted">درگاه پرداخت امن</p>
+                  <h2 className="mt-2 font-display text-2xl text-ink">
+                    در حال اتصال به درگاه…
+                  </h2>
+                  <p className="mx-auto mt-3 max-w-xs text-xs leading-relaxed text-ink-soft">
+                    موجودی سبد شما برای {toPersianDigits(30)} دقیقه رزرو شد. اتصال شما رمزنگاری شده است.
+                  </p>
+                  <Loader2 className="mx-auto mt-6 h-5 w-5 animate-spin text-primary" />
+                </div>
+              )}
+
+              {paymentPhase === "gateway" && (
+                <div className="px-8 py-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      <p className="type-eyebrow text-ink-muted">درگاه پرداخت لونا</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700">
+                      <Lock className="h-3 w-3" /> اتصال امن
+                    </span>
+                  </div>
+
+                  <div className="mt-8 text-center">
+                    <p className="text-xs text-ink-muted">مبلغ قابل پرداخت</p>
+                    <p className="mt-2 font-display text-4xl text-ink">
+                      {formatPrice(pending.amountCents)}
+                    </p>
+                    <p className="mt-3 text-[11px] text-ink-muted">
+                      سفارش {pending.number}
+                    </p>
+                    <p className="mt-1 flex items-center justify-center gap-1 text-[11px] text-ink-muted" dir="ltr">
+                      <Timer className="h-3 w-3" />
+                      {pending.reference}
+                    </p>
+                  </div>
+
+                  {gatewayError && (
+                    <p className="mt-5 rounded-2xl bg-destructive/10 px-4 py-3 text-center text-xs text-destructive">
+                      {gatewayError}
+                    </p>
+                  )}
+
+                  <div className="mt-8 grid gap-3">
+                    <button
+                      onClick={payNow}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary"
+                    >
+                      <Check className="h-4 w-4" />
+                      پرداخت آزمایشی موفق
+                    </button>
+                    <button
+                      onClick={cancelPayment}
+                      className="inline-flex items-center justify-center gap-2 rounded-full hairline px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-ink-soft transition hover:bg-white/60 hover:text-ink"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      انصراف از پرداخت
+                    </button>
+                  </div>
+
+                  <p className="mt-5 text-center text-[10px] leading-relaxed text-ink-soft">
+                    این یک درگاه آزمایشی است و پرداخت واقعی انجام نمی‌شود.
+                  </p>
+                </div>
+              )}
+
+              {paymentPhase === "processing" && (
+                <div className="px-8 py-14 text-center">
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                  <p className="mt-5 font-display text-xl text-ink">در حال تأیید پرداخت…</p>
+                  <p className="mx-auto mt-2 max-w-xs text-xs text-ink-soft">
+                    پس از تأیید، موجودی از رزرو خارج و سفارش شما وارد مرحله پردازش می‌شود.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -575,11 +803,12 @@ function Success({
       >
         <Check className="h-9 w-9" />
       </motion.div>
-      <p className="type-eyebrow mt-8 text-ink-muted">سفارش شما ثبت شد · شماره {orderNumber}</p>
+      <p className="type-eyebrow mt-8 text-ink-muted">پرداخت موفق · سفارش {orderNumber}</p>
       <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">
         سپاس از شما.
       </h1>
       <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-ink-soft">
+        پرداخت سفارش <span className="text-ink">{orderNumber}</span> تأیید شد.
         نامه‌ای به آدرس <span className="text-ink" dir="ltr">{email || "ایمیل شما"}</span> ارسال خواهد شد.
         بوتیک لونا سفارش شما را با دقت آماده و ارسال می‌کند. بسته‌بندی محرمانه و ظریف، مطابق
         استاندارد لونا.
@@ -603,6 +832,10 @@ function Success({
   );
 }
 
+function toPersianDigits(n: number): string {
+  return n.toLocaleString("fa-IR");
+}
+
 function mapPlaceError(message: string): string {
   if (message.startsWith("INSUFFICIENT_STOCK"))
     return "موجودی کافی برای یکی از اقلام سبد وجود ندارد.";
@@ -620,6 +853,14 @@ function mapPlaceError(message: string): string {
     return "کد تخفیف منقضی شده است.";
   if (message.startsWith("INVALID_QUANTITY"))
     return "تعداد اقلام سبد نامعتبر است.";
+  if (message.startsWith("EMPTY_CART"))
+    return "سبد خرید شما خالی است.";
+  if (message.startsWith("ORDER_NOT_PENDING"))
+    return "سفارش دیگر در وضعیت قابل پرداخت نیست.";
+  if (message.startsWith("PAYMENT_NOT_ACTIVE"))
+    return "پرداخت این سفارش فعال نیست.";
+  if (message.startsWith("PAYMENT_DECLINED"))
+    return "پرداخت توسط درگاه رد شد. لطفاً دوباره تلاش کنید.";
   if (message.startsWith("UNAUTHORIZED"))
     return "برای ثبت سفارش وارد حساب خود شوید.";
   return "ثبت سفارش ناموفق بود؛ لطفاً دوباره تلاش کنید.";

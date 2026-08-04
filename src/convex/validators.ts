@@ -116,6 +116,42 @@ export const vEditorialKind = v.union(
 );
 
 // ----------------------------------------------------------------
+// Phase 8.1 — payment / reservation / shipping literals
+// ----------------------------------------------------------------
+
+export const paymentStatusLiterals = [
+  "pending",
+  "initiated",
+  "redirected",
+  "paid",
+  "failed",
+  "cancelled",
+  "refunded",
+] as const;
+export const vPaymentStatus = v.union(
+  ...paymentStatusLiterals.map((s) => v.literal(s))
+);
+
+export const reservationStatusLiterals = [
+  "active",
+  "converted",
+  "expired",
+  "cancelled",
+] as const;
+export const vReservationStatus = v.union(
+  ...reservationStatusLiterals.map((s) => v.literal(s))
+);
+
+export const shippingMethodLiterals = [
+  "standard",
+  "express",
+  "white_glove",
+] as const;
+export const vShippingMethod = v.union(
+  ...shippingMethodLiterals.map((s) => v.literal(s))
+);
+
+// ----------------------------------------------------------------
 // Roles — Phase 5 extension
 // ----------------------------------------------------------------
 //

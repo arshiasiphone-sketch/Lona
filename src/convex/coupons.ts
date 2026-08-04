@@ -5,6 +5,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { requireAdmin } from "./_helpers";
+import { audit } from "./admin";
 
 export const getByCode = query({
   args: { code: v.string() },
@@ -42,7 +43,7 @@ export const upsert = mutation({
     maxUses: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const upper = args.code.trim().toUpperCase();
     const existing = await ctx.db
       .query("coupons")
@@ -54,13 +55,16 @@ export const upsert = mutation({
         code: upper,
         usedCount: existing.usedCount,
       });
+      await audit(ctx, user, "coupon.update", "coupons", existing._id, args);
       return existing._id;
     }
-    return await ctx.db.insert("coupons", {
+    const id = await ctx.db.insert("coupons", {
       ...args,
       code: upper,
       usedCount: 0,
     });
+    await audit(ctx, user, "coupon.create", "coupons", id, args);
+    return id;
   },
 });
 

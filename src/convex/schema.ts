@@ -7,8 +7,10 @@ import {
   vEditorialKind,
   vGradient,
   vOrderStatus,
+  vPaymentStatus,
   vProductCategory,
   vProductStatus,
+  vReservationStatus,
   vRole,
   vSizeOption,
 } from "./validators";
@@ -282,6 +284,50 @@ const schema = defineSchema(
       at: v.number(),
     }).index("by_variant", ["variantId"]),
 
+    /**
+     * Phase 8.1 — inventory reservations (the TOCTOU solver).
+     *
+     * When a checkout starts we hold `quantity` units on the variant
+     * (`variants.reserved += qty`) WITHOUT decrementing `stock`. The
+     * hold is released on payment success (converted → stock is
+     * decremented and the reservation is closed), or on cancel /
+     * expiry (cancelled / expired → reserved is returned).
+     * `expiresAt` is the hard deadline after which the reservation
+     * is invalid; a Convex cron (`convex/crons.ts`) sweeps stale
+     * rows and rolls back the hold so inventory is never locked
+     * forever.
+     */
+    inventory_reservations: defineTable({
+      variantId: v.id("variants"),
+      productId: v.id("products"),
+      orderId: v.optional(v.id("orders")),
+      quantity: v.number(),
+      userId: v.optional(v.id("users")),
+      sessionId: v.optional(v.string()),
+      status: vReservationStatus,
+      expiresAt: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_variant_status", ["variantId", "status"])
+      .index("by_status_expiresAt", ["status", "expiresAt"])
+      .index("by_order", ["orderId"]),
+
+    /**
+     * Phase 8.1 — shipping methods. Admin-managed catalog that the
+     * checkout reads for cost + ETA. The chosen method is snapshotted
+     * onto the order (`shipping.method` + `shippingMethodName`).
+     */
+    shipping_methods: defineTable({
+      code: v.string(),
+      name: v.string(),
+      priceCents: v.number(),
+      estimatedDays: v.number(),
+      active: v.boolean(),
+      order: v.number(),
+    })
+      .index("by_code", ["code"])
+      .index("by_active", ["active"]),
+
     // ============================================================
     // SHOPPING · carts / wishlist / recently viewed
     // ============================================================
@@ -362,10 +408,26 @@ const schema = defineSchema(
         trackingNumber: v.optional(v.string()),
       }),
       notes: v.optional(v.string()),
+      /**
+       * Phase 8.1 — payment lifecycle, deliberately SEPARATE from
+       * `status` (order fulfillment). Never mix the two: `status`
+       * tracks pending → processing → shipped → delivered; payment
+       * tracks pending → initiated → redirected → paid / failed /
+       * cancelled / refunded.
+       */
+      paymentStatus: vPaymentStatus,
+      paymentProvider: v.optional(v.string()),
+      paymentReference: v.optional(v.string()),
+      paymentInitiatedAt: v.optional(v.number()),
+      paidAt: v.optional(v.number()),
+      paymentExpiresAt: v.optional(v.number()),
+      /** Snapshot of the chosen shipping method label (historical). */
+      shippingMethodName: v.optional(v.string()),
     })
       .index("by_user", ["userId"])
       .index("by_number", ["number"])
-      .index("by_status", ["status"]),
+      .index("by_status", ["status"])
+      .index("by_paymentStatus", ["paymentStatus"]),
 
     order_items: defineTable({
       orderId: v.id("orders"),
@@ -377,6 +439,9 @@ const schema = defineSchema(
       productNameSnapshot: v.string(),
       unitPriceCents: v.number(),
       lineTotalCents: v.number(),
+      /** Phase 8.1 — historical snapshots for marketplace exports. */
+      skuSnapshot: v.optional(v.string()),
+      imageSnapshot: v.optional(v.string()),
     }).index("by_order", ["orderId"]),
 
     order_status_history: defineTable({

@@ -1,21 +1,42 @@
 /**
- * Orders + order_items + status history.
+ * Orders + order_items + status history + payment lifecycle.
  *
- * `place` resolves the opaque `productId` string on each line by-slug
- * first (matching what the cart carries today) and falls back to
- * `db.get` only when the slug does not resolve. Lines are snapshotted
- * for price-at-time and variant stock is decremented atomically.
+ * Phase 8.1 flow (payment-first):
  *
- * Coupon usage is incremented directly inside the same mutation —
- * for high-throughput production we'd move that to a follow-up
- * scheduled function, but at ÆON's volume (luxury → low checkout
- * frequency) coupling them is acceptable.
+ *   cart → validate → reserve inventory → create PENDING order
+ *        → payment (provider abstraction) → confirmPayment
+ *        → convert reservation → decrement stock → order PROCESSING
+ *
+ * `place` performs a full validation pass BEFORE writing anything
+ * (Convex mutations are not transactional), then creates the order
+ * in `status: "pending"` / `paymentStatus: "pending"` and holds
+ * inventory via `inventory_reservations` — stock is only decremented
+ * when payment is confirmed. If the customer abandons payment, the
+ * hold is released immediately; if they stall, the cron in
+ * `convex/crons.ts` expires the hold. Inventory is never locked
+ * forever.
+ *
+ * Every state change is audited (`activity_logs`) and pushed into
+ * the user's notification inbox (`notifications` table).
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { requireUser } from "./_helpers";
+import { requirePermission, audit } from "./admin";
 import { vOrderStatus } from "./validators";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import {
+  reserveVariant,
+  convertReservation,
+  releaseReservation,
+  availableStock,
+} from "./reservations";
+import { getByCode } from "./shipping";
+import { recordNotification } from "./notifications";
+
+/** How long a pending payment hold stays valid before the cron sweeps it. */
+const RESERVATION_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
 /* Queries ------------------------------------------------------- */
 
@@ -32,9 +53,7 @@ export const listMine = query({
 
 /**
  * Account home variant — joins each order with its line items so the
- * FE can render the order summary list without an N+1 lookup. The
- * shape is intentionally `{ order, items }[]` so the page can render
- * either piece independently.
+ * FE can render the order summary list without an N+1 lookup.
  */
 export const listMineWithItems = query({
   args: {},
@@ -53,7 +72,6 @@ export const listMineWithItems = query({
         return { order, items };
       })
     );
-    // Newest first.
     enriched.sort((a, b) => b.order.placedAt - a.order.placedAt);
     return enriched;
   },
@@ -84,13 +102,9 @@ export const getByNumber = query({
   },
 });
 
-/* Mutations ----------------------------------------------------- */
+/* Helpers -------------------------------------------------------- */
 
-/**
- * Resolve a product row from an opaque id — by-slug first because
- * the FE cart lines carry catalog ids like "p-001", then a defensive
- * direct-id lookup if a future migration introduces Convex `_id`s.
- */
+/** Resolve a product row from an opaque id (slug-first, then _id). */
 async function resolveProduct(
   ctx: {
     db: import("./_generated/server").DatabaseReader;
@@ -102,18 +116,49 @@ async function resolveProduct(
     .withIndex("by_slug", (q) => q.eq("slug", opaque))
     .unique();
   if (bySlug) return bySlug;
-  // Defensive fallback for live _id strings — cast the result so TS
-  // doesn't widen db.get's union return.
   return (await ctx.db.get(opaque as never)) as unknown as Doc<"products"> | null;
 }
 
-/** Place an order from the current cart line set. */
+/** Find the inventory variant row for a product + (size, color). */
+async function findVariant(
+  ctx: MutationCtx,
+  productId: Id<"products">,
+  size: string,
+  color: string
+): Promise<Doc<"variants"> | null> {
+  return await ctx.db
+    .query("variants")
+    .withIndex("by_product", (q) => q.eq("productId", productId))
+    .filter((q) => q.and(q.eq(q.field("size"), size), q.eq(q.field("color"), color)))
+    .unique();
+}
+
+/** Order number — Æ-YYMMDD-XXXX + random suffix against collisions. */
+function makeOrderNumber(now: Date): string {
+  const y = String(now.getUTCFullYear()).slice(2);
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0");
+  return `Æ-${y}${m}${d}-${rand}`;
+}
+
+function makePaymentReference(): string {
+  return `PAY-${Math.random().toString(36).slice(2, 12).toUpperCase()}`;
+}
+
+/* Mutations ------------------------------------------------------ */
+
+/**
+ * Phase 8.1 — start a checkout: validate everything, reserve
+ * inventory, and create the order in `pending` (payment pending).
+ *
+ * This mutation NEVER decrements stock and NEVER increments coupon
+ * usage — those happen only after `confirmPayment`.
+ */
 export const place = mutation({
   args: {
     lines: v.array(
       v.object({
-        // opaque product reference — string for cross-feature
-        // compatibility with the FE catalog ids today.
         productId: v.string(),
         size: v.string(),
         color: v.string(),
@@ -139,24 +184,9 @@ export const place = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    if (!args.lines.length) throw new Error("EMPTY_CART");
 
-    /* ── Phase 7.5 hardening ───────────────────────────────────────
-     * Convex mutations are NOT transactional: a throw mid-write leaves
-     * partial rows behind. The old implementation inserted the order,
-     * then decremented stock per line — an INSUFFICIENT_STOCK throw
-     * could orphan a half-written order with partially-decremented
-     * stock. We now run a full validation pass (products + variants +
-     * coupon) BEFORE writing anything, so every failure happens
-     * atomically from the reader's perspective.
-     *
-     * Oversell protection: when a `variants` row exists for the
-     * (size, color) pair we require `stock >= quantity` before any
-     * write. Products without variant rows are allowed through (the
-     * row is the source of truth for those), which matches the
-     * pre-existing reconcile-cron contract.
-     */
-
-    // ── PASS 1: snapshot + validate every line (no writes) ──
+    /* ── PASS 1: snapshot + validate every line (no writes) ── */
     const items: Array<{
       productId: string;
       size: string;
@@ -165,6 +195,9 @@ export const place = mutation({
       productNameSnapshot: string;
       unitPriceCents: number;
       lineTotalCents: number;
+      skuSnapshot?: string;
+      imageSnapshot?: string;
+      variantId?: Id<"variants">;
     }> = [];
     let subtotal = 0;
 
@@ -173,28 +206,14 @@ export const place = mutation({
         throw new Error(`INVALID_QUANTITY:${line.productId}`);
       }
       const product = await resolveProduct(ctx, line.productId);
-      if (!product) {
-        throw new Error(`PRODUCT_MISSING:${line.productId}`);
-      }
+      if (!product) throw new Error(`PRODUCT_MISSING:${line.productId}`);
       if (!product.visible || product.status !== "published") {
         throw new Error(`PRODUCT_UNLISTED:${product.slug}`);
       }
-      if (product.priceCents <= 0) {
-        throw new Error(`PRODUCT_NO_PRICE:${product.slug}`);
-      }
+      if (product.priceCents <= 0) throw new Error(`PRODUCT_NO_PRICE:${product.slug}`);
 
-      // Oversell guard — variant row exists ⇒ stock must cover qty.
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_product", (q) => q.eq("productId", product._id))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("size"), line.size),
-            q.eq(q.field("color"), line.color)
-          )
-        )
-        .unique();
-      if (variant && (!variant.available || variant.stock < line.quantity)) {
+      const variant = await findVariant(ctx, product._id, line.size, line.color);
+      if (variant && (!variant.available || availableStock(variant) < line.quantity)) {
         throw new Error(`INSUFFICIENT_STOCK:${product.slug}/${line.size}/${line.color}`);
       }
 
@@ -208,10 +227,13 @@ export const place = mutation({
         productNameSnapshot: product.name,
         unitPriceCents: product.priceCents,
         lineTotalCents: lineTotal,
+        skuSnapshot: variant?.sku,
+        imageSnapshot: product.imageUrls?.[0],
+        variantId: variant?._id,
       });
     }
 
-    // ── PASS 2: coupon validation (no writes) ──
+    /* ── PASS 2: coupon validation (no writes) ── */
     let discount = 0;
     let couponRow: Doc<"coupons"> | null = null;
     if (args.couponCode && args.couponCode.trim()) {
@@ -220,15 +242,9 @@ export const place = mutation({
         .query("coupons")
         .withIndex("by_code", (q) => q.eq("code", code))
         .unique();
-      if (!coupon || !coupon.active) {
-        throw new Error("INVALID_COUPON");
-      }
-      if (coupon.validFrom && Date.now() < coupon.validFrom) {
-        throw new Error("COUPON_NOT_STARTED");
-      }
-      if (coupon.validUntil && Date.now() > coupon.validUntil) {
-        throw new Error("COUPON_EXPIRED");
-      }
+      if (!coupon || !coupon.active) throw new Error("INVALID_COUPON");
+      if (coupon.validFrom && Date.now() < coupon.validFrom) throw new Error("COUPON_NOT_STARTED");
+      if (coupon.validUntil && Date.now() > coupon.validUntil) throw new Error("COUPON_EXPIRED");
       if (coupon.maxUses !== undefined && coupon.usedCount >= coupon.maxUses) {
         throw new Error("COUPON_EXHAUSTED");
       }
@@ -237,29 +253,24 @@ export const place = mutation({
       couponRow = coupon;
     }
 
-    // Shipping cost by method — co-located here for the demo; future
-    // shipping zone tables can replace this. Toman amounts.
-    const shippingMap = { standard: 120000, express: 250000, white_glove: 650000 };
-    const shippingCost = shippingMap[args.shipping.method];
-    const tax = 0; // VAT is included in Iranian retail pricing; kept 0.
+    /* ── PASS 3: shipping cost (live methods, fallback map) ── */
+    const shippingRow = await getByCode(ctx, args.shipping.method);
+    const shippingCost = shippingRow?.priceCents ?? 0;
+    const tax = 0; // VAT included in Iranian retail pricing
     const total = Math.max(0, subtotal - discount) + shippingCost;
 
-    // Order number — Æ-YYMMDD-XXXX + 2-char random suffix so two
-    // orders placed in the same millisecond cannot collide on the
-    // `by_number` unique index.
+    /* ── PASS 4: writes (order → items → reservations → history) ── */
     const now = new Date();
-    const y = String(now.getUTCFullYear()).slice(2);
-    const m = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(now.getUTCDate()).padStart(2, "0");
-    const rand = Math.random().toString(36).slice(2, 4).toUpperCase();
-    const number = `Æ-${y}${m}${d}-${String(now.getUTCMilliseconds()).slice(-4)}${rand}`;
+    const placedAt = now.getTime();
+    const paymentExpiresAt = placedAt + RESERVATION_WINDOW_MS;
+    const number = makeOrderNumber(now);
+    const paymentReference = makePaymentReference();
 
-    // ── PASS 3: writes (order → items → stock → history → coupon) ──
     const orderDoc = await ctx.db.insert("orders", {
       userId: user._id,
       number,
-      status: "processing",
-      placedAt: now.getTime(),
+      status: "pending",
+      placedAt,
       currency: "USD",
       subtotalCents: subtotal,
       discountCents: discount,
@@ -278,57 +289,265 @@ export const place = mutation({
         country: args.shipping.country,
         method: args.shipping.method,
       },
+      paymentStatus: "pending",
+      paymentProvider: "mock",
+      paymentReference,
+      paymentInitiatedAt: placedAt,
+      paymentExpiresAt,
+      shippingMethodName: shippingRow?.name,
     });
 
     for (const item of items) {
       await ctx.db.insert("order_items", {
-        ...item,
         orderId: orderDoc,
+        productId: item.productId,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        productNameSnapshot: item.productNameSnapshot,
+        unitPriceCents: item.unitPriceCents,
+        lineTotalCents: item.lineTotalCents,
+        skuSnapshot: item.skuSnapshot,
+        imageSnapshot: item.imageSnapshot,
       });
 
-      const product = await resolveProduct(ctx, item.productId);
-      if (!product) continue;
-      const variant = await ctx.db
-        .query("variants")
-        .withIndex("by_product", (q) => q.eq("productId", product._id))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("size"), item.size),
-            q.eq(q.field("color"), item.color)
-          )
-        )
-        .unique();
-      if (!variant) continue; // no variant row → product-level source of truth
-      await ctx.db.patch(variant._id, {
-        stock: variant.stock - item.quantity,
-        reserved: (variant.reserved ?? 0) + item.quantity,
-        available: variant.stock - item.quantity > 0 ? variant.available : false,
-      });
-      await ctx.db.insert("stock_movements", {
-        variantId: variant._id,
-        kind: "sale",
-        quantity: -item.quantity,
-        reason: `order:${number}`,
-        at: Date.now(),
-      });
+      // Hold inventory — this is the TOCTOU guard. No stock is
+      // decremented here; `confirmPayment` converts the hold.
+      if (item.variantId) {
+        const variant = await ctx.db.get(item.variantId);
+        if (variant && availableStock(variant) >= item.quantity) {
+          await reserveVariant(ctx, {
+            variant,
+            quantity: item.quantity,
+            orderId: orderDoc,
+            userId: user._id,
+            sessionId: `u:${user._id}`,
+            expiresAt: paymentExpiresAt,
+          });
+        }
+      }
     }
 
     await ctx.db.insert("order_status_history", {
       orderId: orderDoc,
-      status: "processing",
-      note: "سفارش دریافت شد",
-      at: now.getTime(),
+      status: "pending",
+      note: "سفارش ثبت شد — در انتظار پرداخت",
+      at: placedAt,
     });
 
-    if (couponRow) {
-      await ctx.db.patch(couponRow._id, { usedCount: couponRow.usedCount + 1 });
-    }
+    await audit(ctx, user, "order.create", "orders", orderDoc, {
+      number,
+      totalCents: total,
+      paymentReference,
+    });
+    await recordNotification(ctx, {
+      userId: user._id,
+      kind: "order",
+      title: "سفارش در انتظار پرداخت",
+      body: `سفارش ${number} ثبت شد. لطفاً پرداخت را تکمیل کنید.`,
+      link: "/dashboard",
+    });
 
-    return { orderId: orderDoc, number, totalCents: total };
+    return {
+      orderId: orderDoc,
+      number,
+      totalCents: total,
+      paymentStatus: "pending" as const,
+      paymentReference,
+      paymentExpiresAt,
+    };
   },
 });
 
-/** Admin-only status update — used by future fulfillment flow. */
+/**
+ * Phase 8.1 — confirm a successful payment: convert reservations
+ * (stock leaves inventory), move the order to `processing`, mark
+ * payment `paid`, count the coupon, notify + audit.
+ *
+ * Callable by the order owner (mock provider flow) or an admin
+ * (manual verification of a gateway callback).
+ */
+export const confirmPayment = mutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, { orderId }) => {
+    const user = await requireUser(ctx);
+    const order = await ctx.db.get(orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.userId !== user._id && user.role !== "admin") {
+      throw new Error("FORBIDDEN");
+    }
+    if (order.status !== "pending") {
+      throw new Error(`ORDER_NOT_PENDING:${order.status}`);
+    }
+    if (
+      order.paymentStatus !== "pending" &&
+      order.paymentStatus !== "initiated" &&
+      order.paymentStatus !== "redirected"
+    ) {
+      throw new Error(`PAYMENT_NOT_ACTIVE:${order.paymentStatus}`);
+    }
+
+    // Convert every active reservation held for this order.
+    const reservations = await ctx.db
+      .query("inventory_reservations")
+      .withIndex("by_order", (q) => q.eq("orderId", orderId))
+      .collect();
+    for (const reservation of reservations) {
+      await convertReservation(ctx, reservation, `order:${order.number}`);
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(orderId, {
+      status: "processing",
+      paymentStatus: "paid",
+      paidAt: now,
+    });
+    await ctx.db.insert("order_status_history", {
+      orderId,
+      status: "processing",
+      note: "پرداخت تأیید شد — سفارش وارد مرحله پردازش شد",
+      at: now,
+    });
+
+    // Coupon is consumed only on paid orders.
+    if (order.couponCode) {
+      const coupon = await ctx.db
+        .query("coupons")
+        .withIndex("by_code", (q) => q.eq("code", order.couponCode!.toUpperCase()))
+        .unique();
+      if (coupon) {
+        await ctx.db.patch(coupon._id, { usedCount: coupon.usedCount + 1 });
+      }
+    }
+
+    await audit(ctx, user, "payment.confirm", "orders", orderId, {
+      number: order.number,
+      paymentReference: order.paymentReference,
+    });
+    await recordNotification(ctx, {
+      userId: user._id,
+      kind: "order",
+      title: "پرداخت موفق",
+      body: `پرداخت سفارش ${order.number} تأیید شد و در حال آمادهسازی است.`,
+      link: "/dashboard",
+    });
+
+    return { orderId, number: order.number, status: "processing" };
+  },
+});
+
+/**
+ * Phase 8.1 — cancel a pending order before payment completes:
+ * release the inventory hold, mark payment cancelled (or failed) and
+ * the order cancelled. Owner or admin.
+ */
+export const cancelPending = mutation({
+  args: {
+    orderId: v.id("orders"),
+    paymentStatus: v.union(v.literal("cancelled"), v.literal("failed")),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, { orderId, paymentStatus, note }) => {
+    const user = await requireUser(ctx);
+    const order = await ctx.db.get(orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.userId !== user._id && user.role !== "admin") {
+      throw new Error("FORBIDDEN");
+    }
+    if (order.status !== "pending") {
+      throw new Error(`ORDER_NOT_PENDING:${order.status}`);
+    }
+
+    const reservations = await ctx.db
+      .query("inventory_reservations")
+      .withIndex("by_order", (q) => q.eq("orderId", orderId))
+      .collect();
+    for (const reservation of reservations) {
+      await releaseReservation(ctx, reservation, "cancelled");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(orderId, { status: "cancelled", paymentStatus });
+    await ctx.db.insert("order_status_history", {
+      orderId,
+      status: "cancelled",
+      note: note ?? (paymentStatus === "failed" ? "پرداخت ناموفق" : "انصراف از پرداخت"),
+      at: now,
+    });
+
+    await audit(ctx, user, "order.cancel", "orders", orderId, { paymentStatus });
+    await recordNotification(ctx, {
+      userId: user._id,
+      kind: "order",
+      title: paymentStatus === "failed" ? "پرداخت ناموفق" : "سفارش لغو شد",
+      body:
+        paymentStatus === "failed"
+          ? `پرداخت سفارش ${order.number} ناموفق بود. موجودی رزرو شده آزاد شد.`
+          : `سفارش ${order.number} لغو شد. موجودی رزرو شده آزاد شد.`,
+      link: "/dashboard",
+    });
+
+    return { orderId, number: order.number, status: "cancelled" };
+  },
+});
+
+/**
+ * Phase 8.1 — refund a paid order (admin): mark payment refunded,
+ * return inventory to stock, move the order to `returning`.
+ */
+export const refund = mutation({
+  args: { orderId: v.id("orders"), note: v.optional(v.string()) },
+  handler: async (ctx, { orderId, note }) => {
+    const user = await requirePermission(ctx, "manage_orders");
+    const order = await ctx.db.get(orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.paymentStatus !== "paid") {
+      throw new Error(`PAYMENT_NOT_PAID:${order.paymentStatus}`);
+    }
+
+    const items = await ctx.db
+      .query("order_items")
+      .withIndex("by_order", (q) => q.eq("orderId", orderId))
+      .collect();
+    for (const item of items) {
+      const product = await resolveProduct(ctx, item.productId);
+      if (!product) continue;
+      const variant = await findVariant(ctx, product._id, item.size, item.color);
+      if (!variant) continue;
+      await ctx.db.patch(variant._id, { stock: variant.stock + item.quantity });
+      await ctx.db.insert("stock_movements", {
+        variantId: variant._id,
+        kind: "return",
+        quantity: item.quantity,
+        reason: `refund:${order.number}`,
+        at: Date.now(),
+      });
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(orderId, { paymentStatus: "refunded", status: "returning" });
+    await ctx.db.insert("order_status_history", {
+      orderId,
+      status: "returning",
+      note: note ?? "بازگشت وجه انجام شد — موجودی به انبار برگشت",
+      at: now,
+    });
+
+    await audit(ctx, user, "payment.refund", "orders", orderId, { number: order.number });
+    if (order.userId) {
+      await recordNotification(ctx, {
+        userId: order.userId,
+        kind: "order",
+        title: "بازگشت وجه",
+        body: `بازگشت وجه سفارش ${order.number} انجام شد.`,
+        link: "/dashboard",
+      });
+    }
+    return { orderId, number: order.number, paymentStatus: "refunded" };
+  },
+});
+
+/** Admin status update — used by fulfillment flow. */
 export const updateStatus = mutation({
   args: {
     orderId: v.id("orders"),
@@ -339,21 +558,39 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
     if (user.role !== "admin") throw new Error("FORBIDDEN");
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+
+    const patch: Record<string, unknown> = { status: args.status };
     if (args.trackingNumber) {
-      const row = await ctx.db.get(args.orderId);
-      if (row) {
-        await ctx.db.patch(args.orderId, {
-          shipping: { ...row.shipping, trackingNumber: args.trackingNumber },
-        });
-      }
-    } else {
-      await ctx.db.patch(args.orderId, { status: args.status });
+      patch.shipping = { ...order.shipping, trackingNumber: args.trackingNumber };
     }
+    await ctx.db.patch(args.orderId, patch);
     await ctx.db.insert("order_status_history", {
       orderId: args.orderId,
       status: args.status,
       note: args.note,
       at: Date.now(),
     });
+    await audit(ctx, user, `order.status.${args.status}`, "orders", args.orderId, {
+      from: order.status,
+      to: args.status,
+      trackingNumber: args.trackingNumber,
+    });
+
+    // Notify on customer-facing milestones.
+    if (order.userId && (args.status === "shipped" || args.status === "delivered")) {
+      await recordNotification(ctx, {
+        userId: order.userId,
+        kind: "order",
+        title: args.status === "shipped" ? "سفارش ارسال شد" : "سفارش تحویل شد",
+        body:
+          args.status === "shipped"
+            ? `سفارش ${order.number} با موفقیت ارسال شد.`
+            : `سفارش ${order.number} تحویل داده شد. از خرید شما سپاسگزاریم.`,
+        link: "/dashboard",
+      });
+    }
+    return args.orderId;
   },
 });

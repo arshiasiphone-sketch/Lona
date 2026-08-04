@@ -19,6 +19,7 @@ import {
   Calendar,
   Loader2,
   X,
+  CreditCard,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { glass } from "@/lib/glass";
@@ -63,6 +64,45 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "returning",
   "cancelled",
 ];
+
+/* Phase 8.1 — payment lifecycle is separate from order status. */
+type PaymentStatus =
+  | "pending"
+  | "initiated"
+  | "redirected"
+  | "paid"
+  | "failed"
+  | "cancelled"
+  | "refunded";
+
+const PAYMENT_LABEL: Record<PaymentStatus, string> = {
+  pending: "در انتظار پرداخت",
+  initiated: "در حال پرداخت",
+  redirected: "انتقال به درگاه",
+  paid: "پرداخت شده",
+  failed: "ناموفق",
+  cancelled: "لغو شده",
+  refunded: "بازگشت وجه",
+};
+
+const PAYMENT_TONE: Record<PaymentStatus, StatusKind> = {
+  pending: "pending",
+  initiated: "pending",
+  redirected: "pending",
+  paid: "delivered",
+  failed: "cancelled",
+  cancelled: "cancelled",
+  refunded: "returning",
+};
+
+function PaymentBadge({ status }: { status: string }) {
+  const key = (Object.prototype.hasOwnProperty.call(PAYMENT_LABEL, status)
+    ? status
+    : "pending") as PaymentStatus;
+  return (
+    <StatusBadge status={PAYMENT_TONE[key]} label={PAYMENT_LABEL[key]} />
+  );
+}
 
 export default function OrdersAdmin() {
   const orders = useQuery(api.admin_orders.listAllOrders, {});
@@ -146,6 +186,7 @@ export default function OrdersAdmin() {
                 <th className="px-4 py-3 font-medium">مشتری</th>
                 <th className="px-4 py-3 font-medium">مبلغ</th>
                 <th className="px-4 py-3 font-medium">وضعیت</th>
+                <th className="px-4 py-3 font-medium">پرداخت</th>
                 <th className="px-4 py-3 font-medium">تاریخ</th>
                 <th className="px-4 py-3 font-medium text-left">عملیات</th>
               </tr>
@@ -172,6 +213,9 @@ export default function OrdersAdmin() {
                     <td className="px-4 py-3 font-semibold text-neutral-900">{formatToman(totalCents)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={STATUS_TONE[s]} label={STATUS_LABEL[s] ?? "—"} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PaymentBadge status={String(row.paymentStatus ?? "pending")} />
                     </td>
                     <td className="px-4 py-3 text-neutral-500 text-xs">
                       {placedAt ? toFaDate(placedAt) : "—"}
@@ -233,8 +277,11 @@ function SkeletonTable() {
 function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   const detail = useQuery(api.admin_orders.getOrderWithItems, { id: id as any }) as any;
   const setStatus = useMutation(api.admin_orders.setOrderStatus);
+  const confirmPay = useMutation(api.orders.confirmPayment);
+  const cancelPay = useMutation(api.orders.cancelPending);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
 
   const order = detail?.order;
   const items = (detail?.items ?? []) as any[];
@@ -308,6 +355,68 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
                 <StatusBadge status={STATUS_TONE[s] ?? "neutral"} label={STATUS_LABEL[s] ?? "—"} />
               </div>
             </div>
+
+            {/* Phase 8.1 — payment lifecycle block */}
+            <section className="rounded-xl border border-white/40 bg-white/50 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                <CreditCard className="h-4 w-4 text-neutral-400" />
+                وضعیت پرداخت
+              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <PaymentBadge status={String(order.paymentStatus ?? "pending")} />
+                  {order.paymentReference && (
+                    <div className="mt-1.5 font-mono text-[11px] text-neutral-400" dir="ltr">
+                      {String(order.paymentReference)}
+                    </div>
+                  )}
+                  {order.paidAt && (
+                    <div className="mt-1 text-xs text-neutral-500">
+                      پرداخت در {toFaDate(Number(order.paidAt))}
+                    </div>
+                  )}
+                </div>
+                {order.paymentStatus !== "paid" && order.paymentStatus !== "refunded" &&
+                  order.paymentStatus !== "cancelled" && order.paymentStatus !== "failed" && s === "pending" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (payBusy) return;
+                          setPayBusy(true);
+                          confirmPay({ orderId: id as any })
+                            .then(() => toast.success("پرداخت تأیید شد — سفارش وارد مرحله پردازش شد"))
+                            .catch((err: unknown) => toast.error(`خطا: ${(err as Error)?.message ?? "نامشخص"}`))
+                            .finally(() => setPayBusy(false));
+                        }}
+                        disabled={payBusy}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        تأیید پرداخت
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (payBusy) return;
+                          setPayBusy(true);
+                          cancelPay({
+                            orderId: id as any,
+                            paymentStatus: "cancelled",
+                            note: "لغو از پنل مدیریت",
+                          })
+                            .then(() => toast.success("پرداخت لغو شد — موجودی رزرو شده آزاد شد"))
+                            .catch((err: unknown) => toast.error(`خطا: ${(err as Error)?.message ?? "نامشخص"}`))
+                            .finally(() => setPayBusy(false));
+                        }}
+                        disabled={payBusy}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/60 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-white disabled:opacity-50"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        لغو پرداخت
+                      </button>
+                    </div>
+                  )}
+              </div>
+            </section>
 
             <section className="rounded-xl border border-white/40 bg-white/50 p-4">
               <h3 className="mb-3 text-sm font-semibold text-neutral-900">اقلام سفارش</h3>

@@ -39,6 +39,7 @@ interface SeedResult {
   reviews: number;
   coupons: number;
   warehouses: number;
+  shippingMethods: number;
   startedAt: number;
   finishedAt: number;
 }
@@ -243,6 +244,39 @@ export const runAll = action({
       active: true,
     });
 
+    // ── 9) Shipping methods (Phase 8.1) ──────────────────
+    const shippingDefaults = [
+      {
+        code: "standard",
+        name: "ارسال عادی",
+        priceCents: 120000,
+        estimatedDays: 7,
+        order: 1,
+      },
+      {
+        code: "express",
+        name: "ارسال سریع",
+        priceCents: 250000,
+        estimatedDays: 3,
+        order: 2,
+      },
+      {
+        code: "white_glove",
+        name: "پیک شهری",
+        priceCents: 650000,
+        estimatedDays: 1,
+        order: 3,
+      },
+    ];
+    let shippingCount = 0;
+    for (const method of shippingDefaults) {
+      await ctx.runMutation(internal.seed.upsertShippingMethod, {
+        ...method,
+        active: true,
+      });
+      shippingCount++;
+    }
+
     return {
       categories: categoryCount,
       products: LONA_PRODUCTS.length,
@@ -252,6 +286,7 @@ export const runAll = action({
       reviews: reviewCount,
       coupons: couponCount,
       warehouses: 1,
+      shippingMethods: shippingCount,
       startedAt,
       finishedAt: Date.now(),
     };
@@ -584,5 +619,25 @@ export const upsertWarehouse = internalMutation({
       return existing._id;
     }
     return await ctx.db.insert("warehouses", args);
+  },
+});
+
+export const upsertShippingMethod = internalMutation({
+  args: {
+    code: convV.string(),
+    name: convV.string(),
+    priceCents: convV.number(),
+    estimatedDays: convV.number(),
+    active: convV.boolean(),
+    order: convV.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("shipping_methods").withIndex("by_code", (q) => q.eq("code", args.code)).unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { ...args });
+      return existing._id;
+    }
+    return await ctx.db.insert("shipping_methods", args);
   },
 });
