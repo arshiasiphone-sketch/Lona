@@ -18,6 +18,7 @@ import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import {
+  BadgeCheck,
   Bell,
   Check,
   Globe,
@@ -31,6 +32,7 @@ import {
   RotateCcw,
   Save,
   Send,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Upload,
@@ -252,9 +254,21 @@ function StorePanel({
   pending: string | null;
   onSave: (value: Record<string, unknown>) => void;
 }) {
+  const [shopName, setShopName] = React.useState(
+    (value.shopName as string) ?? "لونا"
+  );
   const [phone, setPhone] = React.useState((value.phone as string) ?? "");
   const [email, setEmail] = React.useState((value.email as string) ?? "");
   const [address, setAddress] = React.useState((value.address as string) ?? "");
+  const [postalCode, setPostalCode] = React.useState(
+    (value.postalCode as string) ?? ""
+  );
+  const [nationalId, setNationalId] = React.useState(
+    (value.nationalId as string) ?? ""
+  );
+  const [enamadCode, setEnamadCode] = React.useState(
+    (value.enamadCode as string) ?? ""
+  );
   const [hours, setHours] = React.useState((value.hours as string) ?? "");
   const [social, setSocial] = React.useState<Record<string, string>>(
     (value.social as Record<string, string>) ?? {
@@ -264,9 +278,13 @@ function StorePanel({
     },
   );
   React.useEffect(() => {
+    setShopName((value.shopName as string) ?? "لونا");
     setPhone((value.phone as string) ?? "");
     setEmail((value.email as string) ?? "");
     setAddress((value.address as string) ?? "");
+    setPostalCode((value.postalCode as string) ?? "");
+    setNationalId((value.nationalId as string) ?? "");
+    setEnamadCode((value.enamadCode as string) ?? "");
     setHours((value.hours as string) ?? "");
     setSocial(
       (value.social as Record<string, string>) ?? {
@@ -284,6 +302,15 @@ function StorePanel({
       icon={ShoppingBag}
     >
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="نام فروشگاه" icon={ShoppingBag}>
+          <input
+            dir="rtl"
+            value={shopName}
+            onChange={(e) => setShopName(e.target.value)}
+            placeholder="لونا — بوتیک لباس زیر زنانه"
+            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+          />
+        </Field>
         <Field label="تلفن" icon={Phone}>
           <input
             dir="ltr"
@@ -314,6 +341,35 @@ function StorePanel({
           className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
         />
       </Field>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="کد پستی" icon={MapPin}>
+          <input
+            dir="ltr"
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            placeholder="۱۹۸۳۹۴۸۸۱۲"
+            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+          />
+        </Field>
+        <Field label="شناسه ملی" icon={BadgeCheck}>
+          <input
+            dir="ltr"
+            value={nationalId}
+            onChange={(e) => setNationalId(e.target.value)}
+            placeholder="۱۰۱۰۱۲۳۴۵۶"
+            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+          />
+        </Field>
+        <Field label="کد نماد اعتماد (اینماد)" icon={ShieldCheck}>
+          <input
+            dir="ltr"
+            value={enamadCode}
+            onChange={(e) => setEnamadCode(e.target.value)}
+            placeholder="eNamad code"
+            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+          />
+        </Field>
+      </div>
       <Field label="ساعات کاری">
         <input
           dir="rtl"
@@ -352,7 +408,9 @@ function StorePanel({
 
       <SaveBar
         busy={pending === "store"}
-        onSave={() => onSave({ phone, email, address, hours, social })}
+        onSave={() =>
+          onSave({ shopName, phone, email, address, postalCode, nationalId, enamadCode, hours, social })
+        }
       />
     </Section>
   );

@@ -104,12 +104,39 @@ export const getByNumber = query({
   },
 });
 
+/**
+ * Phase 8.2 — owner-scoped fetch by Convex id. Used by the payment
+ * callback page, which knows the order `_id` from the gateway URL
+ * (getByNumber needs the human-facing number).
+ */
+export const getById = query({
+  args: { id: v.id("orders") },
+  handler: async (ctx, { id }) => {
+    const user = await requireUser(ctx);
+    const row = await ctx.db.get(id);
+    if (!row) return null;
+    if (row.userId !== user._id && user.role !== "admin") {
+      throw new Error("FORBIDDEN");
+    }
+    const items = await ctx.db
+      .query("order_items")
+      .withIndex("by_order", (q) => q.eq("orderId", row._id))
+      .collect();
+    const history = await ctx.db
+      .query("order_status_history")
+      .withIndex("by_order", (q) => q.eq("orderId", row._id))
+      .collect();
+    history.sort((a, b) => a.at - b.at);
+    return { ...row, items, history };
+  },
+});
+
 /* Internal (gateway verification — no user-facing auth) ---------- */
 // Registered here (not in `payments.ts`) so the payment actions can
 // reference them cross-module; same-module internal references from
 // actions create a generated-type cycle in this Convex version.
 
-export const getById = internalQuery({
+export const getByIdInternal = internalQuery({
   args: { id: v.id("orders") },
   handler: async (ctx, { id }) => ctx.db.get(id),
 });

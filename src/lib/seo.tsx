@@ -200,3 +200,46 @@ export function OrganizationJsonLd(o: OrganizationSchema) {
     ...(o.sameAs?.length ? { sameAs: o.sameAs } : {}),
   });
 }
+
+/** Phase 8.2 — store info shape shared by the trust schemas. */
+export interface StoreInfo {
+  shopName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  postalCode?: string;
+  nationalId?: string;
+  hours?: string;
+  social?: Record<string, string>;
+  enamadCode?: string;
+}
+
+/** LocalBusiness + ContactPoint — trust signals for Iranian ecommerce. */
+export function LocalBusinessJsonLd(s: StoreInfo) {
+  const name = s.shopName || "لونا";
+  const contact: Record<string, unknown> = {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    availableLanguage: "fa",
+  };
+  if (s.phone) contact.telephone = s.phone;
+  if (s.email) contact.email = s.email;
+
+  const ld: any = {
+    "@context": "https://schema.org",
+    "@type": ["LocalBusiness", "ClothingStore"],
+    name,
+    url: typeof window !== "undefined" ? window.location.origin : undefined,
+    image: `${typeof window !== "undefined" ? window.location.origin : ""}/logo.svg`,
+    contactPoint: contact,
+  };
+  if (s.address) ld.address = { "@type": "PostalAddress", streetAddress: s.address };
+  if (s.postalCode) ld.address = { ...(ld.address ?? {}), postalCode: s.postalCode };
+  if (s.hours) ld.openingHours = s.hours;
+  if (s.nationalId) ld.identifier = `IR-${s.nationalId}`;
+  const sameAs = Object.values(s.social ?? {}).filter(
+    (v): v is string => Boolean(v && /^https?:\/\//.test(v)),
+  );
+  if (sameAs.length) ld.sameAs = sameAs;
+  return jsonLd(ld);
+}

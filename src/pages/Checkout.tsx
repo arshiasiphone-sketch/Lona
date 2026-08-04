@@ -17,7 +17,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useCoupon } from "@/hooks/use-coupon";
 import { useProducts, type Product } from "@/lib/data/catalog";
 import { useDeviceSession } from "@/lib/data/session";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ProductImage } from "@/components/ui/ProductImage";
@@ -25,7 +25,8 @@ import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/money";
 import { toast } from "@/lib/toast";
-import { getPaymentProvider, type PaymentInit } from "@/lib/payment";
+import { getPaymentProvider } from "@/lib/payment";
+import { ZarinpalProvider } from "@/lib/payment/providers/zarinpal";
 
 const STEPS = ["اطلاعات تماس", "ارسال", "پرداخت"] as const;
 
@@ -88,6 +89,10 @@ export default function Checkout() {
   const confirmPaymentMut = useMutation(api.orders.confirmPayment);
   const cancelPendingMut = useMutation(api.orders.cancelPending);
   const setCartMeta = useMutation(api.cart.setMeta);
+  const requestZarinpal = useAction(api.payments.requestPayment);
+  // Phase 8.2: gateway readiness — zarinpal when the merchant id is
+  // configured server-side, otherwise the mock provider.
+  const payStatus = useQuery(api.payments.status, {});
 
   // Phase 7.5: prices must mirror Convex, not the static catalog.
   const liveProducts = useProducts();
@@ -234,8 +239,9 @@ export default function Checkout() {
     totalCents: number;
     paymentExpiresAt?: number;
   }) => {
+    const orderId = result.orderId as Id<"orders">;
     setPending({
-      orderId: result.orderId,
+      orderId,
       number: result.number,
       reference: result.paymentReference,
       amountCents: result.totalCents,
@@ -243,19 +249,67 @@ export default function Checkout() {
     });
     setGatewayError(null);
     setPaymentPhase("connecting");
-    // Route through the provider abstraction (mock today; real
-    // gateways resolve their hosted URL here).
+
+    // ── Phase 8.2: real gateway redirect ──────────────────────
+    if (payStatus?.mode === "zarinpal") {
+      try {
+        const provider = new ZarinpalProvider({
+          request: async ({ orderId: oid, callbackUrl }) => {
+            const r = await requestZarinpal({
+              orderId: oid as Id<"orders">,
+              callbackUrl,
+            });
+            return {
+              authority: r.authority,
+              redirectUrl: r.redirectUrl,
+              expiresAt: r.expiresAt,
+            };
+          },
+          verify: async () => ({ status: "failed" as const }),
+        });
+        const init = await provider.createPayment({
+          orderId,
+          reference: result.paymentReference,
+          amountCents: result.totalCents,
+          description: `سفارش ${result.number}`,
+          customer: {
+            fullName: `${form.firstName} ${form.lastName}`.trim(),
+            email: form.email,
+          },
+        });
+        if (init.redirectUrl) {
+          // Full-page redirect to the gateway; the callback page
+          // (server-side verify) resumes the flow.
+          window.location.assign(init.redirectUrl);
+          return;
+        }
+        throw new Error("ZARINPAL_NO_REDIRECT");
+      } catch (err) {
+        const message = mapPlaceError((err as Error)?.message ?? "");
+        setPlaceError(message);
+        setPending(null);
+        toast.error(message);
+        // Release the inventory hold so the customer can retry.
+        await cancelPendingMut({
+          orderId,
+          paymentStatus: "cancelled",
+          note: "شروع پرداخت ناموفق",
+        }).catch(() => {});
+        return;
+      }
+    }
+
+    // ── Mock gateway (demo) ────────────────────────────────────
     const provider = getPaymentProvider("mock");
     void provider
       .createPayment({
-        orderId: result.orderId,
+        orderId,
         reference: result.paymentReference,
         amountCents: result.totalCents,
         description: `سفارش ${result.number}`,
         customer: { fullName: `${form.firstName} ${form.lastName}`.trim(), email: form.email },
       })
       .catch(() => {});
-    // Simulated gateway redirect.
     connectTimer.current = setTimeout(() => setPaymentPhase("gateway"), 1400);
   };
 
@@ -859,6 +913,12 @@ function mapPlaceError(message: string): string {
     return "سفارش دیگر در وضعیت قابل پرداخت نیست.";
   if (message.startsWith("PAYMENT_NOT_ACTIVE"))
     return "پرداخت این سفارش فعال نیست.";
+  if (message.startsWith("ZARINPAL_NOT_CONFIGURED"))
+    return "درگاه پرداخت هنوز پیکربندی نشده است؛ از پرداخت آزمایشی استفاده کنید.";
+  if (message.startsWith("ZARINPAL_REQUEST_FAILED") || message.startsWith("ZARINPAL_NO_REDIRECT"))
+    return "اتصال به درگاه پرداخت ناموفق بود؛ دوباره تلاش کنید.";
+  if (message.startsWith("PAYMENT_RATE_LIMITED"))
+    return "درخواست پرداخت تکراری است؛ کمی صبر کنید.";
   if (message.startsWith("PAYMENT_DECLINED"))
     return "پرداخت توسط درگاه رد شد. لطفاً دوباره تلاش کنید.";
   if (message.startsWith("UNAUTHORIZED"))

@@ -22,10 +22,10 @@
  * If `ZARINPAL_MERCHANT_ID` is missing the checkout gracefully falls
  * back to the MockPaymentProvider (see `status`).
  *
- * Internal helpers (`internal.orders.getById` / `getUserById` /
- * `setPaymentInitiated` / `confirmFromPayment` / `cancelFromPayment`)
- * live in `orders.ts`; actions reference them cross-module to avoid a
- * generated-type cycle in this Convex version.
+ * NOTE: internal references are accessed through a cast because typed
+ * property access on the generated `internal` object from inside an
+ * action creates a circular type in this Convex version's codegen.
+ * Runtime references are unchanged.
  *
  * Rate limiting readiness: `requestPayment` rejects re-initiations
  * within 30 seconds; for production traffic wrap with a Convex rate
@@ -34,6 +34,9 @@
 import { v } from "convex/values";
 import { action, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const INT = internal as any;
 
 const MERCHANT_ID = process.env.ZARINPAL_MERCHANT_ID ?? "";
 const SANDBOX = process.env.ZARINPAL_SANDBOX === "true";
@@ -66,12 +69,12 @@ export const requestPayment = action({
       subject?: string;
     } | null;
     if (!identity?.subject) throw new Error("UNAUTHORIZED");
-    const actor = await ctx.runQuery(internal.orders.getUserById, {
+    const actor = await ctx.runQuery(INT.orders.getUserById, {
       id: identity.subject as never,
     });
     if (!actor) throw new Error("UNAUTHORIZED");
 
-    const order = await ctx.runQuery(internal.orders.getById, { id: orderId });
+    const order = await ctx.runQuery(INT.orders.getByIdInternal, { id: orderId });
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.userId !== (identity.subject as never) && actor.role !== "admin") {
       throw new Error("FORBIDDEN");
@@ -135,7 +138,7 @@ export const requestPayment = action({
     const now = Date.now();
     const expiresAt = now + 30 * 60 * 1000;
 
-    await ctx.runMutation(internal.orders.setPaymentInitiated, {
+    await ctx.runMutation(INT.orders.setPaymentInitiated, {
       orderId,
       provider: "zarinpal",
       reference: authority,
@@ -167,12 +170,12 @@ export const verifyPayment = action({
       subject?: string;
     } | null;
     if (!identity?.subject) throw new Error("UNAUTHORIZED");
-    const actor = await ctx.runQuery(internal.orders.getUserById, {
+    const actor = await ctx.runQuery(INT.orders.getUserById, {
       id: identity.subject as never,
     });
     if (!actor) throw new Error("UNAUTHORIZED");
 
-    const order = await ctx.runQuery(internal.orders.getById, { id: orderId });
+    const order = await ctx.runQuery(INT.orders.getByIdInternal, { id: orderId });
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.userId !== (identity.subject as never) && actor.role !== "admin") {
       throw new Error("FORBIDDEN");
@@ -202,7 +205,7 @@ export const verifyPayment = action({
 
     if (json.data?.code === 100 && json.data.ref_id) {
       // Amount + authority verified by the gateway — finalize.
-      await ctx.runMutation(internal.orders.confirmFromPayment, {
+      await ctx.runMutation(INT.orders.confirmFromPayment, {
         orderId,
         transactionId: json.data.ref_id,
         provider: "zarinpal",
@@ -215,7 +218,7 @@ export const verifyPayment = action({
       json.errors?.[0]?.message ??
       json.data?.message ??
       `GATEWAY_CODE:${json.data?.code ?? ""}`;
-    await ctx.runMutation(internal.orders.cancelFromPayment, {
+    await ctx.runMutation(INT.orders.cancelFromPayment, {
       orderId,
       note: message.slice(0, 200),
     });
@@ -236,12 +239,12 @@ export const refundRequest = action({
       subject?: string;
     } | null;
     if (!identity?.subject) throw new Error("UNAUTHORIZED");
-    const actor = await ctx.runQuery(internal.orders.getUserById, {
+    const actor = await ctx.runQuery(INT.orders.getUserById, {
       id: identity.subject as never,
     });
     if (!actor || actor.role !== "admin") throw new Error("FORBIDDEN");
 
-    const order = await ctx.runQuery(internal.orders.getById, { id: orderId });
+    const order = await ctx.runQuery(INT.orders.getByIdInternal, { id: orderId });
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.paymentStatus !== "paid" || !order.paymentTransactionId) {
       throw new Error("PAYMENT_NOT_REFUNDABLE");

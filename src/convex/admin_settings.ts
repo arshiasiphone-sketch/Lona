@@ -87,6 +87,36 @@ export const getPublicHomepageImages = query({
   },
 });
 
+/**
+ * Phase 8.2 — public store information (legal/contact). Read by the
+ * footer, invoice, contact page and the trust JSON-LD schemas. Stored
+ * by the admin under the `store` settings key.
+ */
+export const getStoreInfo = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "store"))
+      .unique();
+    const value =
+      row?.value && typeof row.value === "object"
+        ? (row.value as Record<string, unknown>)
+        : {};
+    return {
+      shopName: (value.shopName as string) ?? "لونا",
+      phone: (value.phone as string) ?? "",
+      email: (value.email as string) ?? "",
+      address: (value.address as string) ?? "",
+      postalCode: (value.postalCode as string) ?? "",
+      nationalId: (value.nationalId as string) ?? "",
+      hours: (value.hours as string) ?? "",
+      social: (value.social as Record<string, string>) ?? {},
+      enamadCode: (value.enamadCode as string) ?? "",
+    };
+  },
+});
+
 export const setHomepageImage = mutation({
   args: {
     key: v.string(),

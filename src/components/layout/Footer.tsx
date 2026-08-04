@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import { useState } from "react";
-import { ArrowLeft, Instagram, Mail } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Instagram, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/glass";
 import { LonaLogo } from "@/components/brand/LonaLogo";
 import { useHomepageImages } from "@/lib/homepage-images";
@@ -29,10 +31,19 @@ const sections: { title: string; links: { label: string; to: string }[] }[] = [
   {
     title: "خدمات مشتریان",
     links: [
-      { label: "ارسال و بازگشت", to: "/about" },
-      { label: "راهنمای سایز", to: "/about" },
-      { label: "مراقبت از پارچه", to: "/about" },
-      { label: "تماس با ما", to: "/about#contact" },
+      { label: "شرایط ارسال", to: "/shipping-policy" },
+      { label: "بازگشت کالا", to: "/refund-policy" },
+      { label: "راهنمای سایز", to: "/about#sizing" },
+      { label: "تماس با ما", to: "/contact" },
+    ],
+  },
+  {
+    title: "قوانین",
+    links: [
+      { label: "قوانین و مقررات", to: "/rules" },
+      { label: "حریم خصوصی", to: "/privacy" },
+      { label: "شرایط بازگشت کالا", to: "/refund-policy" },
+      { label: "سوالات متداول", to: "/faq" },
     ],
   },
 ];
@@ -41,6 +52,8 @@ export function Footer() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const images = useHomepageImages();
+  // Phase 8.2 — store legal/contact info from admin settings.
+  const store = useQuery(api.admin_settings.getStoreInfo, {});
 
   return (
     <footer className="relative mt-32 overflow-hidden">
@@ -112,7 +125,7 @@ export function Footer() {
 
       {/* Link sections */}
       <div className="mx-auto mt-20 max-w-[1728px] px-6 lg:px-10">
-        <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <div className="flex items-center gap-3">
               {images.logo && images.logo !== "/logo.svg" ? (
@@ -161,21 +174,73 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Trust band — payments, enamad placeholder, contact info */}
+      <div className="mx-auto mt-14 max-w-[1728px] px-6 lg:px-10">
+        <div className="glass flex flex-wrap items-center justify-between gap-x-8 gap-y-4 rounded-3xl px-6 py-5">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xs text-ink-soft">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              پرداخت امن زرین‌پال
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <BadgeCheck className="h-4 w-4 text-primary" />
+              ضمانت اصالت کالا
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <BadgeCheck className="h-4 w-4 text-primary" />
+              ارسال سریع به سراسر کشور
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+            {store?.phone && (
+              <a
+                href={`tel:${store.phone}`}
+                dir="ltr"
+                className="inline-flex items-center gap-1.5 text-ink-soft hover:text-ink"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                {store.phone}
+              </a>
+            )}
+            {store?.address && (
+              <span className="inline-flex items-center gap-1.5 text-ink-soft">
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="max-w-64 truncate">{store.address}</span>
+              </span>
+            )}
+            {/* eNamad placeholder — official badge drops in after
+                issuance; the admin stores the code in settings. */}
+            <a
+              href="https://trustseal.enamad.ir/"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-16 w-16 items-center justify-center rounded-xl hairline bg-white/60 text-center text-[8px] leading-tight text-ink-muted transition hover:bg-white"
+              title={"نماد اعتماد الکترونیکی" + (store?.enamadCode ? ` — کد ${store.enamadCode}` : "")}
+            >
+              اینماد
+              <br />
+              eNamad
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom band */}
-      <div className="mx-auto mt-20 max-w-[1728px] border-t border-edge/60 px-6 py-8 lg:px-10">
+      <div className="mx-auto mt-10 max-w-[1728px] border-t border-edge/60 px-6 py-8 lg:px-10">
         <div className="flex flex-col items-start justify-between gap-4 text-xs text-ink-muted md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} لونا — بوتیک لباس زیر زنانه. تأسیس ۱۳۹۸.
+            © {new Date().getFullYear()} {store?.shopName || "لونا"} — بوتیک لباس زیر زنانه.
+            {store?.nationalId && <> · شناسه ملی {store.nationalId}</>}
           </p>
           <div className="flex items-center gap-5">
-            <Link to="/about" className="hover:text-ink">
+            <Link to="/privacy" className="hover:text-ink">
               حریم خصوصی
             </Link>
-            <Link to="/about" className="hover:text-ink">
-              کوکی‌ها
+            <Link to="/rules" className="hover:text-ink">
+              قوانین و مقررات
             </Link>
-            <Link to="/about" className="hover:text-ink">
-              شرایط استفاده
+            <Link to="/refund-policy" className="hover:text-ink">
+              بازگشت کالا
             </Link>
             <select
               className="rounded-full hairline bg-transparent px-3 py-1 text-xs text-ink-muted"

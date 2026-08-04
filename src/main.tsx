@@ -24,6 +24,10 @@ const Product = lazy(() => import("./pages/Product.tsx"));
 const Cart = lazy(() => import("./pages/Cart.tsx"));
 const Wishlist = lazy(() => import("./pages/Wishlist.tsx"));
 const Checkout = lazy(() => import("./pages/Checkout.tsx"));
+// Phase 8.2 — payment callback + invoice (standalone routes)
+const CheckoutCallback = lazy(() => import("./pages/CheckoutCallback.tsx"));
+const InvoicePage = lazy(() => import("./pages/Invoice.tsx"));
+const ContactPage = lazy(() => import("./pages/Contact.tsx"));
 const Collections = lazy(() => import("./pages/Collections.tsx"));
 const Collection = lazy(() => import("./pages/Collection.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
@@ -222,10 +226,14 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/search" element={<Search />} />
                         {/* Trust / Legal */}
                         <Route path="/terms" element={<TermsPage />} />
+                        <Route path="/rules" element={<TermsPage />} />
                         <Route path="/privacy" element={<PrivacyPage />} />
                         <Route path="/faq" element={<FAQPage />} />
                         <Route path="/returns" element={<ReturnsPage />} />
+                        <Route path="/refund-policy" element={<ReturnsPage />} />
                         <Route path="/shipping" element={<ShippingPage />} />
+                        <Route path="/shipping-policy" element={<ShippingPage />} />
+                        <Route path="/contact" element={<ContactPage />} />
                       </Route>
 
                       {/* Account (protected) */}
@@ -245,6 +253,22 @@ createRoot(document.getElementById("root")!).render(
                         element={
                           <RequireAuth>
                             <Checkout />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/checkout/callback/:orderId"
+                        element={
+                          <RequireAuth>
+                            <CheckoutCallback />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/invoice/:number"
+                        element={
+                          <RequireAuth>
+                            <InvoicePage />
                           </RequireAuth>
                         }
                       />
