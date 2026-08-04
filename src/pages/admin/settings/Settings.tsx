@@ -35,10 +35,12 @@ import {
   ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Truck,
   Upload,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { Doc, Id } from "@/convex/_generated/dataModel";
+import { useToast } from "@/lib/toast";
 import {
   DEFAULT_HOMEPAGE_IMAGES,
   HOMEPAGE_IMAGE_SLOTS,
@@ -62,7 +64,7 @@ export default function Settings() {
   );
 
   const [tab, setTab] = React.useState<
-    "brand" | "store" | "seo" | "images" | "notifications"
+    "brand" | "store" | "seo" | "images" | "notifications" | "shipping"
   >("brand");
   const [pending, setPending] = React.useState<string | null>(null);
 
@@ -99,6 +101,7 @@ export default function Settings() {
     { id: "store" as const, label: "فروشگاه", icon: ShoppingBag },
     { id: "seo" as const, label: "SEO", icon: Globe },
     { id: "images" as const, label: "تصاویر", icon: Images },
+    { id: "shipping" as const, label: "ارسال", icon: Truck },
     { id: "notifications" as const, label: "اعلان‌ها", icon: Bell },
   ];
 
@@ -172,6 +175,8 @@ export default function Settings() {
             />
           ) : tab === "images" ? (
             <ImagesPanel />
+          ) : tab === "shipping" ? (
+            <ShippingPanel />
           ) : (
             <NotificationsPanel
               value={v("notifications")}
@@ -413,6 +418,257 @@ function StorePanel({
         }
       />
     </Section>
+  );
+}
+
+function ShippingPanel() {
+  const methods = useQuery(api.shipping.listAll) ?? [];
+  const upsert = useMutation(api.shipping.upsert);
+  const toast = useToast();
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [drafts, setDrafts] = React.useState<
+    { code: string; name: string; price: string; days: string; active: boolean }[]
+  >([]);
+
+  const persist = React.useCallback(
+    async (key: string, payload: {
+      code: string;
+      name: string;
+      priceCents: number;
+      estimatedDays: number;
+      active: boolean;
+      order: number;
+    }) => {
+      setBusyId(key);
+      try {
+        await upsert(payload);
+        toast.success("روش ارسال ذخیره شد");
+      } catch (err) {
+        toast.error(`خطا: ${(err as Error)?.message ?? "نامشخص"}`);
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [upsert, toast],
+  );
+
+  return (
+    <Section
+      title="روش‌های ارسال"
+      description="هزینه، زمان تحویل و وضعیت هر روش ارسال. مشتری در چک‌اوت از بین روش‌های فعال انتخاب می‌کند."
+      icon={Truck}
+    >
+      {methods.length === 0 && drafts.length === 0 ? (
+        <p className="text-sm text-ink-soft">هنوز روش ارسالی تعریف نشده است.</p>
+      ) : null}
+
+      {methods.map((m, i) => (
+        <ShippingMethodRow
+          key={String(m._id)}
+          method={m}
+          busy={busyId === String(m._id)}
+          onSave={(p) => persist(String(m._id), { ...p, order: i + 1 })}
+        />
+      ))}
+
+      {drafts.map((d, i) => (
+        <div
+          key={d.code}
+          className="grid gap-3 rounded-2xl border border-dashed border-primary/40 bg-canvas/40 p-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <Field label="کد روش">
+            <input
+              dir="ltr"
+              value={d.code}
+              onChange={(e) => setDrafts((prev) => prev.map((r, j) => (j === i ? { ...r, code: e.target.value } : r)))}
+              className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </Field>
+          <Field label="نام روش">
+            <input
+              dir="rtl"
+              value={d.name}
+              onChange={(e) => setDrafts((prev) => prev.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))}
+              placeholder="پیک شهری"
+              className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </Field>
+          <Field label="هزینه (تومان)">
+            <input
+              dir="ltr"
+              type="number"
+              value={d.price}
+              onChange={(e) => setDrafts((prev) => prev.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))}
+              className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </Field>
+          <Field label="زمان تحویل (روز)">
+            <input
+              dir="ltr"
+              type="number"
+              value={d.days}
+              onChange={(e) => setDrafts((prev) => prev.map((r, j) => (j === i ? { ...r, days: e.target.value } : r)))}
+              className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+            />
+          </Field>
+          <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+              <input
+                type="checkbox"
+                checked={d.active}
+                onChange={(e) => setDrafts((prev) => prev.map((r, j) => (j === i ? { ...r, active: e.target.checked } : r)))}
+                className="h-4 w-4 accent-primary"
+              />
+              فعال
+            </label>
+            <button
+              type="button"
+              disabled={busyId === d.code}
+              onClick={() => {
+                void persist(
+                  d.code,
+                  {
+                    code: d.code || `method-${Date.now()}`,
+                    name: d.name || "روش جدید",
+                    priceCents: Number(d.price) || 0,
+                    estimatedDays: Number(d.days) || 1,
+                    active: d.active,
+                    order: methods.length + drafts.length,
+                  },
+                ).then(() => setDrafts((prev) => prev.filter((r) => r.code !== d.code)));
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-medium text-canvas hover:bg-primary disabled:opacity-50"
+            >
+              {busyId === d.code ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              ذخیره روش
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrafts((prev) => prev.filter((r) => r.code !== d.code))}
+              className="text-xs text-ink-muted hover:text-ink"
+            >
+              انصراف
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() =>
+          setDrafts((prev) => [
+            ...prev,
+            { code: `method-${Date.now()}`, name: "", price: "", days: "1", active: true },
+          ])
+        }
+        className="inline-flex items-center gap-2 rounded-full border border-edge bg-canvas/60 px-5 py-2.5 text-xs font-medium uppercase tracking-[0.18em] text-ink hover:border-primary hover:text-primary"
+      >
+        + افزودن روش ارسال
+      </button>
+    </Section>
+  );
+}
+
+function ShippingMethodRow({
+  method,
+  busy,
+  onSave,
+}: {
+  method: Doc<"shipping_methods">;
+  busy: boolean;
+  onSave: (p: {
+    code: string;
+    name: string;
+    priceCents: number;
+    estimatedDays: number;
+    active: boolean;
+    order: number;
+  }) => void;
+}) {
+  const [code, setCode] = React.useState(method.code);
+  const [name, setName] = React.useState(method.name);
+  const [price, setPrice] = React.useState(String(method.priceCents));
+  const [days, setDays] = React.useState(String(method.estimatedDays));
+  const [active, setActive] = React.useState(method.active);
+
+  React.useEffect(() => {
+    setCode(method.code);
+    setName(method.name);
+    setPrice(String(method.priceCents));
+    setDays(String(method.estimatedDays));
+    setActive(method.active);
+  }, [method]);
+
+  return (
+    <div className="grid gap-3 rounded-2xl border border-edge bg-canvas/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Field label="کد روش">
+        <input
+          dir="ltr"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+        />
+      </Field>
+      <Field label="نام روش">
+        <input
+          dir="rtl"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+        />
+      </Field>
+      <Field label="هزینه (تومان)">
+        <input
+          dir="ltr"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+        />
+      </Field>
+      <Field label="زمان تحویل (روز)">
+        <input
+          dir="ltr"
+          type="number"
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
+        />
+      </Field>
+      <div className="flex items-center justify-between gap-3 sm:col-span-2 lg:col-span-4">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-soft">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+          {active ? "فعال" : "غیرفعال"}
+        </label>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() =>
+            onSave({
+              code,
+              name,
+              priceCents: Number(price) || 0,
+              estimatedDays: Number(days) || 1,
+              active,
+              order: method.order,
+            })
+          }
+          className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-medium text-canvas hover:bg-primary disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          ذخیره
+        </button>
+      </div>
+    </div>
   );
 }
 

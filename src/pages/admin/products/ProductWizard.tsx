@@ -327,6 +327,10 @@ function BasicInfoStep({
     description: product.description,
     composition: product.composition,
     origin: product.origin,
+    brand: product.brand ?? "لونا",
+    barcode: product.barcode ?? "",
+    material: product.material ?? "",
+    care: product.care ?? "",
   });
   const [busy, setBusy] = React.useState(false);
   const [saved, setSaved] = React.useState<"idle" | "ok" | "err">("idle");
@@ -347,6 +351,10 @@ function BasicInfoStep({
         description: form.description,
         composition: form.composition,
         origin: form.origin,
+        brand: form.brand,
+        barcode: form.barcode,
+        material: form.material,
+        care: form.care,
       });
       setSaved("ok");
       onAdvance();
@@ -432,6 +440,39 @@ function BasicInfoStep({
             onChange={(e) => set("origin", e.target.value)}
             className="admin-input"
             placeholder="برش و دوخت در فلورانس."
+          />
+        </Field>
+        <Field label="برند" hint="برای فیدهای ترب و دیجی‌کالا">
+          <input
+            value={form.brand}
+            onChange={(e) => set("brand", e.target.value)}
+            className="admin-input"
+            placeholder="لونا"
+          />
+        </Field>
+        <Field label="بارکد (EAN/GTIN)" hint="اختیاری — در فیدهای بازار استفاده می‌شود">
+          <input
+            dir="ltr"
+            value={form.barcode}
+            onChange={(e) => set("barcode", e.target.value)}
+            className="admin-input"
+            placeholder="6260111000000"
+          />
+        </Field>
+        <Field label="جنس پارچه">
+          <input
+            value={form.material}
+            onChange={(e) => set("material", e.target.value)}
+            className="admin-input"
+            placeholder="پنبه ارگانیک، توری گیپور…"
+          />
+        </Field>
+        <Field label="نحوه نگهداری" full>
+          <input
+            value={form.care}
+            onChange={(e) => set("care", e.target.value)}
+            className="admin-input"
+            placeholder="شستشو با دست، آب سرد…"
           />
         </Field>
       </div>

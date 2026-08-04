@@ -30,7 +30,13 @@ import {
   staticCollections,
   staticProducts,
 } from "@/lib/data/catalog";
-import { OrganizationJsonLd, usePageMeta } from "@/lib/seo";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import {
+  OrganizationJsonLd,
+  LocalBusinessJsonLd,
+  usePageMeta,
+} from "@/lib/seo";
 
 export default function Landing() {
   usePageMeta({
@@ -44,14 +50,31 @@ export default function Landing() {
   const newItems = useNewArrivals();
   const featured = (newItems ?? staticProducts).slice(0, 4);
   const bestsellers = (newItems ?? staticProducts).slice(2, 6);
+  const store = useQuery(api.admin_settings.getStoreInfo, {});
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="relative bg-canvas text-ink">
       <OrganizationJsonLd
-        name="لونا"
-        url={typeof window !== "undefined" ? window.location.origin : ""}
-        logo={`${typeof window !== "undefined" ? window.location.origin : ""}/logo.svg`}
+        name={store?.shopName ?? "لونا"}
+        url={origin}
+        logo={`${origin}/logo.svg`}
         description="لونا — بوتیک آنلاین لباس زیر زنانه لوکس. طراحی‌های ظریف، پارچه‌های مرغوب و تجربه خریدی خاص."
+        sameAs={Object.values(store?.social ?? {}).filter(
+          (v): v is string => Boolean(v && /^https?:\/\//.test(v)),
+        )}
+      />
+      <LocalBusinessJsonLd
+        shopName={store?.shopName}
+        phone={store?.phone}
+        email={store?.email}
+        address={store?.address}
+        postalCode={store?.postalCode}
+        nationalId={store?.nationalId}
+        hours={store?.hours}
+        social={store?.social}
+        enamadCode={store?.enamadCode}
       />
       {/* 1 · Hero */}
       <Hero />

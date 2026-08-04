@@ -20,6 +20,31 @@ import { mutation, query } from "./_generated/server";
 import { requirePermission, audit } from "./admin";
 
 /* ────────────────────────────────────────────────────────────
+ * SERVER-SIDE FILE VALIDATION (Phase 8.2) — never trust the
+ * client. Every attach / replace path validates content type
+ * and size before persisting, with Persian error messages.
+ * ──────────────────────────────────────────────────────────── */
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/avif",
+]);
+
+/** Library/brand assets may be larger than product crops (10 MB). */
+const MAX_LIBRARY_BYTES = 10 * 1024 * 1024;
+
+function assertImageMeta(contentType?: string, size?: number) {
+  if (contentType && !ALLOWED_IMAGE_TYPES.has(contentType)) {
+    throw new Error("فرمت فایل پشتیبانی نمی‌شود");
+  }
+  if (size && size > MAX_LIBRARY_BYTES) {
+    throw new Error("حجم تصویر زیاد است");
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
  * UPLOAD URL  — identical recipe to admin_products.* so the FE
  * can reuse the same upload-XHR code on the media page.
  * ──────────────────────────────────────────────────────────── */
@@ -60,6 +85,7 @@ export const attachToLibrary = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_media");
+    assertImageMeta(args.contentType, args.size);
     const id = await ctx.db.insert("media_library", {
       ...args,
       uploadedAt: Date.now(),
@@ -161,6 +187,7 @@ export const replaceLibraryAsset = mutation({
   },
   handler: async (ctx, { id, storageId, ...meta }) => {
     const user = await requirePermission(ctx, "manage_media");
+    assertImageMeta(meta.contentType, meta.size);
     const row = await ctx.db.get(id);
     if (!row) return null;
     const oldStorage = row.storageId;

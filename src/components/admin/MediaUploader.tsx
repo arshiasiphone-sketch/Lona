@@ -28,7 +28,7 @@ interface MediaUploaderProps {
 }
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — mirrors the server-side cap
 const MAX_IMAGES = 12;
 
 type Row =
@@ -60,12 +60,12 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
     async (file: File) => {
       if (!ACCEPTED.includes(file.type)) {
         const key = `${file.name}-${Date.now()}`;
-        setRows((r) => [...r, { key, state: "failed", error: `Unsupported file type: ${file.type}`, name: file.name, size: file.size, file }]);
+        setRows((r) => [...r, { key, state: "failed", error: "فرمت فایل پشتیبانی نمی‌شود", name: file.name, size: file.size, file }]);
         return;
       }
       if (file.size > MAX_BYTES) {
         const key = `${file.name}-${Date.now()}`;
-        setRows((r) => [...r, { key, state: "failed", error: `File exceeds 8 MB cap`, name: file.name, size: file.size, file }]);
+        setRows((r) => [...r, { key, state: "failed", error: "حجم تصویر زیاد است — حداکثر ۵ مگابایت", name: file.name, size: file.size, file }]);
         return;
       }
       const key = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -116,6 +116,8 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
           alt: file.name.replace(/\.[^.]+$/, ""),
           order: persisted.length + rows.filter((r) => r.state === "success").length,
           dominantGradient: undefined,
+          contentType: file.type,
+          size: file.size,
         });
         setRows((r) =>
           r.map((row) =>

@@ -20,6 +20,8 @@ import {
   Loader2,
   X,
   CreditCard,
+  RotateCcw,
+  Landmark,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { glass } from "@/lib/glass";
@@ -279,9 +281,11 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
   const setStatus = useMutation(api.admin_orders.setOrderStatus);
   const confirmPay = useMutation(api.orders.confirmPayment);
   const cancelPay = useMutation(api.orders.cancelPending);
+  const refundPay = useMutation(api.orders.refund);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [payBusy, setPayBusy] = useState(false);
+  const [refundBusy, setRefundBusy] = useState(false);
 
   const order = detail?.order;
   const items = (detail?.items ?? []) as any[];
@@ -363,18 +367,29 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
                 وضعیت پرداخت
               </h3>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <PaymentBadge status={String(order.paymentStatus ?? "pending")} />
-                  {order.paymentReference && (
-                    <div className="mt-1.5 font-mono text-[11px] text-neutral-400" dir="ltr">
-                      {String(order.paymentReference)}
-                    </div>
-                  )}
-                  {order.paidAt && (
-                    <div className="mt-1 text-xs text-neutral-500">
-                      پرداخت در {toFaDate(Number(order.paidAt))}
-                    </div>
-                  )}
+                  <div className="mt-1.5 space-y-0.5 text-xs text-neutral-500">
+                    {order.paymentProvider && (
+                      <div className="inline-flex items-center gap-1">
+                        <Landmark className="h-3 w-3" />
+                        درگاه: {String(order.paymentProvider)}
+                      </div>
+                    )}
+                    {order.paymentReference && (
+                      <div className="font-mono text-[11px] text-neutral-400" dir="ltr">
+                        Authority: {String(order.paymentReference)}
+                      </div>
+                    )}
+                    {order.paymentTransactionId && (
+                      <div className="font-mono text-[11px] text-neutral-400" dir="ltr">
+                        RefId: {String(order.paymentTransactionId)}
+                      </div>
+                    )}
+                    {order.paidAt && (
+                      <div>پرداخت در {toFaDate(Number(order.paidAt))}</div>
+                    )}
+                  </div>
                 </div>
                 {order.paymentStatus !== "paid" && order.paymentStatus !== "refunded" &&
                   order.paymentStatus !== "cancelled" && order.paymentStatus !== "failed" && s === "pending" && (
@@ -415,6 +430,23 @@ function OrderDetailDrawer({ id, onClose }: { id: string; onClose: () => void })
                       </button>
                     </div>
                   )}
+                {order.paymentStatus === "paid" && (
+                  <button
+                    onClick={() => {
+                      if (refundBusy) return;
+                      setRefundBusy(true);
+                      refundPay({ orderId: id as any, note: "بازگشت وجه از پنل مدیریت" })
+                        .then(() => toast.success("بازگشت وجه ثبت شد — موجودی به انبار برگشت"))
+                        .catch((err: unknown) => toast.error(`خطا: ${(err as Error)?.message ?? "نامشخص"}`))
+                        .finally(() => setRefundBusy(false));
+                    }}
+                    disabled={refundBusy}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    بازگشت وجه
+                  </button>
+                )}
               </div>
             </section>
 

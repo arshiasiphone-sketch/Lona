@@ -174,6 +174,11 @@ export const updateBasics = mutation({
     description: v.optional(v.string()),
     composition: v.optional(v.string()),
     origin: v.optional(v.string()),
+    /** Phase 8.2 — Iranian commerce legal fields (Torob/Digikala feeds). */
+    brand: v.optional(v.string()),
+    barcode: v.optional(v.string()),
+    material: v.optional(v.string()),
+    care: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_products");
@@ -458,9 +463,22 @@ export const attachMedia = mutation({
     alt: v.string(),
     order: v.number(),
     dominantGradient: v.optional(vGradient),
+    /** Phase 8.2 — server-side file validation (type + size). */
+    contentType: v.optional(v.string()),
+    size: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_media");
+    const { contentType, size } = args;
+    if (contentType) {
+      const allowed = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+      if (!allowed.includes(contentType)) {
+        throw new Error("فرمت فایل پشتیبانی نمی‌شود");
+      }
+    }
+    if (size && size > 5 * 1024 * 1024) {
+      throw new Error("حجم تصویر زیاد است");
+    }
     const id = await ctx.db.insert("product_images", {
       productId: args.productId,
       storageId: args.storageId,
