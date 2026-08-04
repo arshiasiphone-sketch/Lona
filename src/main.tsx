@@ -213,6 +213,8 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/" element={<Landing />} />
                         <Route path="/shop" element={<Shop />} />
                         <Route path="/shop/:slug" element={<Product />} />
+                        {/* Legacy product URL kept as a stable alias for shared links. */}
+                        <Route path="/product/:slug" element={<Product />} />
                         <Route path="/collections" element={<Collections />} />
                         <Route
                           path="/collections/:slug"
@@ -223,6 +225,9 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/about" element={<About />} />
                         <Route path="/press" element={<Press />} />
                         <Route path="/press/:slug" element={<PressArticle />} />
+                        {/* Legacy journal URLs kept as stable aliases. */}
+                        <Route path="/journal" element={<Press />} />
+                        <Route path="/journal/:slug" element={<PressArticle />} />
                         <Route path="/search" element={<Search />} />
                         {/* Trust / Legal */}
                         <Route path="/terms" element={<TermsPage />} />
@@ -305,6 +310,14 @@ createRoot(document.getElementById("root")!).render(
                         >
                           <Route
                             index
+                            element={
+                              <Suspense fallback={<RouteLoading />}>
+                                <AdminDashboard />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="dashboard"
                             element={
                               <Suspense fallback={<RouteLoading />}>
                                 <AdminDashboard />
