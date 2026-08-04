@@ -202,6 +202,12 @@ const schema = defineSchema(
        *  clobbered `description`). Read by the storefront SEO layer. */
       seoTitle: v.optional(v.string()),
       seoDescription: v.optional(v.string()),
+      /** Phase 8.2 — Iranian commerce legal/commercial fields. Used by
+       *  Torob / Digikala / Google Merchant feeds and product pages. */
+      brand: v.optional(v.string()),
+      barcode: v.optional(v.string()),
+      material: v.optional(v.string()),
+      care: v.optional(v.string()),
       status: vProductStatus,
       featured: v.boolean(),
       trending: v.boolean(),
@@ -421,6 +427,8 @@ const schema = defineSchema(
       paymentInitiatedAt: v.optional(v.number()),
       paidAt: v.optional(v.number()),
       paymentExpiresAt: v.optional(v.number()),
+      /** Phase 8.2 — gateway transaction id (Zarinpal ref_id). */
+      paymentTransactionId: v.optional(v.string()),
       /** Snapshot of the chosen shipping method label (historical). */
       shippingMethodName: v.optional(v.string()),
     })

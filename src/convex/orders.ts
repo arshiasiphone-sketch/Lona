@@ -7,20 +7,22 @@
  *        → payment (provider abstraction) → confirmPayment
  *        → convert reservation → decrement stock → order PROCESSING
  *
+ * Phase 8.2: gateway verification runs SERVER-SIDE. The customer's
+ * browser never decides payment success — a Convex action
+ * (`payments.verifyPayment`) talks to Zarinpal, then calls the
+ * internal `confirmFromPayment` / `cancelFromPayment` mutations in
+ * this file, which share the exact same finalize logic as the
+ * public confirm/cancel mutations.
+ *
  * `place` performs a full validation pass BEFORE writing anything
  * (Convex mutations are not transactional), then creates the order
  * in `status: "pending"` / `paymentStatus: "pending"` and holds
- * inventory via `inventory_reservations` — stock is only decremented
- * when payment is confirmed. If the customer abandons payment, the
- * hold is released immediately; if they stall, the cron in
- * `convex/crons.ts` expires the hold. Inventory is never locked
- * forever.
- *
- * Every state change is audited (`activity_logs`) and pushed into
- * the user's notification inbox (`notifications` table).
+ * inventory via `inventory_reservations`. Stock is only decremented
+ * when payment is confirmed; abandoned holds are expired by the
+ * cron in `convex/crons.ts`.
  */
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { requireUser } from "./_helpers";
 import { requirePermission, audit } from "./admin";
@@ -102,6 +104,70 @@ export const getByNumber = query({
   },
 });
 
+/* Internal (gateway verification — no user-facing auth) ---------- */
+// Registered here (not in `payments.ts`) so the payment actions can
+// reference them cross-module; same-module internal references from
+// actions create a generated-type cycle in this Convex version.
+
+export const getById = internalQuery({
+  args: { id: v.id("orders") },
+  handler: async (ctx, { id }) => ctx.db.get(id),
+});
+
+export const getUserById = internalQuery({
+  args: { id: v.id("users") },
+  handler: async (ctx, { id }) => ctx.db.get(id),
+});
+
+/** Persist gateway initiation (authority/reference) onto an order. */
+export const setPaymentInitiated = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    provider: v.string(),
+    reference: v.string(),
+    initiatedAt: v.number(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    await ctx.db.patch(args.orderId, {
+      paymentProvider: args.provider,
+      paymentReference: args.reference,
+      paymentStatus: "initiated",
+      paymentInitiatedAt: args.initiatedAt,
+      paymentExpiresAt: args.expiresAt,
+    });
+  },
+});
+
+/** Gateway-verified payment success — shared finalize logic. */
+export const confirmFromPayment = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    transactionId: v.optional(v.string()),
+    provider: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { number } = await finalizePaidOrder(
+      ctx,
+      args.orderId,
+      args.transactionId,
+      args.provider
+    );
+    return { orderId: args.orderId, number, status: "processing" };
+  },
+});
+
+/** Gateway-reported payment failure — shared cancel logic. */
+export const cancelFromPayment = internalMutation({
+  args: { orderId: v.id("orders"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const { number } = await cancelOrder(ctx, args.orderId, "failed", args.note);
+    return { orderId: args.orderId, number, status: "cancelled" };
+  },
+});
+
 /* Helpers -------------------------------------------------------- */
 
 /** Resolve a product row from an opaque id (slug-first, then _id). */
@@ -146,14 +212,136 @@ function makePaymentReference(): string {
   return `PAY-${Math.random().toString(36).slice(2, 12).toUpperCase()}`;
 }
 
+/**
+ * Shared finalize logic — convert reservations, decrement stock,
+ * mark paid/processing, count the coupon, notify.
+ *
+ * Used by the public `confirmPayment` (owner/admin) and by the
+ * payment action via `payments.confirmOrder`. The order must still
+ * be in a payment-pending state.
+ */
+export async function finalizePaidOrder(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  transactionId?: string,
+  provider?: string
+): Promise<{ number: string }> {
+  const order = await ctx.db.get(orderId);
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (order.status !== "pending") {
+    throw new Error(`ORDER_NOT_PENDING:${order.status}`);
+  }
+  if (
+    order.paymentStatus !== "pending" &&
+    order.paymentStatus !== "initiated" &&
+    order.paymentStatus !== "redirected"
+  ) {
+    throw new Error(`PAYMENT_NOT_ACTIVE:${order.paymentStatus}`);
+  }
+
+  // Convert every active reservation held for this order.
+  const reservations = await ctx.db
+    .query("inventory_reservations")
+    .withIndex("by_order", (q) => q.eq("orderId", orderId))
+    .collect();
+  for (const reservation of reservations) {
+    await convertReservation(ctx, reservation, `order:${order.number}`);
+  }
+
+  const now = Date.now();
+  await ctx.db.patch(orderId, {
+    status: "processing",
+    paymentStatus: "paid",
+    paidAt: now,
+    ...(transactionId ? { paymentTransactionId: transactionId } : {}),
+    ...(provider ? { paymentProvider: provider } : {}),
+  });
+  await ctx.db.insert("order_status_history", {
+    orderId,
+    status: "processing",
+    note: "پرداخت تأیید شد — سفارش وارد مرحله پردازش شد",
+    at: now,
+  });
+
+  // Coupon is consumed only on paid orders.
+  if (order.couponCode) {
+    const coupon = await ctx.db
+      .query("coupons")
+      .withIndex("by_code", (q) => q.eq("code", order.couponCode!.toUpperCase()))
+      .unique();
+    if (coupon) {
+      await ctx.db.patch(coupon._id, { usedCount: coupon.usedCount + 1 });
+    }
+  }
+
+  if (order.userId) {
+    await recordNotification(ctx, {
+      userId: order.userId,
+      kind: "order",
+      title: "پرداخت موفق",
+      body: `پرداخت سفارش ${order.number} تأیید شد و در حال آمادهسازی است.`,
+      link: "/dashboard",
+    });
+  }
+  return { number: order.number };
+}
+
+/**
+ * Shared cancel logic — release inventory holds, mark cancelled.
+ * Used by the public `cancelPending` and the payment action via
+ * `payments.cancelOrderForPayment`.
+ */
+export async function cancelOrder(
+  ctx: MutationCtx,
+  orderId: Id<"orders">,
+  paymentStatus: "cancelled" | "failed",
+  note?: string
+): Promise<{ number: string }> {
+  const order = await ctx.db.get(orderId);
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (order.status !== "pending") {
+    throw new Error(`ORDER_NOT_PENDING:${order.status}`);
+  }
+
+  const reservations = await ctx.db
+    .query("inventory_reservations")
+    .withIndex("by_order", (q) => q.eq("orderId", orderId))
+    .collect();
+  for (const reservation of reservations) {
+    await releaseReservation(ctx, reservation, "cancelled");
+  }
+
+  const now = Date.now();
+  await ctx.db.patch(orderId, { status: "cancelled", paymentStatus });
+  await ctx.db.insert("order_status_history", {
+    orderId,
+    status: "cancelled",
+    note: note ?? (paymentStatus === "failed" ? "پرداخت ناموفق" : "انصراف از پرداخت"),
+    at: now,
+  });
+
+  if (order.userId) {
+    await recordNotification(ctx, {
+      userId: order.userId,
+      kind: "order",
+      title: paymentStatus === "failed" ? "پرداخت ناموفق" : "سفارش لغو شد",
+      body:
+        paymentStatus === "failed"
+          ? `پرداخت سفارش ${order.number} ناموفق بود. موجودی رزرو شده آزاد شد.`
+          : `سفارش ${order.number} لغو شد. موجودی رزرو شده آزاد شد.`,
+      link: "/dashboard",
+    });
+  }
+  return { number: order.number };
+}
+
 /* Mutations ------------------------------------------------------ */
 
 /**
  * Phase 8.1 — start a checkout: validate everything, reserve
  * inventory, and create the order in `pending` (payment pending).
- *
- * This mutation NEVER decrements stock and NEVER increments coupon
- * usage — those happen only after `confirmPayment`.
+ * Never decrements stock or increments coupon usage — those happen
+ * only after `confirmPayment`.
  */
 export const place = mutation({
   args: {
@@ -311,8 +499,7 @@ export const place = mutation({
         imageSnapshot: item.imageSnapshot,
       });
 
-      // Hold inventory — this is the TOCTOU guard. No stock is
-      // decremented here; `confirmPayment` converts the hold.
+      // Hold inventory — this is the TOCTOU guard.
       if (item.variantId) {
         const variant = await ctx.db.get(item.variantId);
         if (variant && availableStock(variant) >= item.quantity) {
@@ -360,86 +547,39 @@ export const place = mutation({
 });
 
 /**
- * Phase 8.1 — confirm a successful payment: convert reservations
- * (stock leaves inventory), move the order to `processing`, mark
- * payment `paid`, count the coupon, notify + audit.
- *
- * Callable by the order owner (mock provider flow) or an admin
- * (manual verification of a gateway callback).
+ * Confirm a successful payment — owner or admin. Accepts the gateway
+ * transaction id so the admin drawer can show it on the order.
  */
 export const confirmPayment = mutation({
-  args: { orderId: v.id("orders") },
-  handler: async (ctx, { orderId }) => {
+  args: {
+    orderId: v.id("orders"),
+    transactionId: v.optional(v.string()),
+    provider: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const order = await ctx.db.get(orderId);
+    const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.userId !== user._id && user.role !== "admin") {
       throw new Error("FORBIDDEN");
     }
-    if (order.status !== "pending") {
-      throw new Error(`ORDER_NOT_PENDING:${order.status}`);
-    }
-    if (
-      order.paymentStatus !== "pending" &&
-      order.paymentStatus !== "initiated" &&
-      order.paymentStatus !== "redirected"
-    ) {
-      throw new Error(`PAYMENT_NOT_ACTIVE:${order.paymentStatus}`);
-    }
-
-    // Convert every active reservation held for this order.
-    const reservations = await ctx.db
-      .query("inventory_reservations")
-      .withIndex("by_order", (q) => q.eq("orderId", orderId))
-      .collect();
-    for (const reservation of reservations) {
-      await convertReservation(ctx, reservation, `order:${order.number}`);
-    }
-
-    const now = Date.now();
-    await ctx.db.patch(orderId, {
-      status: "processing",
-      paymentStatus: "paid",
-      paidAt: now,
-    });
-    await ctx.db.insert("order_status_history", {
-      orderId,
-      status: "processing",
-      note: "پرداخت تأیید شد — سفارش وارد مرحله پردازش شد",
-      at: now,
-    });
-
-    // Coupon is consumed only on paid orders.
-    if (order.couponCode) {
-      const coupon = await ctx.db
-        .query("coupons")
-        .withIndex("by_code", (q) => q.eq("code", order.couponCode!.toUpperCase()))
-        .unique();
-      if (coupon) {
-        await ctx.db.patch(coupon._id, { usedCount: coupon.usedCount + 1 });
-      }
-    }
-
-    await audit(ctx, user, "payment.confirm", "orders", orderId, {
-      number: order.number,
+    const { number } = await finalizePaidOrder(
+      ctx,
+      args.orderId,
+      args.transactionId,
+      args.provider
+    );
+    await audit(ctx, user, "payment.confirm", "orders", args.orderId, {
+      number,
       paymentReference: order.paymentReference,
+      transactionId: args.transactionId,
     });
-    await recordNotification(ctx, {
-      userId: user._id,
-      kind: "order",
-      title: "پرداخت موفق",
-      body: `پرداخت سفارش ${order.number} تأیید شد و در حال آمادهسازی است.`,
-      link: "/dashboard",
-    });
-
-    return { orderId, number: order.number, status: "processing" };
+    return { orderId: args.orderId, number, status: "processing" };
   },
 });
 
 /**
- * Phase 8.1 — cancel a pending order before payment completes:
- * release the inventory hold, mark payment cancelled (or failed) and
- * the order cancelled. Owner or admin.
+ * Cancel a pending order before payment completes — owner or admin.
  */
 export const cancelPending = mutation({
   args: {
@@ -447,59 +587,36 @@ export const cancelPending = mutation({
     paymentStatus: v.union(v.literal("cancelled"), v.literal("failed")),
     note: v.optional(v.string()),
   },
-  handler: async (ctx, { orderId, paymentStatus, note }) => {
+  handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const order = await ctx.db.get(orderId);
+    const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.userId !== user._id && user.role !== "admin") {
       throw new Error("FORBIDDEN");
     }
-    if (order.status !== "pending") {
-      throw new Error(`ORDER_NOT_PENDING:${order.status}`);
-    }
-
-    const reservations = await ctx.db
-      .query("inventory_reservations")
-      .withIndex("by_order", (q) => q.eq("orderId", orderId))
-      .collect();
-    for (const reservation of reservations) {
-      await releaseReservation(ctx, reservation, "cancelled");
-    }
-
-    const now = Date.now();
-    await ctx.db.patch(orderId, { status: "cancelled", paymentStatus });
-    await ctx.db.insert("order_status_history", {
-      orderId,
-      status: "cancelled",
-      note: note ?? (paymentStatus === "failed" ? "پرداخت ناموفق" : "انصراف از پرداخت"),
-      at: now,
+    const { number } = await cancelOrder(
+      ctx,
+      args.orderId,
+      args.paymentStatus,
+      args.note
+    );
+    await audit(ctx, user, "order.cancel", "orders", args.orderId, {
+      paymentStatus: args.paymentStatus,
+      number,
     });
-
-    await audit(ctx, user, "order.cancel", "orders", orderId, { paymentStatus });
-    await recordNotification(ctx, {
-      userId: user._id,
-      kind: "order",
-      title: paymentStatus === "failed" ? "پرداخت ناموفق" : "سفارش لغو شد",
-      body:
-        paymentStatus === "failed"
-          ? `پرداخت سفارش ${order.number} ناموفق بود. موجودی رزرو شده آزاد شد.`
-          : `سفارش ${order.number} لغو شد. موجودی رزرو شده آزاد شد.`,
-      link: "/dashboard",
-    });
-
-    return { orderId, number: order.number, status: "cancelled" };
+    return { orderId: args.orderId, number, status: "cancelled" };
   },
 });
 
 /**
- * Phase 8.1 — refund a paid order (admin): mark payment refunded,
- * return inventory to stock, move the order to `returning`.
+ * Refund a paid order (admin): mark payment refunded, return
+ * inventory to stock, move the order to `returning`.
  */
 export const refund = mutation({
   args: { orderId: v.id("orders"), note: v.optional(v.string()) },
-  handler: async (ctx, { orderId, note }) => {
+  handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_orders");
-    const order = await ctx.db.get(orderId);
+    const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.paymentStatus !== "paid") {
       throw new Error(`PAYMENT_NOT_PAID:${order.paymentStatus}`);
@@ -507,7 +624,7 @@ export const refund = mutation({
 
     const items = await ctx.db
       .query("order_items")
-      .withIndex("by_order", (q) => q.eq("orderId", orderId))
+      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
       .collect();
     for (const item of items) {
       const product = await resolveProduct(ctx, item.productId);
@@ -525,15 +642,20 @@ export const refund = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(orderId, { paymentStatus: "refunded", status: "returning" });
-    await ctx.db.insert("order_status_history", {
-      orderId,
+    await ctx.db.patch(args.orderId, {
+      paymentStatus: "refunded",
       status: "returning",
-      note: note ?? "بازگشت وجه انجام شد — موجودی به انبار برگشت",
+    });
+    await ctx.db.insert("order_status_history", {
+      orderId: args.orderId,
+      status: "returning",
+      note: args.note ?? "بازگشت وجه انجام شد — موجودی به انبار برگشت",
       at: now,
     });
 
-    await audit(ctx, user, "payment.refund", "orders", orderId, { number: order.number });
+    await audit(ctx, user, "payment.refund", "orders", args.orderId, {
+      number: order.number,
+    });
     if (order.userId) {
       await recordNotification(ctx, {
         userId: order.userId,
@@ -543,7 +665,7 @@ export const refund = mutation({
         link: "/dashboard",
       });
     }
-    return { orderId, number: order.number, paymentStatus: "refunded" };
+    return { orderId: args.orderId, number: order.number, paymentStatus: "refunded" };
   },
 });
 
@@ -578,7 +700,6 @@ export const updateStatus = mutation({
       trackingNumber: args.trackingNumber,
     });
 
-    // Notify on customer-facing milestones.
     if (order.userId && (args.status === "shipped" || args.status === "delivered")) {
       await recordNotification(ctx, {
         userId: order.userId,
