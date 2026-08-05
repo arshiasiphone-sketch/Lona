@@ -32,6 +32,7 @@ const sections: { title: string; links: { label: string; to: string }[] }[] = [
     title: "خدمات مشتریان",
     links: [
       { label: "شرایط ارسال", to: "/shipping-policy" },
+      { label: "سیاست پرداخت", to: "/payment-policy" },
       { label: "بازگشت کالا", to: "/refund-policy" },
       { label: "راهنمای سایز", to: "/about#sizing" },
       { label: "تماس با ما", to: "/contact" },
@@ -42,6 +43,7 @@ const sections: { title: string; links: { label: string; to: string }[] }[] = [
     links: [
       { label: "قوانین و مقررات", to: "/rules" },
       { label: "حریم خصوصی", to: "/privacy" },
+      { label: "سیاست پرداخت", to: "/payment-policy" },
       { label: "شرایط بازگشت کالا", to: "/refund-policy" },
       { label: "سوالات متداول", to: "/faq" },
     ],
@@ -197,14 +199,14 @@ export function Footer() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
-            {store?.phone && (
+            {(store?.landlinePhone || store?.mobilePhone || store?.phone) && (
               <a
-                href={`tel:${store.phone}`}
+                href={`tel:${store.landlinePhone || store.mobilePhone || store.phone}`}
                 dir="ltr"
                 className="inline-flex items-center gap-1.5 text-ink-soft hover:text-ink"
               >
                 <Phone className="h-3.5 w-3.5" />
-                {store.phone}
+                {store.landlinePhone || store.mobilePhone || store.phone}
               </a>
             )}
             {store?.address && (
@@ -215,17 +217,13 @@ export function Footer() {
             )}
             {/* eNamad placeholder — official badge drops in after
                 issuance; the admin stores the code in settings. */}
-            <a
-              href="https://trustseal.enamad.ir/"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-16 w-16 items-center justify-center rounded-xl hairline bg-white/60 text-center text-[8px] leading-tight text-ink-muted transition hover:bg-white"
-              title={"نماد اعتماد الکترونیکی" + (store?.enamadCode ? ` — کد ${store.enamadCode}` : "")}
-            >
-              اینماد
-              <br />
-              eNamad
-            </a>
+            <div className="flex items-center gap-2" aria-label="مجوزها و امنیت پرداخت">
+              {(["اینماد", "ساماندهی", "SSL"] as const).map((badge) => (
+                <span key={badge} className="inline-flex h-16 min-w-16 items-center justify-center rounded-xl hairline bg-white/60 px-2 text-center text-[8px] leading-tight text-ink-muted" title={badge === "اینماد" && store?.enamadCode ? `نماد اعتماد، کد ${store.enamadCode}` : `${badge} — فضای آماده برای مجوز رسمی`}>
+                  {badge}<br />{badge === "SSL" ? "امن" : "آماده"}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -246,6 +244,9 @@ export function Footer() {
             </Link>
             <Link to="/refund-policy" className="hover:text-ink">
               بازگشت کالا
+            </Link>
+            <Link to="/payment-policy" className="hover:text-ink">
+              پرداخت
             </Link>
             <select
               className="rounded-full hairline bg-transparent px-3 py-1 text-xs text-ink-muted"

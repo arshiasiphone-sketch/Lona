@@ -108,7 +108,7 @@ export const getStoreInfo = query({
       legalName: (value.legalName as string) ?? "",
       registrationNumber: (value.registrationNumber as string) ?? "",
       economicCode: (value.economicCode as string) ?? "",
-      phone: (value.phone as string) ?? "",
+      phone: (value.phone as string) ?? (value.landlinePhone as string) ?? "",
       landlinePhone: (value.landlinePhone as string) ?? (value.phone as string) ?? "",
       mobilePhone: (value.mobilePhone as string) ?? "",
       email: (value.email as string) ?? "",

@@ -55,14 +55,6 @@ export default function Settings() {
   const rows = useQuery(api.admin_settings.getAll, {}) ?? [];
   const upsert = useMutation(api.admin_settings.upsertSetting);
 
-  const lookup = React.useCallback(
-    (key: string) => {
-      const row = (rows as SettingRow[]).find((r) => r.key === key);
-      return row?.value as Record<string, unknown> | undefined;
-    },
-    [rows],
-  );
-
   const [tab, setTab] = React.useState<
     "brand" | "store" | "seo" | "images" | "notifications" | "shipping"
   >("brand");
@@ -262,6 +254,11 @@ function StorePanel({
   const [shopName, setShopName] = React.useState(
     (value.shopName as string) ?? "لونا"
   );
+  const [legalName, setLegalName] = React.useState((value.legalName as string) ?? "");
+  const [registrationNumber, setRegistrationNumber] = React.useState((value.registrationNumber as string) ?? "");
+  const [economicCode, setEconomicCode] = React.useState((value.economicCode as string) ?? "");
+  const [landlinePhone, setLandlinePhone] = React.useState((value.landlinePhone as string) ?? (value.phone as string) ?? "");
+  const [mobilePhone, setMobilePhone] = React.useState((value.mobilePhone as string) ?? "");
   const [phone, setPhone] = React.useState((value.phone as string) ?? "");
   const [email, setEmail] = React.useState((value.email as string) ?? "");
   const [address, setAddress] = React.useState((value.address as string) ?? "");
@@ -284,6 +281,11 @@ function StorePanel({
   );
   React.useEffect(() => {
     setShopName((value.shopName as string) ?? "لونا");
+    setLegalName((value.legalName as string) ?? "");
+    setRegistrationNumber((value.registrationNumber as string) ?? "");
+    setEconomicCode((value.economicCode as string) ?? "");
+    setLandlinePhone((value.landlinePhone as string) ?? (value.phone as string) ?? "");
+    setMobilePhone((value.mobilePhone as string) ?? "");
     setPhone((value.phone as string) ?? "");
     setEmail((value.email as string) ?? "");
     setAddress((value.address as string) ?? "");
@@ -316,14 +318,17 @@ function StorePanel({
             className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
           />
         </Field>
-        <Field label="تلفن" icon={Phone}>
-          <input
-            dir="ltr"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+98 21 8877 0000"
-            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
-          />
+        <Field label="نام حقوقی">
+          <input dir="rtl" value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="نام ثبت‌شدهٔ شرکت یا شخص حقوقی" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
+        <Field label="تلفن ثابت" icon={Phone}>
+          <input dir="ltr" value={landlinePhone} onChange={(e) => setLandlinePhone(e.target.value)} placeholder="۰۲۱-۱۲۳۴۵۶۷۸" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
+        <Field label="تلفن همراه" icon={Phone}>
+          <input dir="ltr" value={mobilePhone} onChange={(e) => setMobilePhone(e.target.value)} placeholder="۰۹۱۲۱۲۳۴۵۶۷" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
+        <Field label="تلفن قدیمی (سازگاری)" icon={Phone}>
+          <input dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="برای سفارش‌های قدیمی" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
         </Field>
         <Field label="ایمیل پشتیبانی" icon={Mail}>
           <input
@@ -347,21 +352,21 @@ function StorePanel({
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="شناسه ملی" icon={BadgeCheck}>
+          <input dir="ltr" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder="شناسه ملی" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
+        <Field label="شماره ثبت">
+          <input dir="ltr" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} placeholder="شماره ثبت" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
+        <Field label="کد اقتصادی">
+          <input dir="ltr" value={economicCode} onChange={(e) => setEconomicCode(e.target.value)} placeholder="کد اقتصادی" className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none" />
+        </Field>
         <Field label="کد پستی" icon={MapPin}>
           <input
             dir="ltr"
             value={postalCode}
             onChange={(e) => setPostalCode(e.target.value)}
             placeholder="۱۹۸۳۹۴۸۸۱۲"
-            className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
-          />
-        </Field>
-        <Field label="شناسه ملی" icon={BadgeCheck}>
-          <input
-            dir="ltr"
-            value={nationalId}
-            onChange={(e) => setNationalId(e.target.value)}
-            placeholder="۱۰۱۰۱۲۳۴۵۶"
             className="w-full rounded-2xl border border-edge bg-canvas/60 px-4 py-2.5 text-sm text-ink focus:border-primary focus:outline-none"
           />
         </Field>
@@ -414,7 +419,7 @@ function StorePanel({
       <SaveBar
         busy={pending === "store"}
         onSave={() =>
-          onSave({ shopName, phone, email, address, postalCode, nationalId, enamadCode, hours, social })
+          onSave({ shopName, legalName, registrationNumber, economicCode, phone, landlinePhone, mobilePhone, email, address, postalCode, nationalId, enamadCode, hours, social })
         }
       />
     </Section>

@@ -114,12 +114,21 @@ export default function Invoice() {
           <div>
             <p className="type-eyebrow text-ink-muted">فروشگاه</p>
             <div className="mt-2 space-y-1 text-ink-soft">
+              {store?.legalName && <p className="text-ink">{store.legalName}</p>}
               {store?.address && <p>{store.address}</p>}
-              {store?.phone && <p dir="ltr" className="text-left">{store.phone}</p>}
-              {store?.email && <p dir="ltr" className="text-left">{store.email}</p>}
-              {store?.nationalId && (
-                <p>شناسه ملی: {store.nationalId}</p>
+              {(store?.landlinePhone || store?.mobilePhone || store?.phone) && (
+                <p dir="ltr" className="text-left">
+                  {store.landlinePhone || store.phone || store.mobilePhone}
+                </p>
               )}
+              {store?.mobilePhone && store.mobilePhone !== (store.landlinePhone || store.phone) && (
+                <p dir="ltr" className="text-left">همراه: {store.mobilePhone}</p>
+              )}
+              {store?.email && <p dir="ltr" className="text-left">{store.email}</p>}
+              {store?.postalCode && <p>کد پستی: {store.postalCode}</p>}
+              {store?.nationalId && <p>شناسه ملی: {store.nationalId}</p>}
+              {store?.registrationNumber && <p>شماره ثبت: {store.registrationNumber}</p>}
+              {store?.economicCode && <p>کد اقتصادی: {store.economicCode}</p>}
             </div>
           </div>
           <div>

@@ -93,6 +93,7 @@ export default function Checkout() {
   // Phase 8.2: gateway readiness — zarinpal when the merchant id is
   // configured server-side, otherwise the mock provider.
   const payStatus = useQuery(api.payments.status, {});
+  const store = useQuery(api.admin_settings.getStoreInfo, {});
 
   // Phase 7.5: prices must mirror Convex, not the static catalog.
   const liveProducts = useProducts();
@@ -569,10 +570,11 @@ export default function Checkout() {
                       error={errors.cvc}
                     />
                   </div>
-                  <p className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
-                    <Lock className="h-3.5 w-3.5" />
-                    رمزنگاری سرتاسری. اطلاعات کارت شما ذخیره نمی‌شود. با ثبت سفارش، موجودی برای شما رزرو می‌شود.
-                  </p>
+                  <div className="mt-3 grid gap-2 text-xs text-ink-muted">
+                    <p className="flex items-center gap-2"><Lock className="h-3.5 w-3.5" />پرداخت در محیط امن انجام می‌شود و اطلاعات کارت شما ذخیره نمی‌شود.</p>
+                    <p className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5" />حفظ حریم خصوصی و بسته‌بندی محرمانهٔ سفارش.</p>
+                    <Link to="/payment-policy" className="text-ink underline">مطالعهٔ سیاست پرداخت و بازگشت وجه</Link>
+                  </div>
                 </div>
               )}
 
@@ -664,6 +666,12 @@ export default function Checkout() {
                 </li>
               ))}
             </ul>
+            <div className="mt-5 grid gap-2 rounded-2xl border border-edge/70 bg-canvas-soft px-4 py-3 text-xs leading-6 text-ink-soft">
+              <p className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary" />پرداخت امن و تأییدشده</p>
+              <p>ارسال محرمانه و امکان پیگیری سفارش از حساب کاربری.</p>
+              {store?.landlinePhone || store?.mobilePhone || store?.phone ? <p dir="ltr" className="text-right">پشتیبانی: {store.landlinePhone || store.mobilePhone || store.phone}</p> : null}
+              <Link to="/refund-policy" className="text-ink underline">شرایط بازگشت کالا</Link>
+            </div>
             <dl className="mt-6 space-y-3 border-t border-edge/70 pt-6 text-sm">
               <div className="flex items-baseline justify-between">
                 <dt className="text-ink-soft">جمع جزء</dt>

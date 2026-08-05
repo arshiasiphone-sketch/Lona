@@ -158,7 +158,7 @@ function jsonLd(ld: object) {
 
 /** Product + optional Offer + AggregateRating */
 export function ProductJsonLd(p: ProductSchema) {
-  const ld: any = {
+  const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.name,
@@ -238,7 +238,7 @@ export function LocalBusinessJsonLd(s: StoreInfo) {
   if (s.phone) contact.telephone = s.phone;
   if (s.email) contact.email = s.email;
 
-  const ld: any = {
+  const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": ["LocalBusiness", "ClothingStore"],
     name,
@@ -247,7 +247,13 @@ export function LocalBusinessJsonLd(s: StoreInfo) {
     contactPoint: contact,
   };
   if (s.address) ld.address = { "@type": "PostalAddress", streetAddress: s.address };
-  if (s.postalCode) ld.address = { ...(ld.address ?? {}), postalCode: s.postalCode };
+  if (s.postalCode) {
+    const address =
+      typeof ld.address === "object" && ld.address !== null
+        ? ld.address
+        : {};
+    ld.address = { ...address, postalCode: s.postalCode };
+  }
   if (s.hours) ld.openingHours = s.hours;
   if (s.nationalId) ld.identifier = `IR-${s.nationalId}`;
   const sameAs = Object.values(s.social ?? {}).filter(
