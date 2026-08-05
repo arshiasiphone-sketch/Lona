@@ -470,14 +470,30 @@ export const attachMedia = mutation({
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_media");
     const { contentType, size } = args;
-    if (contentType) {
-      const allowed = ["image/png", "image/jpeg", "image/webp", "image/avif"];
-      if (!allowed.includes(contentType)) {
-        throw new Error("فرمت فایل پشتیبانی نمی‌شود");
-      }
+    const metadata = await ctx.storage.getMetadata(args.storageId);
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+    if (
+      !metadata ||
+      !metadata.contentType ||
+      !allowed.includes(metadata.contentType) ||
+      !Number.isFinite(metadata.size) ||
+      metadata.size <= 0 ||
+      metadata.size > 5 * 1024 * 1024
+    ) {
+      await ctx.storage.delete(args.storageId).catch(() => {});
+      throw new Error(
+        metadata?.size && metadata.size > 5 * 1024 * 1024
+          ? "حجم تصویر زیاد است"
+          : "فرمت فایل پشتیبانی نمی‌شود",
+      );
     }
-    if (size && size > 5 * 1024 * 1024) {
-      throw new Error("حجم تصویر زیاد است");
+    if (contentType && contentType !== metadata.contentType) {
+      await ctx.storage.delete(args.storageId).catch(() => {});
+      throw new Error("فرمت فایل پشتیبانی نمی‌شود");
+    }
+    if (size !== undefined && size !== metadata.size) {
+      await ctx.storage.delete(args.storageId).catch(() => {});
+      throw new Error("فایل تصویر معتبر نیست");
     }
     const id = await ctx.db.insert("product_images", {
       productId: args.productId,

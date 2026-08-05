@@ -111,6 +111,19 @@ export const requestPayment = action({
       throw new Error("PAYMENT_RATE_LIMITED");
     }
 
+    const now = Date.now();
+    const expiresAt = now + 30 * 60 * 1000;
+    // Claim the order before the external request. This mutation is
+    // the concurrency gate that prevents two authorities being minted
+    // for one order by double-clicks or retried actions.
+    const requestReference = `REQUEST-${orderId}-${now}`;
+    await ctx.runMutation(INT.orders.claimPaymentRequest, {
+      orderId,
+      requestReference,
+      initiatedAt: now,
+      expiresAt,
+    });
+
     const body = {
       merchant_id: MERCHANT_ID,
       amount: order.totalCents, // Toman (IRT)
@@ -135,13 +148,12 @@ export const requestPayment = action({
     }
 
     const authority = json.data.authority;
-    const now = Date.now();
-    const expiresAt = now + 30 * 60 * 1000;
 
     await ctx.runMutation(INT.orders.setPaymentInitiated, {
       orderId,
       provider: "zarinpal",
       reference: authority,
+      requestReference,
       initiatedAt: now,
       expiresAt,
     });
@@ -203,7 +215,10 @@ export const verifyPayment = action({
       errors?: Array<{ code?: number; message?: string }>;
     };
 
-    if (json.data?.code === 100 && json.data.ref_id) {
+    // Zarinpal returns 100 for first-time verification and 101 when
+    // the same authority was already verified. Both are successful
+    // outcomes; the order mutation remains idempotent for retries.
+    if ((json.data?.code === 100 || json.data?.code === 101) && json.data.ref_id) {
       // Amount + authority verified by the gateway — finalize.
       await ctx.runMutation(INT.orders.confirmFromPayment, {
         orderId,

@@ -17,6 +17,8 @@
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requirePermission, audit } from "./admin";
 
 /* ────────────────────────────────────────────────────────────
@@ -35,13 +37,32 @@ const ALLOWED_IMAGE_TYPES = new Set([
 /** Library/brand assets may be larger than product crops (10 MB). */
 const MAX_LIBRARY_BYTES = 10 * 1024 * 1024;
 
-function assertImageMeta(contentType?: string, size?: number) {
-  if (contentType && !ALLOWED_IMAGE_TYPES.has(contentType)) {
+async function assertImageMeta(
+  ctx: MutationCtx,
+  storageId: Id<"_storage">,
+  claimedType?: string,
+  claimedSize?: number,
+) {
+  // The client-provided MIME and size are hints only. Convex storage
+  // metadata is the server-side source of truth after the upload.
+  const metadata = await ctx.storage.getMetadata(storageId);
+  if (!metadata || !metadata.contentType || !ALLOWED_IMAGE_TYPES.has(metadata.contentType)) {
+    await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("فرمت فایل پشتیبانی نمی‌شود");
   }
-  if (size && size > MAX_LIBRARY_BYTES) {
+  if (!Number.isFinite(metadata.size) || metadata.size <= 0 || metadata.size > MAX_LIBRARY_BYTES) {
+    await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("حجم تصویر زیاد است");
   }
+  if (claimedType && claimedType !== metadata.contentType) {
+    await ctx.storage.delete(storageId).catch(() => {});
+    throw new Error("فرمت فایل پشتیبانی نمی‌شود");
+  }
+  if (claimedSize !== undefined && claimedSize !== metadata.size) {
+    await ctx.storage.delete(storageId).catch(() => {});
+    throw new Error("فایل تصویر معتبر نیست");
+  }
+  return { contentType: metadata.contentType, size: metadata.size };
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -85,9 +106,16 @@ export const attachToLibrary = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_media");
-    assertImageMeta(args.contentType, args.size);
+    const fileMeta = await assertImageMeta(
+      ctx,
+      args.storageId,
+      args.contentType,
+      args.size,
+    );
     const id = await ctx.db.insert("media_library", {
       ...args,
+      contentType: fileMeta.contentType,
+      size: fileMeta.size,
       uploadedAt: Date.now(),
     });
     const url = await ctx.storage.getUrl(args.storageId);
@@ -187,11 +215,21 @@ export const replaceLibraryAsset = mutation({
   },
   handler: async (ctx, { id, storageId, ...meta }) => {
     const user = await requirePermission(ctx, "manage_media");
-    assertImageMeta(meta.contentType, meta.size);
+    const fileMeta = await assertImageMeta(
+      ctx,
+      storageId,
+      meta.contentType,
+      meta.size,
+    );
     const row = await ctx.db.get(id);
     if (!row) return null;
     const oldStorage = row.storageId;
-    await ctx.db.patch(id, { storageId, ...meta });
+    await ctx.db.patch(id, {
+      storageId,
+      ...meta,
+      contentType: fileMeta.contentType,
+      size: fileMeta.size,
+    });
     if (oldStorage && oldStorage !== storageId) {
       await ctx.storage.delete(oldStorage);
     }

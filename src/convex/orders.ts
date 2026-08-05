@@ -146,18 +146,88 @@ export const getUserById = internalQuery({
   handler: async (ctx, { id }) => ctx.db.get(id),
 });
 
-/** Persist gateway initiation (authority/reference) onto an order. */
-export const setPaymentInitiated = internalMutation({
+/**
+ * Atomically claim the right to call a gateway for this order.
+ * Actions can run concurrently, so the claim must happen in a
+ * mutation before any external request is made.
+ */
+export const claimPaymentRequest = internalMutation({
   args: {
     orderId: v.id("orders"),
-    provider: v.string(),
-    reference: v.string(),
+    requestReference: v.string(),
     initiatedAt: v.number(),
     expiresAt: v.number(),
   },
   handler: async (ctx, args) => {
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.status !== "pending") {
+      throw new Error(`ORDER_NOT_PENDING:${order.status}`);
+    }
+    if (
+      order.paymentStatus === "initiated" ||
+      order.paymentStatus === "redirected"
+    ) {
+      throw new Error("PAYMENT_IN_PROGRESS");
+    }
+    await ctx.db.patch(args.orderId, {
+      paymentProvider: "zarinpal",
+      paymentReference: args.requestReference,
+      paymentStatus: "initiated",
+      paymentInitiatedAt: args.initiatedAt,
+      paymentExpiresAt: args.expiresAt,
+    });
+    return args.requestReference;
+  },
+});
+
+/**
+ * Release a gateway-request claim when the external request failed before
+ * an authority was persisted. This keeps a transient network error from
+ * leaving the order permanently pointed at a non-existent REQUEST-* URL.
+ */
+export const releasePaymentRequest = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    requestReference: v.string(),
+  },
+  handler: async (ctx, { orderId, requestReference }) => {
+    const order = await ctx.db.get(orderId);
+    if (!order) return false;
+    if (
+      order.status !== "pending" ||
+      order.paymentStatus !== "initiated" ||
+      order.paymentReference !== requestReference
+    ) {
+      return false;
+    }
+    await ctx.db.patch(orderId, {
+      paymentStatus: "pending",
+      paymentProvider: "zarinpal",
+      paymentReference: undefined,
+      paymentInitiatedAt: undefined,
+      paymentExpiresAt: undefined,
+    });
+    return true;
+  },
+});
+
+/** Persist the real gateway authority after a successful request. */
+export const setPaymentInitiated = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    provider: v.string(),
+    reference: v.string(),
+    requestReference: v.string(),
+    initiatedAt: v.number(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.paymentReference !== args.requestReference) {
+      throw new Error("PAYMENT_STATE_CHANGED");
+    }
     await ctx.db.patch(args.orderId, {
       paymentProvider: args.provider,
       paymentReference: args.reference,
@@ -255,6 +325,13 @@ export async function finalizePaidOrder(
 ): Promise<{ number: string }> {
   const order = await ctx.db.get(orderId);
   if (!order) throw new Error("ORDER_NOT_FOUND");
+  // Gateway callbacks can be retried or race. Once settlement is
+  // complete, return the original result without consuming stock or
+  // coupons a second time. Fulfilment may already have advanced the
+  // order beyond `processing` by the time a duplicate callback arrives.
+  if (order.paymentStatus === "paid") {
+    return { number: order.number };
+  }
   if (order.status !== "pending") {
     throw new Error(`ORDER_NOT_PENDING:${order.status}`);
   }
@@ -326,6 +403,11 @@ export async function cancelOrder(
 ): Promise<{ number: string }> {
   const order = await ctx.db.get(orderId);
   if (!order) throw new Error("ORDER_NOT_FOUND");
+  // Cancellation callbacks are also retryable. Returning here keeps a
+  // second callback from inserting duplicate history or touching stock.
+  if (order.status === "cancelled" && (order.paymentStatus === "cancelled" || order.paymentStatus === "failed")) {
+    return { number: order.number };
+  }
   if (order.status !== "pending") {
     throw new Error(`ORDER_NOT_PENDING:${order.status}`);
   }
@@ -486,7 +568,7 @@ export const place = mutation({
       number,
       status: "pending",
       placedAt,
-      currency: "USD",
+      currency: "IRT",
       subtotalCents: subtotal,
       discountCents: discount,
       shippingCents: shippingCost,

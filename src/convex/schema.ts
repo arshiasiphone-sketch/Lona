@@ -390,7 +390,7 @@ const schema = defineSchema(
       number: v.string(), // Æ-24102, etc.
       status: vOrderStatus,
       placedAt: v.number(),
-      currency: v.literal("USD"),
+      currency: v.literal("IRT"),
       subtotalCents: v.number(),
       discountCents: v.number(),
       shippingCents: v.number(),

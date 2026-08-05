@@ -26,8 +26,11 @@ type Phase = "verifying" | "paid" | "failed" | "missing";
 export default function CheckoutCallback() {
   const params = useParams<{ orderId: string }>();
   const query = new URLSearchParams(window.location.search);
-  const authority = query.get("authority") ?? "";
-  const gatewayStatus = query.get("status") ?? "";
+  // Zarinpal's callback uses title-case parameter names. Keep the
+  // lowercase fallback for older/test callbacks, but never rely on the
+  // visible status for settlement — the server action verifies it.
+  const authority = query.get("Authority") ?? query.get("authority") ?? "";
+  const gatewayStatus = query.get("Status") ?? query.get("status") ?? "";
   const verify = useAction(api.payments.verifyPayment);
   const { clear } = useCart();
   const sessionId = useDeviceSession();
