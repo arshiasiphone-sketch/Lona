@@ -1,5 +1,5 @@
 /**
- * Phase 5.2 — Admin settings + homepage content blocks.
+ * Phase 5.2 — Admin settings and homepage content blocks.
  *
  * Stores the entire homepage composition as a single JSON array
  * row in the existing `settings` table. Each block is keyed:
@@ -105,7 +105,12 @@ export const getStoreInfo = query({
         : {};
     return {
       shopName: (value.shopName as string) ?? "لونا",
+      legalName: (value.legalName as string) ?? "",
+      registrationNumber: (value.registrationNumber as string) ?? "",
+      economicCode: (value.economicCode as string) ?? "",
       phone: (value.phone as string) ?? "",
+      landlinePhone: (value.landlinePhone as string) ?? (value.phone as string) ?? "",
+      mobilePhone: (value.mobilePhone as string) ?? "",
       email: (value.email as string) ?? "",
       address: (value.address as string) ?? "",
       postalCode: (value.postalCode as string) ?? "",
@@ -114,6 +119,38 @@ export const getStoreInfo = query({
       social: (value.social as Record<string, string>) ?? {},
       enamadCode: (value.enamadCode as string) ?? "",
     };
+  },
+});
+
+export const submitContactMessage = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    subject: v.string(),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const name = args.name.trim();
+    const email = args.email.trim().toLowerCase();
+    const subject = args.subject.trim();
+    const message = args.message.trim();
+    const phone = args.phone?.trim();
+    if (name.length < 2 || name.length > 100) throw new Error("CONTACT_NAME_INVALID");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error("CONTACT_EMAIL_INVALID");
+    if (subject.length < 2 || subject.length > 120) throw new Error("CONTACT_SUBJECT_INVALID");
+    if (message.length < 10 || message.length > 4000) throw new Error("CONTACT_MESSAGE_INVALID");
+    if (phone && !/^[+\\d\\s().-]{7,25}$/.test(phone)) throw new Error("CONTACT_PHONE_INVALID");
+    await ctx.db.insert("contact_messages", {
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      createdAt: Date.now(),
+      status: "new",
+    });
+    return { accepted: true };
   },
 });
 

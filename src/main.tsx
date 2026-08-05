@@ -41,6 +41,7 @@ const PrivacyPage = lazy(() => import("./pages/Privacy.tsx"));
 const FAQPage = lazy(() => import("./pages/FAQ.tsx"));
 const ReturnsPage = lazy(() => import("./pages/Returns.tsx"));
 const ShippingPage = lazy(() => import("./pages/Shipping.tsx"));
+const PaymentPolicyPage = lazy(() => import("./pages/PaymentPolicy.tsx"));
 
 // Admin (Phase 5) — kept in their own lazy chunk so the storefront
 // bundle doesn't pay for them.
@@ -238,6 +239,7 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/refund-policy" element={<ReturnsPage />} />
                         <Route path="/shipping" element={<ShippingPage />} />
                         <Route path="/shipping-policy" element={<ShippingPage />} />
+                        <Route path="/payment-policy" element={<PaymentPolicyPage />} />
                         <Route path="/contact" element={<ContactPage />} />
                       </Route>
 

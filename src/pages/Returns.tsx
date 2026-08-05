@@ -1,39 +1,13 @@
-import { Link } from "react-router";
-import { usePageMeta } from "@/lib/seo";
+import { LegalPage } from "@/components/global/LegalPage";
+
+const sections = [
+  { id: "eligibility", title: "مهلت و شرایط بازگشت", paragraphs: ["درخواست بازگشت یا تعویض باید حداکثر تا ۷ روز پس از تحویل ثبت شود. کالا باید استفاده‌نشده، تمیز، بدون آثار عطر یا شست‌وشو، همراه با بسته‌بندی و برچسب‌های اصلی باشد. بررسی نهایی سلامت کالا پس از دریافت انجام می‌شود."] },
+  { id: "size", title: "تعویض سایز", paragraphs: ["برای لباس‌هایی که از نظر بهداشتی قابل بررسی هستند، تعویض سایز در صورت موجود بودن سایز جایگزین انجام می‌شود. مشتری باید پیش از ارسال با پشتیبانی هماهنگ کند و کالا را مطابق دستورالعمل بسته‌بندی نماید."] },
+  { id: "hygiene", title: "محصولات غیرقابل بازگشت", paragraphs: ["به دلیل الزامات بهداشتی، شورت، بادی، جوراب، اکسسوری‌های تماس مستقیم با بدن و هر کالایی که پلمب یا لایهٔ محافظ آن باز شده باشد قابل بازگشت نیست. کالای سفارشی و کالای آسیب‌دیده بر اثر استفاده نیز شامل بازگشت نمی‌شود."] },
+  { id: "process", title: "فرآیند ثبت درخواست", paragraphs: ["در صفحهٔ تماس، شماره سفارش، دلیل درخواست و عکس وضعیت کالا را ارسال کنید. پشتیبانی پس از بررسی اولیه کد پیگیری صادر می‌کند. ارسال بدون هماهنگی یا بدون کد پیگیری ممکن است پذیرفته نشود."] },
+  { id: "refund", title: "استرداد وجه", paragraphs: ["پس از تأیید سلامت کالا، مبلغ کالای پذیرفته‌شده به همان روش پرداخت یا حساب اعلام‌شده توسط صاحب سفارش مسترد می‌شود. زمان واریز بانکی تابع چرخهٔ بانکی است و پشتیبانی زمان ثبت درخواست را اطلاع می‌دهد. هزینهٔ ارسال در موارد مغایرت یا ایراد تأییدشده بر عهدهٔ لوناست."] },
+];
 
 export default function Returns() {
-  usePageMeta({ title: "شرایط بازگشت کالا", description: "شرایط و مراحل بازگشت و تعویض کالا در فروشگاه آنلاین لونا", canonical: `${window.location.origin}/returns` });
-
-  return (
-    <div className="mx-auto max-w-3xl px-6 pt-16 pb-24 lg:px-10 lg:pt-24">
-      <p className="type-eyebrow text-ink-muted">کمک</p>
-      <h1 className="mt-3 font-display text-5xl leading-[1.02] text-ink lg:text-6xl">شرایط بازگشت کالا</h1>
-      <div className="mt-12 space-y-10 text-sm leading-relaxed text-ink-soft">
-        <section>
-          <h2 className="font-display text-2xl text-ink">شرایط بازگشت</h2>
-          <p className="mt-3">شما می‌توانید محصول را تا ۷ روز پس از دریافت، در صورت عدم استفاده و در بسته‌بندی اصلی بازگردانید. هزینهٔ ارسال بازگشت بر عهدهٔ لوناست.</p>
-        </section>
-        <section>
-          <h2 className="font-display text-2xl text-ink">موارد استثنا</h2>
-          <p className="mt-3">به دلایل بهداشتی، محصولات زیر قابل بازگشت نیستند: شورت، بادی، و محصولاتی که بسته‌بندی اصلی آن‌ها باز شده باشد. همچنین محصولات حراج و سفارش‌های ویژه قابل بازگشت نیستند.</p>
-        </section>
-        <section>
-          <h2 className="font-display text-2xl text-ink">مراحل بازگشت</h2>
-          <ol className="mt-3 list-inside list-decimal space-y-2">
-            <li>با پشتیبانی ما تماس بگیرید یا از طریق حساب کاربری درخواست بازگشت ثبت کنید.</li>
-            <li>کد بازگشت دریافت کرده و محصول را در بسته‌بندی اصلی آماده کنید.</li>
-            <li>پیک لونا در زمان هماهنگ‌شده برای تحویل مراجعه می‌کند.</li>
-            <li>پس از بررسی سلامت کالا در کارگاه، بازپرداخت ظرف ۷۲ ساعت انجام می‌شود.</li>
-          </ol>
-        </section>
-        <section>
-          <h2 className="font-display text-2xl text-ink">تعویض</h2>
-          <p className="mt-3">تعویض سایز یا رنگ در صورت موجودی امکان‌پذیر است و هزینهٔ ارسال رفت‌وبرگشت رایگان می‌باشد.</p>
-        </section>
-      </div>
-      <Link to="/shop" className="mt-12 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary">
-        بازگشت به فروشگاه
-      </Link>
-    </div>
-  );
+  return <LegalPage eyebrow="خدمات مشتریان" title="شرایط بازگشت و تعویض کالا" description="راهنمای شفاف بازگشت و تعویض لباس زیر، با رعایت ملاحظات بهداشتی و احترام به حقوق مشتری." sections={sections} />;
 }

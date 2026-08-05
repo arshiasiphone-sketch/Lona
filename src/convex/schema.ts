@@ -16,7 +16,7 @@ import {
 } from "./validators";
 
 /**
- * ÆON data architecture — schema-first.
+ * LONA data architecture — schema-first.
  *
  * Every table has `_id` + `_creationTime` (Convex-managed). We add
  * `createdAt` / `updatedAt` on write paths where the UI needs an
@@ -558,6 +558,16 @@ const schema = defineSchema(
       updatedAt: v.number(),
       updatedBy: v.optional(v.id("users")),
     }).index("by_key", ["key"]),
+
+    contact_messages: defineTable({
+      name: v.string(),
+      email: v.string(),
+      phone: v.optional(v.string()),
+      subject: v.string(),
+      message: v.string(),
+      createdAt: v.number(),
+      status: v.union(v.literal("new"), v.literal("read"), v.literal("replied")),
+    }).index("by_createdAt", ["createdAt"]),
 
     /**
      * Phase 5.2 — Media library assets that are NOT tied to a
