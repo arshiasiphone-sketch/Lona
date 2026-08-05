@@ -54,6 +54,11 @@ export function Footer() {
   const images = useHomepageImages();
   // Phase 8.2 — store legal/contact info from admin settings.
   const store = useQuery(api.admin_settings.getStoreInfo, {});
+  // Phase 8.2 — keep the trust copy honest: only claim the Zarinpal
+  // gateway once the merchant id is configured in the Keys tab.
+  const payment = useQuery(api.payments.status, {});
+  const paymentLabel =
+    payment?.mode === "zarinpal" ? "پرداخت امن زرین‌پال" : "پرداخت امن آنلاین";
 
   return (
     <footer className="relative mt-32 overflow-hidden">
@@ -180,7 +185,7 @@ export function Footer() {
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-xs text-ink-soft">
             <span className="inline-flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              پرداخت امن زرین‌پال
+              {paymentLabel}
             </span>
             <span className="inline-flex items-center gap-2">
               <BadgeCheck className="h-4 w-4 text-primary" />
