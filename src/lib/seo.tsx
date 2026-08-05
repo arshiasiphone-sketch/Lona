@@ -45,10 +45,15 @@ function setMeta(id: string, name: string, content: string, isProperty = false) 
 
 function removeStaleMeta(ids: string[]) {
   const keep = new Set(ids);
-  document.head.querySelectorAll("meta[data-seo-id]").forEach((el) => {
-    const id = el.getAttribute("data-seo-id");
-    if (id && !keep.has(id)) el.remove();
-  });
+  // Covers <meta data-seo-id> and the <link rel=canonical data-seo-id>
+  // tag so a canonical from the previous page is removed when the next
+  // page does not define one.
+  document.head
+    .querySelectorAll("meta[data-seo-id], link[data-seo-id]")
+    .forEach((el) => {
+      const id = el.getAttribute("data-seo-id");
+      if (id && !keep.has(id)) el.remove();
+    });
 }
 
 export function usePageMeta(meta: PageMeta) {
@@ -79,15 +84,23 @@ export function usePageMeta(meta: PageMeta) {
     setMeta("twitter:image", "twitter:image", meta.ogImage ?? DEFAULT_IMAGE);
     ids.push("twitter:card", "twitter:title", "twitter:description", "twitter:image");
 
-    // Canonical
+    // Canonical — always managed (tag gets a data-seo-id so it is
+    // included in the stale sweep); a page without a canonical clears
+    // the previous page's href instead of leaking it.
+    ids.push("canonical");
+    let link = document.querySelector(
+      "link[data-seo-id='canonical']"
+    ) as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.setAttribute("rel", "canonical");
+      link.setAttribute("data-seo-id", "canonical");
+      document.head.appendChild(link);
+    }
     if (meta.canonical) {
-      let link = document.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
-      if (!link) {
-        link = document.createElement("link");
-        link.setAttribute("rel", "canonical");
-        document.head.appendChild(link);
-      }
       link.setAttribute("href", meta.canonical);
+    } else {
+      link.removeAttribute("href");
     }
 
     // Robots

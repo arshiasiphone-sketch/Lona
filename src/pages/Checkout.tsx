@@ -120,6 +120,10 @@ export default function Checkout() {
   const [orderNumber, setOrderNumber] = useState<string>("");
   const [shippingMethod, setShippingMethod] = useState<string>("express");
   const [couponRestored, setCouponRestored] = useState(false);
+  // Phase 8.3 — price-change notice: the final amount always comes
+  // from the server, so when it differs from this page's preview we
+  // tell the customer instead of silently charging a different total.
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
 
   // ── Phase 8.1: pending payment state machine ─────────────────
   const [pending, setPending] = useState<PendingPayment | null>(null);
@@ -342,6 +346,15 @@ export default function Checkout() {
           method: method as "standard" | "express" | "white_glove",
         },
       });
+      // Phase 8.3 — the server total is authoritative. If a price or
+      // shipping cost changed between preview and placement, surface
+      // it so the customer sees the updated amount (the gateway
+      // overlay always charges `result.totalCents`).
+      if (result.totalCents !== total) {
+        setPriceNotice(
+          "قیمت برخی کالاها یا هزینه ارسال تغییر کرده است؛ مبلغ نهایی از سرور به‌روزرسانی شد."
+        );
+      }
       await startPayment(result);
     } catch (err) {
       const message = mapPlaceError((err as Error)?.message ?? "");
@@ -588,15 +601,24 @@ export default function Checkout() {
                         setStep((s) => Math.min(STEPS.length - 1, s + 1));
                       }
                     }}
-                    disabled={placing}
+                    disabled={
+                      placing ||
+                      (step === STEPS.length - 1 && payStatus === undefined)
+                    }
                     className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas transition hover:bg-primary disabled:opacity-50"
                   >
                     {placing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : step === STEPS.length - 1 && payStatus === undefined ? (
+                      "در حال بررسی درگاه…"
+                    ) : step === STEPS.length - 1 ? (
+                      "ثبت نهایی سفارش"
                     ) : (
-                      step === STEPS.length - 1 ? "ثبت نهایی سفارش" : "ادامه"
+                      "ادامه"
                     )}
-                    {!placing && <ArrowLeft className="h-4 w-4" />}
+                    {!placing && step !== STEPS.length - 1 && (
+                      <ArrowLeft className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -612,6 +634,11 @@ export default function Checkout() {
             className="glass-strong rounded-3xl p-8"
           >
             <p className="type-eyebrow text-ink-muted">سفارش شما</p>
+            {priceNotice && (
+              <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+                {priceNotice}
+              </p>
+            )}
             <ul className="mt-6 max-h-72 space-y-4 overflow-y-auto pr-2">
               {items.map((item) => (
                 <li key={`${item.product?.id}-${item.size}-${item.color}`} className="flex items-center gap-3">
@@ -921,6 +948,10 @@ function mapPlaceError(message: string): string {
     return "درخواست پرداخت تکراری است؛ کمی صبر کنید.";
   if (message.startsWith("PAYMENT_DECLINED"))
     return "پرداخت توسط درگاه رد شد. لطفاً دوباره تلاش کنید.";
+  if (message.startsWith("PAYMENT_PROVIDER_MISMATCH"))
+    return "این سفارش فقط از طریق درگاه پرداخت قابل تأیید است؛ امکان تأیید دستی وجود ندارد.";
+  if (message.startsWith("ZARINPAL_VERIFY_UNAVAILABLE") || message.startsWith("VERIFY_TIMEOUT"))
+    return "ارتباط با درگاه قطع شد؛ پرداخت را دوباره تأیید کنید.";
   if (message.startsWith("UNAUTHORIZED"))
     return "برای ثبت سفارش وارد حساب خود شوید.";
   return "ثبت سفارش ناموفق بود؛ لطفاً دوباره تلاش کنید.";

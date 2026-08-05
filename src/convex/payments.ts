@@ -221,15 +221,26 @@ export const verifyPayment = action({
       authority,
     };
 
-    const res = await fetch(`${API_BASE}/pg/v4/payment/verify.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const json = (await res.json()) as {
+    let json: {
       data?: { code?: number; ref_id?: string; message?: string };
       errors?: Array<{ code?: number; message?: string }>;
     };
+    try {
+      const res = await fetch(`${API_BASE}/pg/v4/payment/verify.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      json = (await res.json()) as typeof json;
+    } catch {
+      // Phase 8.3 — transient network failure. The payment may have
+      // actually gone through on Zarinpal's side, so we never mark
+      // the order failed here. Leave it pending/initiated and let the
+      // customer retry verification from the callback page; if they
+      // never come back, the reservation-expiry cron releases the
+      // hold and cancels the order automatically.
+      throw new Error("ZARINPAL_VERIFY_UNAVAILABLE");
+    }
 
     // Zarinpal returns 100 for first-time verification and 101 when
     // the same authority was already verified. Both are successful

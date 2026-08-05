@@ -40,6 +40,17 @@ import { recordNotification } from "./notifications";
 /** How long a pending payment hold stays valid before the cron sweeps it. */
 const RESERVATION_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
+/**
+ * Phase 8.3 — the gateway an order is born with. Mirrors the env
+ * check in `payments.status`: once a real Zarinpal merchant id is
+ * configured, orders are created as `zarinpal` and the public
+ * `confirmPayment` mutation refuses to settle them. Mock stays the
+ * development-only path.
+ */
+const GATEWAY_PROVIDER: "mock" | "zarinpal" = process.env.ZARINPAL_MERCHANT_ID
+  ? "zarinpal"
+  : "mock";
+
 /* Queries ------------------------------------------------------- */
 
 export const listMine = query({
@@ -587,7 +598,7 @@ export const place = mutation({
         method: args.shipping.method,
       },
       paymentStatus: "pending",
-      paymentProvider: "mock",
+      paymentProvider: GATEWAY_PROVIDER,
       paymentReference,
       paymentInitiatedAt: placedAt,
       paymentExpiresAt,
@@ -671,6 +682,13 @@ export const confirmPayment = mutation({
     if (!order) throw new Error("ORDER_NOT_FOUND");
     if (order.userId !== user._id && user.role !== "admin") {
       throw new Error("FORBIDDEN");
+    }
+    // Phase 8.3 — payment security: the customer's browser may only
+    // settle orders through the development mock provider. For real
+    // gateways the ONLY path to `paid` is the server-side gateway
+    // verification (`payments.verifyPayment` → `confirmFromPayment`).
+    if (order.paymentProvider !== "mock") {
+      throw new Error("PAYMENT_PROVIDER_MISMATCH");
     }
     const { number } = await finalizePaidOrder(
       ctx,

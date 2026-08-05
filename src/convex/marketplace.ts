@@ -40,8 +40,23 @@ export const productFeed = query({
         (sum, v) => sum + Math.max(0, v.stock - (v.reserved ?? 0)),
         0
       );
+      const images = p.imageUrls ?? [];
+
+      // Phase 8.3 — feed-completeness warnings. Torob, Digikala and
+      // Google Merchant reject or downrank rows with empty mandatory
+      // fields, so surface them here instead of silently exporting
+      // incomplete products.
+      const warnings: string[] = [];
+      if (!p.barcode) warnings.push("barcode_missing");
+      if (!p.material) warnings.push("material_missing");
+      if (images.length === 0) warnings.push("images_missing");
+      if (pv.length === 0) warnings.push("variants_missing");
+      else if (pv.some((v) => !v.sku)) warnings.push("sku_missing");
+      if (!(p.seoDescription ?? p.description)) warnings.push("description_missing");
+
       return {
         id: p.slug,
+        slug: p.slug,
         title: p.name,
         description: p.seoDescription ?? p.description,
         brand: p.brand ?? "Lona",
@@ -50,9 +65,11 @@ export const productFeed = query({
         category: p.category,
         priceCents: p.priceCents,
         currency: p.currency,
-        images: p.imageUrls ?? [],
+        images,
         availability: pv.length === 0 || availableStock > 0 ? "in_stock" : "out_of_stock",
         availableStock,
+        sku: pv[0]?.sku ?? null,
+        warnings,
         variants: pv.map((v) => ({
           sku: v.sku,
           barcode: v.sku, // barcode readiness — sku doubles as GTIN until EANs are assigned

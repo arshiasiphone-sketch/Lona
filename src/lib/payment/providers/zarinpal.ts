@@ -28,6 +28,13 @@ export interface ZarinpalProviderDeps {
     orderId: string;
     authority: string;
   }): Promise<{ status: "paid" | "failed"; refId?: string | null }>;
+  /**
+   * Base origin for the callback URL. Defaults to
+   * `window.location.origin` in the browser; injectable for
+   * non-browser environments (tests, SSR) so the adapter never
+   * touches `window` directly.
+   */
+  origin?: string;
 }
 
 export class ZarinpalProvider implements PaymentProvider {
@@ -44,7 +51,10 @@ export class ZarinpalProvider implements PaymentProvider {
     // `?Status=…&Authority=…` to the callback URL, so any query
     // params we add here would collide. The order id rides in the
     // path and the callback page re-derives it from the route.
-    const callbackUrl = `${window.location.origin}/checkout/callback/${input.orderId}`;
+    const origin =
+      this.deps.origin ??
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const callbackUrl = `${origin}/checkout/callback/${input.orderId}`;
     const result = await this.deps.request({
       orderId: input.orderId,
       callbackUrl,
