@@ -132,17 +132,33 @@ export const requestPayment = action({
       currency: "IRT",
     };
 
-    const res = await fetch(`${API_BASE}/pg/v4/payment/request.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const json = (await res.json()) as {
+    let json: {
       data?: { code?: number; authority?: string; message?: string };
       errors?: Array<{ code?: number; message?: string }>;
     };
+    try {
+      const res = await fetch(`${API_BASE}/pg/v4/payment/request.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      json = (await res.json()) as {
+        data?: { code?: number; authority?: string; message?: string };
+        errors?: Array<{ code?: number; message?: string }>;
+      };
+    } catch {
+      await ctx.runMutation(INT.orders.releasePaymentRequest, {
+        orderId,
+        requestReference,
+      });
+      throw new Error("ZARINPAL_REQUEST_UNAVAILABLE");
+    }
 
     if (json.data?.code !== 100 || !json.data.authority) {
+      await ctx.runMutation(INT.orders.releasePaymentRequest, {
+        orderId,
+        requestReference,
+      });
       const err = json.errors?.[0]?.message ?? json.data?.message ?? "UNKNOWN";
       throw new Error(`ZARINPAL_REQUEST_FAILED:${json.data?.code ?? ""}:${err}`);
     }
