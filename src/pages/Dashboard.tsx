@@ -23,10 +23,14 @@ import {
 } from "@/lib/data/catalog";
 import { ProductImage } from "@/components/ui/ProductImage";
 import { cn } from "@/lib/glass";
+import { SupportTickets } from "@/components/support/SupportTickets";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatDate, formatPrice } from "@/lib/format";
 
-const tabKeys = ["overview", "orders", "saved", "addresses", "preferences", "recent"] as const;
+const tabKeys = ["overview", "orders", "saved", "addresses", "preferences", "recent", "support", "returns", "notifications"] as const;
 type TabKey = (typeof tabKeys)[number];
 
 const tabLabels: Record<TabKey, string> = {
@@ -36,6 +40,9 @@ const tabLabels: Record<TabKey, string> = {
   addresses: "آدرس‌ها",
   preferences: "تنظیمات",
   recent: "بازدیدهای اخیر",
+  support: "پشتیبانی",
+  returns: "مرجوعی‌ها",
+  notifications: "اعلان‌ها",
 };
 
 const silhouetteFor = (cat: string) => {
@@ -70,6 +77,7 @@ export default function Dashboard() {
   const liveOrders = useOrdersByUser();
   const orders = liveOrders ?? staticMockOrders;
 
+  const returns = useQuery(api.returns.listMyReturns, {});
   const saved = wishlistIds
     .map((id) => getProductByIdFromList(liveProducts, id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
@@ -394,6 +402,17 @@ export default function Dashboard() {
           </div>
         )}
 
+        {active === "support" && <SupportTickets />}
+        {active === "notifications" && <NotificationCenter />}
+        {active === "returns" && (
+          <div className="space-y-3">
+            {!returns ? <p className="text-sm text-ink-muted">در حال بارگذاری…</p> : returns.length === 0 ? <p className="rounded-3xl border border-dashed border-edge bg-white/60 px-6 py-12 text-center text-sm text-ink-muted">مرجوعی ثبت نشده.</p> : returns.map((r) => (
+              <div key={r._id} className="rounded-2xl border border-edge bg-white px-4 py-3 flex justify-between text-sm">
+                <span>{r.type === "return" ? "مرجوعی" : "تعویض"} · {r.reason}</span><span className="text-xs text-ink-muted">{r.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {active === "recent" && (
           recent.length === 0 ? (
             <div className="glass rounded-3xl p-10 text-center">

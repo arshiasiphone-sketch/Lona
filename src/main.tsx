@@ -82,6 +82,13 @@ const CouponsPage = lazy(() =>
 const ReviewsPage = lazy(() =>
   import("./pages/admin/reviews/Reviews.tsx"),
 );
+const ReportsPage = lazy(() => import("./pages/admin/Reports.tsx"));
+const ExportsPage = lazy(() => import("./pages/admin/Exports.tsx"));
+const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
+const ActivityTimelinePage = lazy(() => import("./pages/admin/ActivityTimeline.tsx"));
+const BackupsPage = lazy(() => import("./pages/admin/Backups.tsx"));
+const AdminSupportPage = lazy(() => import("./pages/admin/SupportAdmin.tsx"));
+const AdminReturnsPage = lazy(() => import("./pages/admin/ReturnsAdmin.tsx"));
 const AdminStub = lazy(() => import("./pages/admin/_Stub.tsx"));
 const RequireRole = lazy(() =>
   import("./components/admin/RequireRole.tsx").then((m) => ({
@@ -422,6 +429,13 @@ createRoot(document.getElementById("root")!).render(
                               </Suspense>
                             }
                           />
+                          <Route path="reports" element={<Suspense fallback={<RouteLoading />}><ReportsPage /></Suspense>} />
+                          <Route path="exports" element={<Suspense fallback={<RouteLoading />}><ExportsPage /></Suspense>} />
+                          <Route path="notifications" element={<Suspense fallback={<RouteLoading />}><AdminNotificationsPage /></Suspense>} />
+                          <Route path="activity" element={<Suspense fallback={<RouteLoading />}><ActivityTimelinePage /></Suspense>} />
+                          <Route path="backups" element={<Suspense fallback={<RouteLoading />}><BackupsPage /></Suspense>} />
+                          <Route path="support" element={<Suspense fallback={<RouteLoading />}><AdminSupportPage /></Suspense>} />
+                          <Route path="returns" element={<Suspense fallback={<RouteLoading />}><AdminReturnsPage /></Suspense>} />
                           <Route
                             path=":domain"
                             element={

@@ -14,6 +14,7 @@ import { api } from "@/convex/_generated/api";
 import { LonaLogo } from "@/components/brand/LonaLogo";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice, formatDate, formatNumber } from "@/lib/money";
+import { OrderTimeline } from "@/components/order/OrderTimeline";
 
 const PAYMENT_LABEL: Record<string, string> = {
   pending: "در انتظار پرداخت",
@@ -205,6 +206,10 @@ export default function Invoice() {
           </dl>
         </div>
 
+        <div className="mt-10">
+          <h3 className="font-display text-lg text-ink mb-4">مسیر سفارش</h3>
+          <OrderTimeline status={order.status} history={order.history as never} />
+        </div>
         {/* Payment + footer */}
         <div className="mt-10 border-t border-edge pt-6 text-xs text-ink-soft">
           <div className="flex flex-wrap items-center justify-between gap-3">

@@ -84,4 +84,11 @@ export const ADMIN_NAV: Array<{
   { href: "/admin/coupons", label: "Coupons", labelFa: "کوپن‌ها", permission: "manage_coupons", group: "Content" },
   { href: "/admin/editorial", label: "Editorial", labelFa: "محتوا", permission: "manage_content", group: "Content" },
   { href: "/admin/settings", label: "Settings", labelFa: "تنظیمات", permission: "manage_settings", group: "Settings" },
+  { href: "/admin/reports", label: "Reports", labelFa: "گزارش‌ها", permission: "view_reports", group: "Operations" },
+  { href: "/admin/exports", label: "Exports", labelFa: "خروجی‌ها", permission: "view_reports", group: "Operations" },
+  { href: "/admin/notifications", label: "Notifications", labelFa: "اعلان‌ها", permission: "manage_customers", group: "Operations" },
+  { href: "/admin/activity", label: "Activity", labelFa: "فعالیت‌ها", permission: "view_reports", group: "Settings" },
+  { href: "/admin/backups", label: "Backups", labelFa: "پشتیبان‌ها", permission: "manage_settings", group: "Settings" },
+  { href: "/admin/support", label: "Support", labelFa: "پشتیبانی", permission: "manage_customers", group: "Operations" },
+  { href: "/admin/returns", label: "Returns", labelFa: "مرجوعی‌ها", permission: "manage_orders", group: "Operations" },
 ];

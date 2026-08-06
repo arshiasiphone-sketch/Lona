@@ -11,8 +11,13 @@ import {
   vProductCategory,
   vProductStatus,
   vReservationStatus,
+  vReturnStatus,
+  vReturnType,
   vRole,
   vSizeOption,
+  vTicketCategory,
+  vTicketPriority,
+  vTicketStatus,
 } from "./validators";
 
 /**
@@ -109,7 +114,10 @@ const schema = defineSchema(
         v.literal("order"),
         v.literal("back_in_stock"),
         v.literal("editorial"),
-        v.literal("system")
+        v.literal("system"),
+        v.literal("ticket"),
+        v.literal("return"),
+        v.literal("coupon")
       ),
       title: v.string(),
       body: v.string(),
@@ -618,6 +626,57 @@ const schema = defineSchema(
       order: v.number(),
       payload: v.any(),
     }).index("by_order", ["order"]),
+
+    // ============================================================
+    // PHASE 8.3 — Support / Returns / Backups
+    // ============================================================
+
+    support_tickets: defineTable({
+      userId: v.id("users"),
+      subject: v.string(),
+      category: vTicketCategory,
+      priority: vTicketPriority,
+      status: vTicketStatus,
+      body: v.string(),
+      attachments: v.optional(v.array(v.string())),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_status", ["status"]),
+
+    support_messages: defineTable({
+      ticketId: v.id("support_tickets"),
+      authorId: v.id("users"),
+      authorRole: v.string(),
+      body: v.string(),
+      attachments: v.optional(v.array(v.string())),
+      createdAt: v.number(),
+    }).index("by_ticket", ["ticketId"]),
+
+    returns: defineTable({
+      orderId: v.id("orders"),
+      userId: v.id("users"),
+      type: vReturnType,
+      reason: v.string(),
+      description: v.optional(v.string()),
+      images: v.optional(v.array(v.string())),
+      status: vReturnStatus,
+      adminNote: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_order", ["orderId"])
+      .index("by_status", ["status"]),
+
+    backup_snapshots: defineTable({
+      label: v.string(),
+      version: v.number(),
+      createdAt: v.number(),
+      createdBy: v.id("users"),
+      payload: v.any(),
+    }).index("by_createdAt", ["createdAt"]),
   },
   {
     schemaValidation: false,

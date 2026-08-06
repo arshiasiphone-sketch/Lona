@@ -167,6 +167,20 @@ export const vShippingMethod = v.union(
 // future multi-brand hierarchy. Today every mutation accepts
 // owner + admin via `_helpers.assertAdmin` and selectively manager +
 // editor + support.
+// Phase 8.3 — Support & Returns literals
+
+export const ticketCategoryLiterals = ["order", "payment", "shipping", "product", "other"] as const;
+export const vTicketCategory = v.union(...ticketCategoryLiterals.map((c) => v.literal(c)));
+export const ticketPriorityLiterals = ["low", "medium", "high", "urgent"] as const;
+export const vTicketPriority = v.union(...ticketPriorityLiterals.map((p) => v.literal(p)));
+export const ticketStatusLiterals = ["new", "reviewing", "answered", "closed"] as const;
+export const vTicketStatus = v.union(...ticketStatusLiterals.map((s) => v.literal(s)));
+
+export const returnTypeLiterals = ["return", "exchange"] as const;
+export const vReturnType = v.union(...returnTypeLiterals.map((t) => v.literal(t)));
+export const returnStatusLiterals = ["submitted", "reviewing", "approved", "rejected", "completed"] as const;
+export const vReturnStatus = v.union(...returnStatusLiterals.map((s) => v.literal(s)));
+
 export const roleLiterals = [
   "owner",
   "admin",

@@ -19,7 +19,10 @@ export type NotificationKind =
   | "order"
   | "back_in_stock"
   | "editorial"
-  | "system";
+  | "system"
+  | "ticket"
+  | "return"
+  | "coupon";
 
 /**
  * Record a notification row for a user. Fire-and-forget: never throw
