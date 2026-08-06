@@ -7,12 +7,23 @@ import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 //     auto-injected VLY_INTEGRATION_KEY — zero manual setup.
 //  2) Legacy auth.freebuff.app/send_otp endpoint using FREEBUFF_EMAIL_API_KEY
 //     (kept for compatibility with deployments that already configured it).
-//  3) Explicit opt-in dev fallback (DEV_EMAIL_FALLBACK=true) that prints the OTP
-//     to the server console so it can be read from the browser console. This is
-//     ONLY for local testing — it is intentionally gated behind an env flag so
-//     it can never leak in production unless deliberately enabled.
+//  3) Dev fallback that prints the OTP to the server console (visible in the
+//     browser console via F12) so pre-launch testing works without an email
+//     provider. It is enabled automatically outside production (NODE_ENV !==
+//     "production") or when DEV_EMAIL_FALLBACK=true is explicitly set, and can
+//     be force-disabled with DEV_EMAIL_FALLBACK=false. In real production
+//     deployments this never activates unless deliberately forced.
 
 const APP_NAME = process.env.VLY_APP_NAME || "لونا";
+
+function isDevFallbackEnabled(): boolean {
+  const explicit = process.env.DEV_EMAIL_FALLBACK;
+  if (explicit === "true") return true;
+  if (explicit === "false") return false;
+  // Convex sets NODE_ENV to "production" on prod deployments and
+  // "development" on dev deployments, so this stays off in production.
+  return process.env.NODE_ENV !== "production";
+}
 
 async function sendViaPlatformGateway(
   email: string,
@@ -102,19 +113,19 @@ export const emailOtp = Email({
     // 2) Legacy endpoint for deployments that still configure FREEBUFF_EMAIL_API_KEY.
     if (await sendViaLegacyEndpoint(email, token)) return;
 
-    // 3) Explicit opt-in dev fallback — reads the OTP from the browser console.
-    //    Convex mirrors server console output to the client, which is exactly why
-    //    this must stay behind an explicit env flag and off in production.
-    if (process.env.DEV_EMAIL_FALLBACK === "true") {
+    // 3) Dev fallback — prints the OTP to the server console, which Convex
+    //    mirrors to the browser console in development. Auto-enabled outside
+    //    production so pre-launch login works with zero setup.
+    if (isDevFallbackEnabled()) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[emailOtp] DEV_EMAIL_FALLBACK فعال است — کد ورود برای ${email}: ${token}`,
+        `[emailOtp] حالت توسعه — کد ورود برای ${email}: ${token}`,
       );
       return;
     }
 
     throw new Error(
-      "ارسال ایمیل ممکن نیست. برای تست: در بخش Keys مقدار DEV_EMAIL_FALLBACK=true را اضافه کنید و کد را از کنسول مرورگر (F12) بخوانید. برای پروداکشن: کلید معتبر ایمیل را در Convex تنظیم کنید.",
+      "سرویس ارسال ایمیل در دسترس نیست. قبل از لانچ، یک سرویس ایمیل معتبر (مثل Resend) را در Convex تنظیم کنید.",
     );
   },
 });
