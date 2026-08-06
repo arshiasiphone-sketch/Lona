@@ -3,26 +3,61 @@ import axios from "axios";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 
 // Sending order:
-//  1) Platform email gateway (https://integrations.vly.ai/v1/email/send) using the
-//     auto-injected VLY_INTEGRATION_KEY — zero manual setup.
-//  2) Legacy auth.freebuff.app/send_otp endpoint using FREEBUFF_EMAIL_API_KEY
-//     (kept for compatibility with deployments that already configured it).
-//  3) Dev fallback that prints the OTP to the server console (visible in the
-//     browser console via F12) so pre-launch testing works without an email
-//     provider. It is enabled automatically outside production (NODE_ENV !==
-//     "production") or when DEV_EMAIL_FALLBACK=true is explicitly set, and can
-//     be force-disabled with DEV_EMAIL_FALLBACK=false. In real production
-//     deployments this never activates unless deliberately forced.
+//  1) Resend, when RESEND_API_KEY is configured in Convex.
+//  2) The legacy VLY platform gateway and auth endpoint for compatibility.
+//  3) An explicitly enabled development fallback that prints the OTP to the
+//     server console. It is never enabled implicitly, so a production failure
+//     cannot leak authentication codes.
+//
+// Secrets are read only on the Convex server. Never put an API key in the
+// client bundle, source code, or a public chat.
 
 const APP_NAME = process.env.VLY_APP_NAME || "لونا";
+const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL || `لونا <onboarding@resend.dev>`;
 
 function isDevFallbackEnabled(): boolean {
-  const explicit = process.env.DEV_EMAIL_FALLBACK;
-  if (explicit === "true") return true;
-  if (explicit === "false") return false;
-  // Convex sets NODE_ENV to "production" on prod deployments and
-  // "development" on dev deployments, so this stays off in production.
-  return process.env.NODE_ENV !== "production";
+  // Explicit opt-in only. Never infer this from NODE_ENV because an unset or
+  // unexpected deployment environment must fail closed.
+  return process.env.DEV_EMAIL_FALLBACK === "true";
+}
+
+async function sendViaResend(email: string, token: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const res = await axios.post(
+      "https://api.resend.com/emails",
+      {
+        from: RESEND_FROM_EMAIL,
+        to: [email],
+        subject: `کد ورود به ${APP_NAME}`,
+        html: `
+          <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; background:#faf6f1; padding:32px 16px;">
+            <div style="max-width:420px; margin:0 auto; background:#ffffff; border:1px solid #eadfd3; border-radius:16px; padding:32px 24px; text-align:center;">
+              <div style="font-size:20px; font-weight:bold; color:#4a2c2a; letter-spacing:2px;">لونا</div>
+              <p style="color:#7a6a5f; margin:16px 0 8px;">کد ورود شما به بوتیک لونا</p>
+              <div style="font-size:32px; font-weight:bold; letter-spacing:8px; color:#b76e5a; background:#faf3ec; border-radius:12px; padding:16px 8px; margin:12px 0;">${token}</div>
+              <p style="color:#9a8a80; font-size:12px; margin:8px 0 0;">این کد تا ۱۵ دقیقه معتبر است. اگر این درخواست را شما نبودید، این ایمیل را نادیده بگیرید.</p>
+            </div>
+          </div>
+        `,
+        text: `کد ورود شما به ${APP_NAME}: ${token}\n\nاین کد تا ۱۵ دقیقه معتبر است.`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 15000,
+      },
+    );
+
+    return typeof res.data?.id === "string";
+  } catch {
+    return false;
+  }
 }
 
 async function sendViaPlatformGateway(
@@ -107,15 +142,17 @@ export const emailOtp = Email({
     return generateRandomString(random, alphabet, 6);
   },
   async sendVerificationRequest({ identifier: email, token }) {
-    // 1) Platform email gateway — the recommended path, uses the auto-injected key.
+    // 1) Resend — production path when RESEND_API_KEY is configured.
+    if (await sendViaResend(email, token)) return;
+
+    // 2) Legacy VLY platform gateway.
     if (await sendViaPlatformGateway(email, token)) return;
 
-    // 2) Legacy endpoint for deployments that still configure FREEBUFF_EMAIL_API_KEY.
+    // 3) Legacy endpoint for deployments that still configure FREEBUFF_EMAIL_API_KEY.
     if (await sendViaLegacyEndpoint(email, token)) return;
 
-    // 3) Dev fallback — prints the OTP to the server console, which Convex
-    //    mirrors to the browser console in development. Auto-enabled outside
-    //    production so pre-launch login works with zero setup.
+    // 4) Explicit development fallback — prints the OTP to the server console.
+    //    It must be enabled manually with DEV_EMAIL_FALLBACK=true.
     if (isDevFallbackEnabled()) {
       // eslint-disable-next-line no-console
       console.warn(
@@ -125,7 +162,7 @@ export const emailOtp = Email({
     }
 
     throw new Error(
-      "سرویس ارسال ایمیل در دسترس نیست. قبل از لانچ، یک سرویس ایمیل معتبر (مثل Resend) را در Convex تنظیم کنید.",
+      "سرویس ارسال ایمیل در دسترس نیست. در Convex مقدار RESEND_API_KEY را تنظیم کنید و برای ارسال به مشتریان، RESEND_FROM_EMAIL را روی ایمیل دامنه تأییدشده بگذارید.",
     );
   },
 });
