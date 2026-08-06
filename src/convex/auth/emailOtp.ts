@@ -2,6 +2,86 @@ import { Email } from "@convex-dev/auth/providers/Email";
 import axios from "axios";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 
+// Sending order:
+//  1) Platform email gateway (https://integrations.vly.ai/v1/email/send) using the
+//     auto-injected VLY_INTEGRATION_KEY — zero manual setup.
+//  2) Legacy auth.freebuff.app/send_otp endpoint using FREEBUFF_EMAIL_API_KEY
+//     (kept for compatibility with deployments that already configured it).
+//  3) Explicit opt-in dev fallback (DEV_EMAIL_FALLBACK=true) that prints the OTP
+//     to the server console so it can be read from the browser console. This is
+//     ONLY for local testing — it is intentionally gated behind an env flag so
+//     it can never leak in production unless deliberately enabled.
+
+const APP_NAME = process.env.VLY_APP_NAME || "لونا";
+
+async function sendViaPlatformGateway(
+  email: string,
+  token: string,
+): Promise<boolean> {
+  const key = process.env.VLY_INTEGRATION_KEY;
+  if (!key) return false;
+
+  try {
+    const res = await axios.post(
+      "https://integrations.vly.ai/v1/email/send",
+      {
+        to: [email],
+        subject: `کد ورود به ${APP_NAME}`,
+        html: `
+          <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; background:#faf6f1; padding:32px 16px;">
+            <div style="max-width:420px; margin:0 auto; background:#ffffff; border:1px solid #eadfd3; border-radius:16px; padding:32px 24px; text-align:center;">
+              <div style="font-size:20px; font-weight:bold; color:#4a2c2a; letter-spacing:2px;">لونا</div>
+              <p style="color:#7a6a5f; margin:16px 0 8px;">کد ورود شما به بوتیک لونا</p>
+              <div style="font-size:32px; font-weight:bold; letter-spacing:8px; color:#b76e5a; background:#faf3ec; border-radius:12px; padding:16px 8px; margin:12px 0;">${token}</div>
+              <p style="color:#9a8a80; font-size:12px; margin:8px 0 0;">این کد تا ۱۵ دقیقه معتبر است. اگر این درخواست را شما نبودید، این ایمیل را نادیده بگیرید.</p>
+            </div>
+          </div>
+        `,
+        text: `کد ورود شما به ${APP_NAME}: ${token}\n\nاین کد تا ۱۵ دقیقه معتبر است.`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          "X-Vly-Version": "0.1.0",
+        },
+        timeout: 15000,
+      },
+    );
+    return res.data?.success === true;
+  } catch {
+    return false;
+  }
+}
+
+async function sendViaLegacyEndpoint(
+  email: string,
+  token: string,
+): Promise<boolean> {
+  const apiKey = process.env.FREEBUFF_EMAIL_API_KEY;
+  if (!apiKey) return false;
+
+  try {
+    const res = await axios.post(
+      "https://auth.freebuff.app/send_otp",
+      {
+        to: email,
+        otp: token,
+        appName: APP_NAME,
+      },
+      {
+        headers: {
+          "x-api-key": apiKey,
+        },
+        timeout: 15000,
+      },
+    );
+    return res.data?.success !== false;
+  } catch {
+    return false;
+  }
+}
+
 export const emailOtp = Email({
   id: "email-otp",
   maxAge: 60 * 15, // 15 minutes
@@ -16,33 +96,25 @@ export const emailOtp = Email({
     return generateRandomString(random, alphabet, 6);
   },
   async sendVerificationRequest({ identifier: email, token }) {
-    const apiKey = process.env.FREEBUFF_EMAIL_API_KEY;
-    // IMPORTANT: Never log the token itself — Convex forwards
-    // server console output to the browser, which would leak OTPs.
-    if (!apiKey) {
-      throw new Error(
-        "سرویس ارسال ایمیل هنوز پیکربندی نشده است. لطفاً در داشبورد Convex مقدار FREEBUFF_EMAIL_API_KEY را تنظیم کنید و دوباره تلاش کنید."
+    // 1) Platform email gateway — the recommended path, uses the auto-injected key.
+    if (await sendViaPlatformGateway(email, token)) return;
+
+    // 2) Legacy endpoint for deployments that still configure FREEBUFF_EMAIL_API_KEY.
+    if (await sendViaLegacyEndpoint(email, token)) return;
+
+    // 3) Explicit opt-in dev fallback — reads the OTP from the browser console.
+    //    Convex mirrors server console output to the client, which is exactly why
+    //    this must stay behind an explicit env flag and off in production.
+    if (process.env.DEV_EMAIL_FALLBACK === "true") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[emailOtp] DEV_EMAIL_FALLBACK فعال است — کد ورود برای ${email}: ${token}`,
       );
+      return;
     }
 
-    try {
-      await axios.post(
-        "https://auth.freebuff.app/send_otp",
-        {
-          to: email,
-          otp: token,
-          appName: process.env.VLY_APP_NAME || "a freebuff.com application",
-        },
-        {
-          headers: {
-            "x-api-key": apiKey,
-          },
-        },
-      );
-    } catch {
-      throw new Error(
-        "ارسال کد تایید ناموفق بود — اتصال ایمیل برقرار نشد. لطفاً چند لحظه بعد دوباره تلاش کنید."
-      );
-    }
+    throw new Error(
+      "سرویس ارسال ایمیل پیکربندی نشده است. لطفاً در داشبورد Convex مقدار VLY_INTEGRATION_KEY یا FREEBUFF_EMAIL_API_KEY را تنظیم کنید و دوباره تلاش کنید.",
+    );
   },
 });
