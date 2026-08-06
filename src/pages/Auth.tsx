@@ -54,14 +54,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       const formData = new FormData(event.currentTarget);
       await signIn("email-otp", formData);
       setStep({ email: formData.get("email") as string });
-      setIsLoading(false);
     } catch (error) {
-      console.error("Email sign-in error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "ارسال کد تأیید با خطا مواجه شد. لطفاً دوباره تلاش کنید."
-      );
+      // Convex wraps server throws — surface the real message
+      const raw = error instanceof Error ? error.message : String(error);
+      // Extract the server message after the Convex prefix
+      const msg = raw.includes("Uncaught Error:") ? raw.split("Uncaught Error:").pop()!.trim() : raw;
+      setError(msg || "ارسال کد تأیید با خطا مواجه شد. لطفاً دوباره تلاش کنید.");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -75,10 +74,17 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       await signIn("email-otp", formData);
       navigate(redirect);
     } catch (error) {
-      console.error("OTP verification error:", error);
-      setError("کد تأیید وارد شده نادرست است.");
-      setIsLoading(false);
+      const raw = error instanceof Error ? error.message : String(error);
+      const msg = raw.includes("Uncaught Error:") ? raw.split("Uncaught Error:").pop()!.trim() : raw;
+      // Invalid OTP from Convex Auth usually contains "Invalid" / "expired" / "code"
+      if (/invalid|expired|code/i.test(msg)) {
+        setError("کد تأیید وارد شده نادرست یا منقضی شده است.");
+      } else {
+        setError(msg || "کد تأیید وارد شده نادرست است.");
+      }
       setOtp("");
+    } finally {
+      setIsLoading(false);
     }
   };
 

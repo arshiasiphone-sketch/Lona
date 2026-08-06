@@ -139,12 +139,17 @@ class RootErrorBoundary extends React.Component<
   }
   render() {
     if (this.state.hasError) {
+      const isChunkError =
+        this.state.message.includes("Failed to fetch dynamically imported module") ||
+        this.state.message.includes("Importing a module script failed");
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg text-center">
             <p className="font-display text-2xl text-ink">مشکلی پیش آمده است</p>
             <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-              لطفاً صفحه را دوباره بارگذاری کنید یا به صفحه اصلی بازگردید.
+              {isChunkError
+                ? "نسخه‌ی جدید سایت منتشر شده. لطفاً صفحه را دوباره بارگذاری کنید."
+                : "لطفاً صفحه را دوباره بارگذاری کنید یا به صفحه اصلی بازگردید."}
             </p>
             <div className="mt-6 flex items-center justify-center gap-3">
               <button onClick={() => window.location.reload()} className="rounded-full bg-ink px-6 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary">

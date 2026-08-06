@@ -17,16 +17,13 @@ export const emailOtp = Email({
   },
   async sendVerificationRequest({ identifier: email, token }) {
     const apiKey = process.env.FREEBUFF_EMAIL_API_KEY;
-    // Development fallback: when the email API key is not configured
-    // (e.g. local preview / before production keys are set) we log
-    // the OTP and return successfully instead of throwing a 500.
-    // In production you MUST set FREEBUFF_EMAIL_API_KEY in
-    // Convex Dashboard → Settings → Environment Variables.
+    // IMPORTANT: Never log the token itself — Convex forwards
+    // server console output to the browser, which would leak OTPs.
     if (!apiKey) {
-      console.warn(
-        `[emailOtp] FREEBUFF_EMAIL_API_KEY not configured — dev fallback. OTP for ${email}: ${token}`
+      console.error("[emailOtp] FREEBUFF_EMAIL_API_KEY is not configured");
+      throw new Error(
+        "سرویس ارسال ایمیل هنوز پیکربندی نشده است. لطفاً در داشبورد Convex مقدار FREEBUFF_EMAIL_API_KEY را تنظیم کنید و دوباره تلاش کنید."
       );
-      return;
     }
 
     try {
@@ -44,11 +41,12 @@ export const emailOtp = Email({
         },
       );
     } catch (error) {
-      // Surface a readable error instead of a raw JSON blob
       const message =
         error instanceof Error ? error.message : JSON.stringify(error);
-      console.error(`[emailOtp] send_otp failed for ${email}:`, message);
-      throw new Error(`ارسال کد تایید ناموفق بود — لطفاً دوباره تلاش کنید. (${message})`);
+      console.error("[emailOtp] send_otp failed:", message);
+      throw new Error(
+        "ارسال کد تایید ناموفق بود — اتصال ایمیل برقرار نشد. لطفاً چند لحظه بعد دوباره تلاش کنید."
+      );
     }
   },
 });
