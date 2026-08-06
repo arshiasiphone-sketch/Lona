@@ -32,6 +32,12 @@ export const upsert = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
+    const existing = args.id ? await ctx.db.get(args.id) : null;
+
+    if (args.id && (!existing || existing.userId !== user._id)) {
+      throw new Error("FORBIDDEN");
+    }
+
     if (args.isDefault) {
       // Unset previous default before inserting the new one.
       const prior = await ctx.db
@@ -46,9 +52,22 @@ export const upsert = mutation({
     }
 
     if (args.id) {
-      await ctx.db.patch(args.id, args);
+      await ctx.db.patch(args.id, {
+        label: args.label,
+        fullName: args.fullName,
+        line1: args.line1,
+        line2: args.line2,
+        city: args.city,
+        region: args.region,
+        postalCode: args.postalCode,
+        country: args.country,
+        phone: args.phone,
+        isDefault: args.isDefault,
+      });
       if (args.isDefault) {
         await ctx.db.patch(user._id, { defaultAddressId: args.id });
+      } else if (user.defaultAddressId === args.id) {
+        await ctx.db.patch(user._id, { defaultAddressId: undefined });
       }
       return args.id;
     }

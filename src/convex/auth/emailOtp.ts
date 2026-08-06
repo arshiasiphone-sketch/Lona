@@ -20,7 +20,6 @@ export const emailOtp = Email({
     // IMPORTANT: Never log the token itself — Convex forwards
     // server console output to the browser, which would leak OTPs.
     if (!apiKey) {
-      console.error("[emailOtp] FREEBUFF_EMAIL_API_KEY is not configured");
       throw new Error(
         "سرویس ارسال ایمیل هنوز پیکربندی نشده است. لطفاً در داشبورد Convex مقدار FREEBUFF_EMAIL_API_KEY را تنظیم کنید و دوباره تلاش کنید."
       );
@@ -40,10 +39,7 @@ export const emailOtp = Email({
           },
         },
       );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      console.error("[emailOtp] send_otp failed:", message);
+    } catch {
       throw new Error(
         "ارسال کد تایید ناموفق بود — اتصال ایمیل برقرار نشد. لطفاً چند لحظه بعد دوباره تلاش کنید."
       );
