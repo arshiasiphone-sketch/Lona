@@ -10,7 +10,7 @@ export default function ReportsPage() {
   if (!data) return <div className="grid place-items-center py-16"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
   const k = data.kpi;
-  const fmt = (c: number) => (c / 100).toLocaleString("fa-IR") + " تومان";
+  const fmt = (c: number) => c.toLocaleString("fa-IR") + " تومان";
 
   return (
     <div className="space-y-8">

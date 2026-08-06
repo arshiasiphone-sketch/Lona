@@ -25,10 +25,7 @@ import { Lookbook } from "@/components/editorial/Lookbook";
 import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { InstagramGallery } from "@/components/editorial/InstagramGallery";
 import {
-  useCollections,
   useNewArrivals,
-  staticCollections,
-  staticProducts,
 } from "@/lib/data/catalog";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -46,10 +43,9 @@ export default function Landing() {
     ogType: "website",
   });
 
-  const collections = useCollections();
   const newItems = useNewArrivals();
-  const featured = (newItems ?? staticProducts).slice(0, 4);
-  const bestsellers = (newItems ?? staticProducts).slice(2, 6);
+  const featured = (newItems ?? []).slice(0, 4);
+  const bestsellers = (newItems ?? []).slice(2, 6);
   const store = useQuery(api.admin_settings.getStoreInfo, {});
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
@@ -81,7 +77,7 @@ export default function Landing() {
 
       {/* 2 · New Collection */}
       <TrendingProducts
-        products={newItems ?? staticProducts}
+        products={newItems ?? []}
         eyebrow="تازه‌ها"
         title="کالکسیون جدید"
         ctaLabel="مشاهده همه"

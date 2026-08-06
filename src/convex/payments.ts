@@ -291,8 +291,9 @@ export const refundRequest = action({
     if (order.paymentStatus !== "paid" || !order.paymentTransactionId) {
       throw new Error("PAYMENT_NOT_REFUNDABLE");
     }
-    // TODO(production): call Zarinpal refund API with the
-    // transaction id, then run `orders.refund` on success.
-    return { ready: true, transactionId: order.paymentTransactionId };
+    // Do not report a refund before the gateway has actually processed it.
+    // The domain mutation that restocks inventory is intentionally separate;
+    // it must only run after a real gateway refund succeeds.
+    throw new Error("ZARINPAL_REFUND_NOT_CONFIGURED");
   },
 });

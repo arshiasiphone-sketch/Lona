@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { editorials as staticEditorials } from "@/data/catalog";
 import { useEditorials } from "@/lib/data/catalog";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
@@ -28,8 +27,7 @@ const categoryLabel: Record<string, string> = {
 };
 
 export default function Press() {
-  const live = useEditorials();
-  const editorials = live && live.length > 0 ? live : staticEditorials;
+  const editorials = useEditorials() ?? [];
   const [hero, ...rest] = editorials;
   const images = useHomepageImages();
 
@@ -47,11 +45,12 @@ export default function Press() {
       </header>
 
       {/* Hero editorial */}
-      <Reveal>
-        <Link
-          to={`/press/${hero.slug}`}
-          className="group mt-16 block overflow-hidden rounded-3xl focus-luxury"
-        >
+      {hero ? (
+        <Reveal>
+          <Link
+            to={`/press/${hero.slug}`}
+            className="group mt-16 block overflow-hidden rounded-3xl focus-luxury"
+          >
           <EditorialImage
             src={hero.coverImage || images.press_hero}
             alt={`${hero.title} — مجله لونا`}
@@ -75,8 +74,14 @@ export default function Press() {
               </span>
             </div>
           </EditorialImage>
-        </Link>
-      </Reveal>
+          </Link>
+        </Reveal>
+      ) : (
+        <div className="mt-16 rounded-3xl border border-edge bg-canvas-soft px-6 py-16 text-center">
+          <p className="font-display text-2xl text-ink">هنوز داستانی منتشر نشده است.</p>
+          <p className="mt-3 text-sm text-ink-muted">به‌زودی روایت‌های تازهٔ لونا را اینجا می‌خوانید.</p>
+        </div>
+      )}
 
       {/* Editorial grid */}
       <div className="mt-24 grid gap-6 md:grid-cols-2 lg:grid-cols-3">

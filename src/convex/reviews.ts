@@ -56,17 +56,20 @@ export const create = mutation({
     body: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getOptionalUser(ctx);
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("UNAUTHORIZED");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("UNAUTHORIZED");
     if (args.rating < 1 || args.rating > 5) {
       throw new Error("INVALID_RATING");
     }
     return await ctx.db.insert("reviews", {
       productId: args.productId,
-      userId: user?._id,
+      userId: user._id,
       rating: args.rating,
       title: args.title,
       body: args.body,
-      verified: Boolean(user),
+      verified: true,
       status: "pending",
       createdAt: Date.now(),
     });

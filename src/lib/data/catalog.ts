@@ -19,10 +19,8 @@
  *     case in the page components.
  *
  *   • Single-row lookups (useProduct, useCollection, useEditorial)
- *     gracefully fall back to the static `src/data/catalog.ts`
- *     dataset when Convex has no row for the slug yet (first deploy
- *     before `seed:runAll` has been executed). This keeps the demo
- *     deployment snappy without inventing new placeholder data.
+ *     use live Convex data only. A missing row is returned as `null`
+ *     instead of being replaced with stale static catalog data.
  *
  *   • Money lives in cents in Convex (`priceCents`); the adapter
  *     converts to whole dollars so the locked `formatPrice` calls
@@ -45,10 +43,6 @@ import {
   collections as staticCollections,
   collections as _staticCollections,
   editorials as staticEditorials,
-  getCollection as staticGetCollection,
-  getCollectionProducts as staticGetCollectionProducts,
-  getProduct as staticGetProduct,
-  getProductById as staticGetProductById,
   newArrivals as staticNewArrivals,
   products as staticProducts,
   testimonials as staticTestimonials,
@@ -177,12 +171,12 @@ export function getProductByIdFromList(
   list: Product[] | undefined,
   id: string
 ): Product | undefined {
-  if (!list) return staticGetProductById(id);
+  if (!list) return undefined;
   return list.find((p) => p.id === id || p.slug === id);
 }
 
 export function getProductBySlug(list: Product[] | undefined, slug: string) {
-  if (!list) return staticGetProduct(slug);
+  if (!list) return undefined;
   return list.find((p) => p.slug === slug);
 }
 
@@ -270,10 +264,7 @@ export function useProduct(slugOrId: string | undefined): Product | null | undef
     return bySlug ? adaptProduct(bySlug) : null;
   }, [bySlug]);
 
-  if (live !== undefined) return live;
-  // Static fallback — only when Convex hasn't resolved yet.
-  if (slug) return staticGetProduct(slug) ?? null;
-  return undefined;
+  return live;
 }
 
 export function useFeaturedProducts(limit?: number): Product[] | undefined {
@@ -330,29 +321,12 @@ export function useSearchProducts({
       : "skip"
   );
 
-  // While the search query is loading or empty, fall back to the
-  // legacy client-side matcher against the static catalog so this
-  // page stays usable even before Convex search results return.
-  const local = useMemo(() => {
-    if (remote !== undefined) return undefined;
-    if (!trimmed) return undefined;
-    const needle = trimmed.toLowerCase();
-    return staticProducts
-      .filter((p) =>
-        [p.name, p.description, p.collection, p.category]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle)
-      )
-      .slice(0, limit);
-  }, [remote, trimmed, limit]);
-
   const adapted = useMemo(
     () => (remote ? remote.map(adaptProduct) : undefined),
     [remote]
   );
 
-  return (adapted ?? local) as Product[] | undefined;
+  return adapted as Product[] | undefined;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -380,15 +354,12 @@ export function useCollection(
     return remote ? adaptCollection(remote) : null;
   }, [remote]);
 
-  if (live !== undefined) return live;
-  if (slug) return staticGetCollection(slug) ?? null;
-  return undefined;
+  return live;
 }
 
 /**
  * Resolve the products belonging to a collection. Honors the
- * explicit `productSlugs` order from Convex; falls back to the
- * legacy static join if the collection isn't live yet.
+ * explicit `productSlugs` order from Convex.
  */
 export function useCollectionProducts(
   slug: string | undefined
@@ -402,10 +373,10 @@ export function useCollectionProducts(
     if (collection.productIds.length === 0) return liveProducts ?? [];
     const byKey = new Map<string, Product>();
     (liveProducts ?? []).forEach((p) => byKey.set(p.slug, p));
-    // Compose from collection order; populate any missing slug from
-    // the static catalog so the demo works pre-seed.
+    // Compose from the live collection order only. Missing products are
+    // omitted rather than silently replaced with stale static data.
     return collection.productIds
-      .map((id) => byKey.get(id) ?? staticGetProductById(id))
+      .map((id) => byKey.get(id))
       .filter((p): p is Product => Boolean(p));
   }, [collection, liveProducts]);
 }
@@ -440,9 +411,7 @@ export function useEditorial(
     return remote ? adaptEditorial(remote) : null;
   }, [remote]);
 
-  if (live !== undefined) return live;
-  if (slug) return staticEditorials.find((e) => e.slug === slug) ?? null;
-  return undefined;
+  return live;
 }
 
 /* ────────────────────────────────────────────────────────────────

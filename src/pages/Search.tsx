@@ -7,8 +7,6 @@ import {
   useCollections,
   useNewArrivals,
   useSearchProducts,
-  staticProducts,
-  staticCollections,
 } from "@/lib/data/catalog";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { EmptySearch } from "@/components/customer/EmptyStates";
@@ -61,12 +59,10 @@ export default function Search() {
     }
   }, []);
 
-  const liveProducts = useProducts();
-  const liveCollections = useCollections();
-  const products = liveProducts ?? staticProducts;
-  const collections = liveCollections ?? staticCollections;
+  const products = useProducts() ?? [];
+  const collections = useCollections() ?? [];
   const results = useSearchProducts({ query: q, limit: 24 }) ?? [];
-  const trending = useNewArrivals(4) ?? products.slice(0, 4);
+  const trending = useNewArrivals(4) ?? [];
 
   usePageMeta({
     title: q ? `جستجو: ${q}` : "جستجو در محصولات لونا",
