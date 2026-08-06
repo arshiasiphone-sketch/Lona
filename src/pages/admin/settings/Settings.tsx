@@ -52,7 +52,7 @@ import { cn } from "@/lib/glass";
 type SettingRow = { _id: string; key: string; value: unknown };
 
 export default function Settings() {
-  const rows = useQuery(api.admin_settings.getAll, {}) ?? [];
+  const rows = useQuery(api.admin_settings.getAll, {});
   const upsert = useMutation(api.admin_settings.upsertSetting);
 
   const [tab, setTab] = React.useState<
@@ -74,7 +74,7 @@ export default function Settings() {
 
   const persistedLookup: Record<string, Record<string, unknown>> = React.useMemo(() => {
     const map: Record<string, Record<string, unknown>> = {};
-    (rows as SettingRow[]).forEach((row) => {
+    ((rows ?? []) as SettingRow[]).forEach((row) => {
       if (typeof row.value === "object" && row.value !== null) {
         map[row.key] = row.value as Record<string, unknown>;
       }
@@ -149,18 +149,21 @@ export default function Settings() {
         >
           {tab === "brand" ? (
             <BrandPanel
+              key={JSON.stringify(v("brand"))}
               value={v("brand")}
               pending={pending}
               onSave={(value) => save("brand", value)}
             />
           ) : tab === "store" ? (
             <StorePanel
+              key={JSON.stringify(v("store"))}
               value={v("store")}
               pending={pending}
               onSave={(value) => save("store", value)}
             />
           ) : tab === "seo" ? (
             <SeoPanel
+              key={JSON.stringify(v("seo"))}
               value={v("seo")}
               pending={pending}
               onSave={(value) => save("seo", value)}
@@ -171,6 +174,7 @@ export default function Settings() {
             <ShippingPanel />
           ) : (
             <NotificationsPanel
+              key={JSON.stringify(v("notifications"))}
               value={v("notifications")}
               pending={pending}
               onSave={(value) => save("notifications", value)}
@@ -196,11 +200,6 @@ function BrandPanel({
   const [description, setDescription] = React.useState(
     (value.description as string) ?? "",
   );
-  React.useEffect(() => {
-    setName((value.name as string) ?? "Lona");
-    setTagline((value.tagline as string) ?? "");
-    setDescription((value.description as string) ?? "");
-  }, [value]);
   return (
     <Section
       title="هویت برند"
@@ -279,29 +278,6 @@ function StorePanel({
       whatsapp: "",
     },
   );
-  React.useEffect(() => {
-    setShopName((value.shopName as string) ?? "لونا");
-    setLegalName((value.legalName as string) ?? "");
-    setRegistrationNumber((value.registrationNumber as string) ?? "");
-    setEconomicCode((value.economicCode as string) ?? "");
-    setLandlinePhone((value.landlinePhone as string) ?? (value.phone as string) ?? "");
-    setMobilePhone((value.mobilePhone as string) ?? "");
-    setPhone((value.phone as string) ?? "");
-    setEmail((value.email as string) ?? "");
-    setAddress((value.address as string) ?? "");
-    setPostalCode((value.postalCode as string) ?? "");
-    setNationalId((value.nationalId as string) ?? "");
-    setEnamadCode((value.enamadCode as string) ?? "");
-    setHours((value.hours as string) ?? "");
-    setSocial(
-      (value.social as Record<string, string>) ?? {
-        instagram: "",
-        telegram: "",
-        whatsapp: "",
-      },
-    );
-  }, [value]);
-
   return (
     <Section
       title="اطلاعات فروشگاه"
@@ -469,7 +445,7 @@ function ShippingPanel() {
 
       {methods.map((m, i) => (
         <ShippingMethodRow
-          key={String(m._id)}
+          key={`${String(m._id)}-${m.code}-${m.name}-${m.priceCents}-${m.estimatedDays}-${m.active}`}
           method={m}
           busy={busyId === String(m._id)}
           onSave={(p) => persist(String(m._id), { ...p, order: i + 1 })}
@@ -600,14 +576,6 @@ function ShippingMethodRow({
   const [days, setDays] = React.useState(String(method.estimatedDays));
   const [active, setActive] = React.useState(method.active);
 
-  React.useEffect(() => {
-    setCode(method.code);
-    setName(method.name);
-    setPrice(String(method.priceCents));
-    setDays(String(method.estimatedDays));
-    setActive(method.active);
-  }, [method]);
-
   return (
     <div className="grid gap-3 rounded-2xl border border-edge bg-canvas/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
       <Field label="کد روش">
@@ -696,13 +664,6 @@ function SeoPanel({
   const [twitterHandle, setTwitterHandle] = React.useState(
     (value.twitterHandle as string) ?? "",
   );
-  React.useEffect(() => {
-    setSiteTitle((value.siteTitle as string) ?? "لونا · لباس زیر و راحتی زنانه");
-    setMetaDescription((value.metaDescription as string) ?? "");
-    setOgImage((value.ogImage as string) ?? "");
-    setTwitterHandle((value.twitterHandle as string) ?? "");
-  }, [value]);
-
   return (
     <Section
       title="سئو و شبکه‌های اجتماعی"
@@ -776,12 +737,6 @@ function NotificationsPanel({
   const [newsletter, setNewsletter] = React.useState(
     (value.newsletter as boolean) ?? true,
   );
-  React.useEffect(() => {
-    setOrderSms((value.orderSms as boolean) ?? true);
-    setOrderEmail((value.orderEmail as boolean) ?? true);
-    setLowStock((value.lowStock as boolean) ?? true);
-    setNewsletter((value.newsletter as boolean) ?? true);
-  }, [value]);
   return (
     <Section
       title="اعلان‌ها"
@@ -1052,7 +1007,7 @@ function ImagesPanel() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {group.keys.map((key) => (
               <ImageSlotCard
-                key={key}
+                key={`${key}-${overrides[key] ?? DEFAULT_HOMEPAGE_IMAGES[key]}`}
                 slotKey={key}
                 label={slotLabel(key)}
                 current={overrides[key] ?? DEFAULT_HOMEPAGE_IMAGES[key]}
@@ -1087,10 +1042,6 @@ function ImageSlotCard({
   const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
   const attachToLibrary = useMutation(api.admin_media.attachToLibrary);
   const setImage = useMutation(api.admin_settings.setHomepageImage);
-
-  React.useEffect(() => {
-    setDraft(current);
-  }, [current]);
 
   const applyDraft = async () => {
     const url = draft.trim();

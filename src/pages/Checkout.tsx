@@ -120,7 +120,7 @@ export default function Checkout() {
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string>("");
   const [shippingMethod, setShippingMethod] = useState<string>("express");
-  const [couponRestored, setCouponRestored] = useState(false);
+  const couponRestoredRef = useRef(false);
   // Phase 8.3 — price-change notice: the final amount always comes
   // from the server, so when it differs from this page's preview we
   // tell the customer instead of silently charging a different total.
@@ -141,12 +141,12 @@ export default function Checkout() {
   // Restore a coupon that was applied on the Cart page (persisted via
   // `cart.setMeta`). Without this the discount silently disappears.
   useEffect(() => {
-    if (couponRestored || applied) return;
+    if (couponRestoredRef.current || applied) return;
     const code = cartRow?.couponCode;
     if (!code) return;
     coupon.apply(code);
-    setCouponRestored(true);
-  }, [cartRow?.couponCode, applied, couponRestored, coupon]);
+    couponRestoredRef.current = true;
+  }, [cartRow?.couponCode, applied, coupon]);
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
@@ -210,9 +210,10 @@ export default function Checkout() {
     [form]
   );
 
-  useEffect(() => {
+  const changeStep = (nextStep: number) => {
+    setStep(nextStep);
     setErrors({});
-  }, [step]);
+  };
 
   if (items.length === 0 && !placed) {
     return (
@@ -414,7 +415,7 @@ export default function Checkout() {
   };
 
   if (placed) {
-    return <Success orderNumber={orderNumber} email={form.email} onContinue={() => { clear(); setPlaced(false); setStep(0); }} />;
+    return <Success orderNumber={orderNumber} email={form.email} onContinue={() => { clear(); setPlaced(false); changeStep(0); }} />;
   }
 
   return (
@@ -580,7 +581,7 @@ export default function Checkout() {
 
               <div className="mt-10 flex items-center justify-between">
                 <button
-                  onClick={() => setStep((s) => Math.max(0, s - 1))}
+                  onClick={() => changeStep(Math.max(0, step - 1))}
                   disabled={step === 0 || placing}
                   className="text-[11px] uppercase tracking-[0.18em] text-ink-soft disabled:opacity-30"
                 >
@@ -600,7 +601,7 @@ export default function Checkout() {
                       if (step === STEPS.length - 1) {
                         placeOrder();
                       } else {
-                        setStep((s) => Math.min(STEPS.length - 1, s + 1));
+                        changeStep(Math.min(STEPS.length - 1, step + 1));
                       }
                     }}
                     disabled={

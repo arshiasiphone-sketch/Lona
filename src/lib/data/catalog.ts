@@ -36,7 +36,7 @@
  *     simplest mapping is `id === slug`. Convex `_id` is dropped from
  *     the FE surface entirely.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
@@ -169,10 +169,6 @@ function adaptEditorial(row: ConvexEditorial): Editorial {
   };
 }
 
-async function hydrateEditorialBody(_slug: string): Promise<string | null> {
-  return null;
-}
-
 /* ────────────────────────────────────────────────────────────────
  *  Pure helpers (compatible with the legacy API)
  * ──────────────────────────────────────────────────────────────── */
@@ -273,10 +269,6 @@ export function useProduct(slugOrId: string | undefined): Product | null | undef
     if (bySlug === undefined) return undefined;
     return bySlug ? adaptProduct(bySlug) : null;
   }, [bySlug]);
-
-  // Hydrate body for editorials lazily (no-op for products but
-  // mirrors the editorial hook for type-symmetry).
-  useHydrateEditorialBody(slug);
 
   if (live !== undefined) return live;
   // Static fallback — only when Convex hasn't resolved yet.
@@ -531,19 +523,3 @@ export {
 };
 
 export const _staticCollectionsInternal = _staticCollections;
-
-/* ────────────────────────────────────────────────────────────────
- *  Editorial body hydration (placeholder for future markdown body)
- * ──────────────────────────────────────────────────────────────── */
-
-function useHydrateEditorialBody(_slug: string | undefined): void {
-  const [, setDone] = useState(false);
-  useEffect(() => {
-    // Reserved hook surface for future `body: string` content on the
-    // editorial detail page. Not wired yet — the current surface only
-    // uses excerpt + metadata.
-    setDone(true);
-  }, [_slug]);
-  // Avoid an unused-variable warning for the placeholder body fetcher.
-  void hydrateEditorialBody;
-}

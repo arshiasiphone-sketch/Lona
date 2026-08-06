@@ -10,6 +10,10 @@
  *   • Money arithmetic invariants behind price recalculation
  */
 import { describe, expect, test } from "bun:test";
+import type {
+  CreatePaymentInput,
+  PaymentProvider,
+} from "../src/lib/payment/index";
 import { MockPaymentProvider } from "../src/lib/payment/mock";
 import { ZarinpalProvider } from "../src/lib/payment/providers/zarinpal";
 import { getPaymentProvider, registerPaymentProvider } from "../src/lib/payment/index";
@@ -137,9 +141,9 @@ describe("Payment provider registry", () => {
   });
 
   test("registerPaymentProvider makes a custom provider resolvable", () => {
-    class Fake implements import("../src/lib/payment/index").PaymentProvider {
+    class Fake implements PaymentProvider {
       readonly name = "fake";
-      async createPayment(input: import("../src/lib/payment/index").CreatePaymentInput) {
+      async createPayment(input: CreatePaymentInput) {
         return {
           provider: this.name,
           orderId: input.orderId,

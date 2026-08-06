@@ -68,6 +68,20 @@ export default function Product() {
     sizeLabel: product.sizes.find((s) => s.id === size)?.label,
   }) : null, [product, color, size, primaryImage]);
 
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
+
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry?.isIntersecting),
+      { rootMargin: "-80px 0px 0px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   if (!product) {
     return (
       <div className="mx-auto max-w-2xl px-6 pt-32 pb-24 text-center">
@@ -98,20 +112,6 @@ export default function Product() {
     });
     toast.added(`${product.name} · ${currentColor.name} · ${currentSize.label}`);
   };
-
-  const stickyRef = useRef<HTMLDivElement>(null);
-  const [stickyVisible, setStickyVisible] = useState(false);
-
-  useEffect(() => {
-    const el = stickyRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setStickyVisible(!entry?.isIntersecting),
-      { rootMargin: "-80px 0px 0px 0px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   const selectedColorName = product.colors.find((c) => c.id === color)?.name ?? product.colors[0].name;
   const selectedSizeLabel = product.sizes.find((s) => s.id === size)?.label ?? product.sizes[0].label;
