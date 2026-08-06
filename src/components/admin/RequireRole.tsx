@@ -38,7 +38,11 @@ export function RequireRole({ permission }: RequireRoleProps) {
     return <Navigate to={`/auth?returnTo=${returnTo}`} replace />;
   }
 
-  if (permission && !hasPermission(user.role, permission)) {
+  if (user.adminStatus === "disabled") {
+    return <Navigate to="/" replace />;
+  }
+
+  if (permission && !hasPermission(user.role, permission, user.adminPermissions)) {
     // Don't leak that the route exists.
     return <Navigate to="/" replace />;
   }

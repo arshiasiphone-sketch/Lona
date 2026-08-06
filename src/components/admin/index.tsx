@@ -274,6 +274,8 @@ function prettySegmentFa(segment: string) {
     settings: "تنظیمات",
     new: "جدید",
     permissions: "دسترسی‌ها",
+    team: "تیم مدیریتی",
+    accept: "پذیرش دعوت",
   };
   if (fa[segment]) return fa[segment];
   return segment.replace(/-/g, " ");

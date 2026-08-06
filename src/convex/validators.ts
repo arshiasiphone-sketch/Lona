@@ -202,6 +202,7 @@ export const vRole = v.union(...roleLiterals.map((r) => v.literal(r)));
 // for `hasPermission(role, "manage_products")`.
 
 export const adminPermissionLiterals = [
+  "manage_admins",
   "manage_products",
   "manage_inventory",
   "manage_orders",

@@ -67,6 +67,13 @@ const schema = defineSchema(
       locale: v.optional(v.string()),
       defaultAddressId: v.optional(v.id("addresses")),
       lastSeenAt: v.optional(v.number()),
+      /** Phase 8.4 — admin lifecycle. Legacy users remain active when unset. */
+      adminStatus: v.optional(v.union(v.literal("active"), v.literal("disabled"))),
+      adminPermissions: v.optional(v.array(v.string())),
+      createdBy: v.optional(v.id("users")),
+      invitedAt: v.optional(v.number()),
+      disabledAt: v.optional(v.number()),
+      lastLoginAt: v.optional(v.number()),
     }).index("email", ["email"]),
 
     // ============================================================
@@ -669,6 +676,34 @@ const schema = defineSchema(
       .index("by_user", ["userId"])
       .index("by_order", ["orderId"])
       .index("by_status", ["status"]),
+
+    /** Phase 8.4 — one-time, owner-created admin invitations. */
+    admin_invites: defineTable({
+      email: v.string(),
+      role: v.union(
+        v.literal("admin"),
+        v.literal("manager"),
+        v.literal("editor"),
+        v.literal("support"),
+      ),
+      permissions: v.array(v.string()),
+      invitedBy: v.id("users"),
+      tokenHash: v.string(),
+      expiresAt: v.number(),
+      usedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_tokenHash", ["tokenHash"])
+      .index("by_email", ["email"])
+      .index("by_invitedBy", ["invitedBy"]),
+
+    /** Phase 8.4 — future-ready MFA switch; no MFA is enabled yet. */
+    admin_security_settings: defineTable({
+      userId: v.id("users"),
+      twoFactorEnabled: v.boolean(),
+      method: v.optional(v.union(v.literal("authenticator"), v.literal("sms"))),
+      updatedAt: v.number(),
+    }).index("by_user", ["userId"]),
 
     backup_snapshots: defineTable({
       label: v.string(),

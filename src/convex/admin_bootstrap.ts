@@ -1,197 +1,86 @@
 /**
- * Phase 5.1 — First-time admin bootstrap.
+ * Phase 8.4 — Secure first-owner bootstrap.
  *
- * The auth surface is email + OTP (no passwords), so the very first
- * admin has to be created without anyone being signed in yet. This
- * mutation is intentionally unauthenticated AND self-locking: it
- * succeeds only when **no** admin or owner row currently exists. As
- * soon as the first admin lands, the path closes and admin mutations
- * fall back to the normal `requirePermission` gate.
- *
- * Usage from the project terminal:
- *   bun convex run admin_bootstrap:promote '{"email":"you@example.com"}'
- *   bun convex run admin_bootstrap:promote '{"email":"you@example.com","role":"owner"}'
- *
- * If the user record doesn't exist yet (typical first run), the
- * mutation also accepts an optional `name` and writes a placeholder
- * row so the role has somewhere to land. The user must still run
- * the OTP sign-in flow at `/auth` once to claim the profile.
- *
- * SECURITY NOTE: this is a development-grade bootstrap. Before
- * shipping to production, swap the unauthenticated `promote` for a
- * one-time CLI-only seed or a server-side env-gated allowlist.
+ * The first owner is claimed by a secret-gated internal action using an
+ * explicit email. There is no public email-promotion mutation.
  */
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { vRole } from "./validators";
+import { internalMutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { requireOwner } from "./admin";
 
-export const promote = mutation({
-  args: {
-    email: v.string(),
-    name: v.optional(v.string()),
-    role: v.optional(vRole),
-  },
-  handler: async (ctx, args) => {
-    // Defensive: refuse if any admin or owner already exists. Once
-    // the first admin is in place, every future promotion has to go
-    // through the admin surface (server-side `requirePermission`).
-    const admins = await ctx.db
+export const claimOwner = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, { email }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      throw new Error("INVALID_EMAIL");
+    }
+    const current = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", normalizedEmail))
+      .unique();
+    if (!current) throw new Error("OWNER_EMAIL_NOT_FOUND");
+
+    const privileged = await ctx.db
       .query("users")
       .filter((q) =>
-        q.or(q.eq(q.field("role"), "admin"), q.eq(q.field("role"), "owner")),
+        q.or(q.eq(q.field("role"), "owner"), q.eq(q.field("role"), "admin")),
       )
       .collect();
-    if (admins.length > 0) {
-      throw new Error("BOOTSTRAPPED");
-    }
+    if (privileged.length > 0) throw new Error("ADMIN_BOOTSTRAP_ALREADY_STARTED");
 
-    // Locate the target user by email. If none exists yet, mint a
-    // placeholder so the role has somewhere to land.
-    const lowered = args.email.trim().toLowerCase();
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", lowered))
-      .unique();
-    const role = args.role ?? "admin";
-
-    if (existing) {
-      await ctx.db.patch(existing._id, { role });
-      return { id: existing._id, role, created: false };
-    }
-
-    const id = await ctx.db.insert("users", {
-      email: lowered,
-      name: args.name,
-      role,
-      isAnonymous: false,
+    await ctx.db.patch(current._id, {
+      role: "owner",
+      adminStatus: "active",
+      lastLoginAt: Date.now(),
     });
-    return { id, role, created: true };
+    return { id: current._id, role: "owner" as const };
   },
 });
 
-/**
- * One-shot companion used by the seed runner only. Returns the
- * caller to `/auth` flow once an admin/owner exists.
- */
-export const status = mutation({
+/** Safe diagnostic; role/email are returned only to the signed-in caller. */
+export const status = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) return { signedIn: false };
+    if (!userId) return { signedIn: false as const, role: null };
     const me = await ctx.db.get(userId);
     return {
-      signedIn: true,
+      signedIn: true as const,
       role: me?.role ?? null,
       email: me?.email ?? null,
+      ownerExists:
+        (await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("role"), "owner"))
+          .first()) !== null,
     };
   },
 });
 
-/**
- * Promote the most recently created user to admin. Convenient for
- * the first-time bootstrapping flow when the developer hits
- * `bun convex run admin_bootstrap:promoteLatest '{}'` straight from
- * the Freebuff iframe — whoever signed in last lands in admin.
- *
- * Same self-locking rule as `promote`: if any admin/owner already
- * exists, this throws `BOOTSTRAPPED`.
- */
-export const promoteLatest = mutation({
-  args: {
-    role: v.optional(vRole),
-    email: v.optional(v.string()),
-    name: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const admins = await ctx.db
-      .query("users")
-      .filter((q) =>
-        q.or(q.eq(q.field("role"), "admin"), q.eq(q.field("role"), "owner")),
-      )
-      .collect();
-    if (admins.length > 0) {
-      throw new Error("BOOTSTRAPPED");
-    }
-
-    const role = args.role ?? "admin";
-    const all = await ctx.db.query("users").collect();
-    if (all.length === 0) {
-      // No signed-in users yet — seed a placeholder so we can hand
-      // the developer an email to claim at `/auth` right away.
-      const email = (args.email ?? "admin@aeon.store").trim().toLowerCase();
-      const id = await ctx.db.insert("users", {
-        email,
-        name: args.name ?? "Atelier Admin",
-        role,
-        isAnonymous: false,
-      });
-      return { id, email, name: args.name ?? "Atelier Admin", role, created: true };
-    }
-
-    all.sort((a, b) => b._creationTime - a._creationTime);
-    const target = all[0];
-    await ctx.db.patch(target._id, { role });
-    return {
-      id: target._id,
-      email: target.email ?? null,
-      name: target.name ?? null,
-      role,
-      created: false,
-    };
-  },
-});
-
-/** One-shot diagnostic: list all admin/owner users so the developer
- *  can see which email was bootstrapped. */
+/** Owner-only team listing. */
 export const listAdmins = query({
   args: {},
   handler: async (ctx) => {
-    const admins = await ctx.db
-      .query("users")
-      .filter((q) =>
-        q.or(q.eq(q.field("role"), "admin"), q.eq(q.field("role"), "owner")),
+    await requireOwner(ctx);
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((user) =>
+        user.role === "owner" ||
+        user.role === "admin" ||
+        user.role === "manager" ||
+        user.role === "editor" ||
+        user.role === "support",
       )
-      .collect();
-    return admins.map((a) => ({
-      email: a.email,
-      name: a.name,
-      role: a.role,
-    }));
+      .map((user) => ({
+        id: user._id,
+        email: user.email ?? "",
+        name: user.name ?? "",
+        role: user.role,
+        adminStatus: user.adminStatus ?? "active",
+        createdAt: user._creationTime,
+        lastLoginAt: user.lastLoginAt,
+      }));
   },
 });
-
-/** Override: promote/update a specific email to a given role regardless
- *  of whether admins already exist. Safe in dev; disable for production. */
-export const forcePromote = mutation({
-  args: {
-    email: v.string(),
-    name: v.optional(v.string()),
-    role: v.optional(vRole),
-  },
-  handler: async (ctx, args) => {
-    const lowered = args.email.trim().toLowerCase();
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", lowered))
-      .unique();
-    const role = args.role ?? "admin";
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        role,
-        ...(args.name ? { name: args.name } : {}),
-      });
-      return { id: existing._id, email: lowered, name: args.name ?? existing.name, role, created: false };
-    }
-
-    const id = await ctx.db.insert("users", {
-      email: lowered,
-      name: args.name,
-      role,
-      isAnonymous: false,
-    });
-    return { id, email: lowered, name: args.name, role, created: true };
-  },
-});
-

@@ -34,6 +34,9 @@ export async function requireUser(
   if (!user) {
     throw new Error("UNAUTHORIZED: user record missing");
   }
+  if (user.adminStatus === "disabled") {
+    throw new Error("FORBIDDEN: admin account disabled");
+  }
   return user;
 }
 
@@ -44,7 +47,7 @@ export async function requireAdmin(
   ctx: QueryCtx | MutationCtx
 ): Promise<Doc<"users">> {
   const user = await requireUser(ctx);
-  if (user.role !== "admin") {
+  if (user.role !== "admin" && user.role !== "owner") {
     throw new Error("FORBIDDEN: admin role required");
   }
   return user;

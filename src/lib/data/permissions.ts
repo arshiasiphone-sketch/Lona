@@ -7,6 +7,7 @@
  * `requirePermission` remains authoritative; this is purely UX.
  */
 export const adminPermissionLiterals = [
+  "manage_admins",
   "manage_products",
   "manage_inventory",
   "manage_orders",
@@ -31,7 +32,7 @@ export type AdminRole =
 
 const PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
   owner: new Set(adminPermissionLiterals),
-  admin: new Set(adminPermissionLiterals),
+  admin: new Set(adminPermissionLiterals.filter((permission) => permission !== "manage_admins")),
   manager: new Set([
     "manage_products",
     "manage_inventory",
@@ -55,8 +56,11 @@ const PERMISSIONS: Record<AdminRole, ReadonlySet<AdminPermission>> = {
 export function hasPermission(
   role: AdminRole | null | undefined,
   permission: AdminPermission,
+  explicitPermissions?: readonly string[],
 ): boolean {
+  if (role === "owner") return true;
   if (!role) return false;
+  if (explicitPermissions !== undefined) return explicitPermissions.includes(permission);
   return PERMISSIONS[role]?.has(permission) ?? false;
 }
 
@@ -73,6 +77,7 @@ export const ADMIN_NAV: Array<{
   group: "Catalogue" | "Operations" | "Content" | "Settings";
 }> = [
   { href: "/admin", label: "Overview", labelFa: "نمای کلی", permission: "view_reports", group: "Catalogue" },
+  { href: "/admin/team", label: "Team", labelFa: "مدیریت تیم", permission: "manage_admins", group: "Settings" },
   { href: "/admin/products", label: "Products", labelFa: "محصولات", permission: "manage_products", group: "Catalogue" },
   { href: "/admin/categories", label: "Categories", labelFa: "دسته‌ها", permission: "manage_products", group: "Catalogue" },
   { href: "/admin/collections", label: "Collections", labelFa: "کالکسیون‌ها", permission: "manage_products", group: "Catalogue" },

@@ -25,7 +25,7 @@ export const DEFAULT_ROLE: Doc<"users">["role"] = "user";
  */
 const PERMISSIONS: Record<NonNullable<Doc<"users">["role"]>, ReadonlySet<AdminPermission>> = {
   owner: new Set<AdminPermission>(adminPermissionLiterals),
-  admin: new Set<AdminPermission>(adminPermissionLiterals),
+  admin: new Set<AdminPermission>(adminPermissionLiterals.filter((permission) => permission !== "manage_admins")),
   manager: new Set<AdminPermission>([
     "manage_products",
     "manage_inventory",
@@ -52,8 +52,13 @@ const PERMISSIONS: Record<NonNullable<Doc<"users">["role"]>, ReadonlySet<AdminPe
 export function hasPermission(
   role: Doc<"users">["role"] | null | undefined,
   permission: AdminPermission,
+  explicitPermissions?: readonly string[],
 ): boolean {
+  if (role === "owner") return true;
   if (!role) return false;
+  if (explicitPermissions !== undefined) {
+    return explicitPermissions.includes(permission);
+  }
   return PERMISSIONS[role]?.has(permission) ?? false;
 }
 
@@ -65,7 +70,8 @@ export async function requirePermission(
   if (!userId) throw new Error("UNAUTHORIZED");
   const user = await ctx.db.get(userId);
   if (!user) throw new Error("UNAUTHORIZED");
-  if (!hasPermission(user.role, permission)) {
+  if (user.adminStatus === "disabled") throw new Error("FORBIDDEN: admin account disabled");
+  if (!hasPermission(user.role, permission, user.adminPermissions)) {
     throw new Error(`FORBIDDEN:${permission}`);
   }
   return user;
@@ -76,6 +82,14 @@ export async function requirePermission(
  * the existing `activity_logs` table so a future Activity viewer can
  * chart every admin write without changing the table schema again.
  */
+export async function requireOwner(
+  ctx: QueryCtx | MutationCtx,
+): Promise<Doc<"users">> {
+  const user = await requirePermission(ctx, "manage_admins");
+  if (user.role !== "owner") throw new Error("FORBIDDEN: owner role required");
+  return user;
+}
+
 export async function audit(
   ctx: MutationCtx,
   actor: Doc<"users">,

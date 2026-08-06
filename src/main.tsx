@@ -18,6 +18,7 @@ import { PageShell } from "@/components/layout/PageShell";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const AcceptInvitePage = lazy(() => import("./pages/admin/AcceptInvite.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Shop = lazy(() => import("./pages/Shop.tsx"));
 const Product = lazy(() => import("./pages/Product.tsx"));
@@ -87,6 +88,7 @@ const ExportsPage = lazy(() => import("./pages/admin/Exports.tsx"));
 const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotifications.tsx"));
 const ActivityTimelinePage = lazy(() => import("./pages/admin/ActivityTimeline.tsx"));
 const BackupsPage = lazy(() => import("./pages/admin/Backups.tsx"));
+const TeamPage = lazy(() => import("./pages/admin/Team.tsx"));
 const AdminSupportPage = lazy(() => import("./pages/admin/SupportAdmin.tsx"));
 const AdminReturnsPage = lazy(() => import("./pages/admin/ReturnsAdmin.tsx"));
 const AdminStub = lazy(() => import("./pages/admin/_Stub.tsx"));
@@ -219,6 +221,14 @@ createRoot(document.getElementById("root")!).render(
                       <Route
                         path="/auth"
                         element={<AuthPage redirectAfterAuth="/account" />}
+                      />
+                      <Route
+                        path="/admin/invite/:token"
+                        element={
+                          <RequireAuth>
+                            <AcceptInvitePage />
+                          </RequireAuth>
+                        }
                       />
 
                       {/* Public + Authenticated via PageShell */}
@@ -439,6 +449,8 @@ createRoot(document.getElementById("root")!).render(
                           <Route path="notifications" element={<Suspense fallback={<RouteLoading />}><AdminNotificationsPage /></Suspense>} />
                           <Route path="activity" element={<Suspense fallback={<RouteLoading />}><ActivityTimelinePage /></Suspense>} />
                           <Route path="backups" element={<Suspense fallback={<RouteLoading />}><BackupsPage /></Suspense>} />
+                          <Route path="team" element={<Suspense fallback={<RouteLoading />}><TeamPage /></Suspense>} />
+                          <Route path="team/:id" element={<Suspense fallback={<RouteLoading />}><TeamPage /></Suspense>} />
                           <Route path="support" element={<Suspense fallback={<RouteLoading />}><AdminSupportPage /></Suspense>} />
                           <Route path="returns" element={<Suspense fallback={<RouteLoading />}><AdminReturnsPage /></Suspense>} />
                           <Route
