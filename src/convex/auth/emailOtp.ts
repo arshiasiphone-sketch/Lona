@@ -114,7 +114,7 @@ export const emailOtp = Email({
     }
 
     throw new Error(
-      "سرویس ارسال ایمیل پیکربندی نشده است. لطفاً در داشبورد Convex مقدار VLY_INTEGRATION_KEY یا FREEBUFF_EMAIL_API_KEY را تنظیم کنید و دوباره تلاش کنید.",
+      "ارسال ایمیل ممکن نیست. برای تست: در بخش Keys مقدار DEV_EMAIL_FALLBACK=true را اضافه کنید و کد را از کنسول مرورگر (F12) بخوانید. برای پروداکشن: کلید معتبر ایمیل را در Convex تنظیم کنید.",
     );
   },
 });
