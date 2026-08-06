@@ -15,6 +15,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import { releaseReservation } from "./reservations";
 import { requirePermission, audit } from "./admin";
 
 /* ──────────────────────────────────────────────────────────────
@@ -29,8 +30,8 @@ import { requirePermission, audit } from "./admin";
 
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   pending: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered", "returning", "cancelled"],
+  processing: ["shipped"],
+  shipped: ["delivered", "returning"],
   delivered: ["returning"],
   returning: ["delivered"],
   cancelled: [],
@@ -59,7 +60,22 @@ export const setOrderStatus = mutation({
         `INVALID_TRANSITION:${order.status}->${status}`,
       );
     }
-    await ctx.db.patch(id, { status });
+    if (status === "processing" && order.paymentStatus !== "paid") {
+      throw new Error("PAYMENT_REQUIRED_FOR_PROCESSING");
+    }
+    if (status === "cancelled") {
+      const reservations = await ctx.db
+        .query("inventory_reservations")
+        .withIndex("by_order", (q) => q.eq("orderId", id))
+        .collect();
+      for (const reservation of reservations) {
+        await releaseReservation(ctx, reservation, "cancelled");
+      }
+    }
+    await ctx.db.patch(id, {
+      status,
+      ...(status === "cancelled" ? { paymentStatus: "cancelled" as const } : {}),
+    });
     await ctx.db.insert("order_status_history", {
       orderId: id,
       status,

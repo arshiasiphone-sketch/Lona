@@ -161,8 +161,8 @@ async function sweepStale(ctx: MutationCtx) {
     const order = await ctx.db.get(orderId);
     if (
       order &&
-      (order.status === "pending" ||
-        order.paymentStatus === "pending" ||
+      order.status === "pending" &&
+      (order.paymentStatus === "pending" ||
         order.paymentStatus === "initiated" ||
         order.paymentStatus === "redirected")
     ) {

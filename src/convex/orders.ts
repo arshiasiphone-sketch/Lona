@@ -51,6 +51,15 @@ const GATEWAY_PROVIDER: "mock" | "zarinpal" = process.env.ZARINPAL_MERCHANT_ID
   ? "zarinpal"
   : "mock";
 
+const VALID_STATUS_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["processing", "cancelled"],
+  processing: ["shipped"],
+  shipped: ["delivered", "returning"],
+  delivered: ["returning"],
+  returning: ["delivered"],
+  cancelled: [],
+};
+
 /* Queries ------------------------------------------------------- */
 
 export const listMine = query({
@@ -505,8 +514,8 @@ export const place = mutation({
       lineTotalCents: number;
       skuSnapshot?: string;
       imageSnapshot?: string;
-      variantId?: Id<"variants">;
-    }> = [];
+    variantId: Id<"variants">;
+  }> = [];
     let subtotal = 0;
 
     for (const line of args.lines) {
@@ -521,11 +530,15 @@ export const place = mutation({
       if (product.priceCents <= 0) throw new Error(`PRODUCT_NO_PRICE:${product.slug}`);
 
       const variant = await findVariant(ctx, product._id, line.size, line.color);
-      if (variant && (!variant.available || availableStock(variant) < line.quantity)) {
+      if (!variant) {
+        throw new Error(`VARIANT_MISSING:${product.slug}/${line.size}/${line.color}`);
+      }
+      if (!variant.available || availableStock(variant) < line.quantity) {
         throw new Error(`INSUFFICIENT_STOCK:${product.slug}/${line.size}/${line.color}`);
       }
 
-      const lineTotal = product.priceCents * line.quantity;
+      const unitPriceCents = variant.priceCentsOverride ?? product.priceCents;
+      const lineTotal = unitPriceCents * line.quantity;
       subtotal += lineTotal;
       items.push({
         productId: product.slug,
@@ -533,17 +546,16 @@ export const place = mutation({
         color: line.color,
         quantity: line.quantity,
         productNameSnapshot: product.name,
-        unitPriceCents: product.priceCents,
+        unitPriceCents,
         lineTotalCents: lineTotal,
         skuSnapshot: variant?.sku,
         imageSnapshot: product.imageUrls?.[0],
-        variantId: variant?._id,
+        variantId: variant._id,
       });
     }
 
     /* ── PASS 2: coupon validation (no writes) ── */
     let discount = 0;
-    let couponRow: Doc<"coupons"> | null = null;
     if (args.couponCode && args.couponCode.trim()) {
       const code = args.couponCode.trim().toUpperCase();
       const coupon = await ctx.db
@@ -558,7 +570,6 @@ export const place = mutation({
       }
       const rate = Math.min(Math.max(coupon.percentOff, 0), 1);
       discount = Math.round(subtotal * rate);
-      couponRow = coupon;
     }
 
     /* ── PASS 3: shipping cost (live methods, fallback map) ── */
@@ -620,19 +631,18 @@ export const place = mutation({
       });
 
       // Hold inventory — this is the TOCTOU guard.
-      if (item.variantId) {
-        const variant = await ctx.db.get(item.variantId);
-        if (variant && availableStock(variant) >= item.quantity) {
-          await reserveVariant(ctx, {
-            variant,
-            quantity: item.quantity,
-            orderId: orderDoc,
-            userId: user._id,
-            sessionId: `u:${user._id}`,
-            expiresAt: paymentExpiresAt,
-          });
-        }
+      const variant = await ctx.db.get(item.variantId);
+      if (!variant || !variant.available || availableStock(variant) < item.quantity) {
+        throw new Error(`INSUFFICIENT_STOCK:${item.productId}/${item.size}/${item.color}`);
       }
+      await reserveVariant(ctx, {
+        variant,
+        quantity: item.quantity,
+        orderId: orderDoc,
+        userId: user._id,
+        sessionId: `u:${user._id}`,
+        expiresAt: paymentExpiresAt,
+      });
     }
 
     await ctx.db.insert("order_status_history", {
@@ -745,8 +755,19 @@ export const refund = mutation({
     const user = await requirePermission(ctx, "manage_orders");
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (order.paymentStatus === "refunded" && order.status === "returning") {
+      return { orderId: args.orderId, number: order.number, paymentStatus: "refunded" };
+    }
     if (order.paymentStatus !== "paid") {
       throw new Error(`PAYMENT_NOT_PAID:${order.paymentStatus}`);
+    }
+    if (![
+      "processing",
+      "shipped",
+      "delivered",
+      "returning",
+    ].includes(order.status)) {
+      throw new Error(`INVALID_REFUND_STATUS:${order.status}`);
     }
 
     const items = await ctx.db
@@ -755,10 +776,18 @@ export const refund = mutation({
       .collect();
     for (const item of items) {
       const product = await resolveProduct(ctx, item.productId);
-      if (!product) continue;
+      if (!product) throw new Error(`REFUND_PRODUCT_MISSING:${item.productId}`);
       const variant = await findVariant(ctx, product._id, item.size, item.color);
-      if (!variant) continue;
-      await ctx.db.patch(variant._id, { stock: variant.stock + item.quantity });
+      if (!variant) {
+        throw new Error(`REFUND_VARIANT_MISSING:${item.productId}/${item.size}/${item.color}`);
+      }
+      if (variant.stock < 0 || variant.reserved && variant.reserved < 0) {
+        throw new Error("INVENTORY_CORRUPTED");
+      }
+      await ctx.db.patch(variant._id, {
+        stock: variant.stock + item.quantity,
+        available: variant.available || variant.stock + item.quantity > 0,
+      });
       await ctx.db.insert("stock_movements", {
         variantId: variant._id,
         kind: "return",
@@ -809,6 +838,21 @@ export const updateStatus = mutation({
     if (user.role !== "admin") throw new Error("FORBIDDEN");
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("ORDER_NOT_FOUND");
+    const allowed = VALID_STATUS_TRANSITIONS[order.status] ?? [];
+    if (!allowed.includes(args.status)) {
+      throw new Error(`INVALID_TRANSITION:${order.status}->${args.status}`);
+    }
+    if (args.status === "processing" && order.paymentStatus !== "paid") {
+      throw new Error("PAYMENT_REQUIRED_FOR_PROCESSING");
+    }
+    if (args.status === "cancelled") {
+      if (order.status !== "pending") {
+        throw new Error(`INVALID_TRANSITION:${order.status}->cancelled`);
+      }
+      const { number } = await cancelOrder(ctx, args.orderId, "cancelled", args.note);
+      await audit(ctx, user, "order.cancelled", "orders", args.orderId, { number });
+      return args.orderId;
+    }
 
     const patch: Record<string, unknown> = { status: args.status };
     if (args.trackingNumber) {
