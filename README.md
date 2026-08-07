@@ -23,13 +23,19 @@ This project is set up already and running on a cloud environment, as well as a 
 
 ## Deployment on Vercel
 
-This is a Vite SPA backed by Convex. Vercel must generate Convex's `_generated` types before compiling the frontend. The repository includes `convex.json` and `vercel.json`. `convex.json` points the Convex CLI at `src/convex/`, while Vercel runs this build command:
+This is a Vite SPA backed by Convex. The current generated Convex client/type files are committed under `src/convex/_generated/`, so Vercel can build the existing frontend without Convex account access. The repository includes `convex.json` and `vercel.json`; `convex.json` points the Convex CLI at `src/convex/`, while Vercel runs:
 
 ```bash
-bunx convex deploy --cmd "bun run build:frontend" --cmd-url-env-var-name VITE_CONVEX_URL
+bun run build:frontend
 ```
 
-`convex deploy` regenerates `src/convex/_generated` as part of the deployment and passes the production Convex URL to the Vite build through `VITE_CONVEX_URL`. The Vercel project must have a `CONVEX_DEPLOY_KEY` environment variable.
+The Vercel project only needs the public production backend URL:
+
+```text
+VITE_CONVEX_URL=https://<your-deployment>.convex.cloud
+```
+
+Do not add `CONVEX_DEPLOY_KEY` unless you later regain Convex access and want Vercel to deploy backend changes automatically. Because this build does not run `convex deploy`, changes to Convex functions, schema, or backend environment variables must be deployed separately by an account owner.
 
 For a local frontend build (without deploying Convex), run:
 
@@ -46,37 +52,39 @@ bun run convex:codegen
 bun run typecheck
 ```
 
-In Vercel → Project Settings → Environment Variables, add a production `CONVEX_DEPLOY_KEY`. The `convex deploy --cmd` wrapper generates the Convex client types and provides `VITE_CONVEX_URL` to the frontend build. Do not put server secrets such as `RESEND_API_KEY` or payment keys in `VITE_*` variables; configure those in the Convex deployment environment.
+In Vercel → Project Settings → Environment Variables, add `VITE_CONVEX_URL` for Production and Preview using the existing Convex deployment URL. Do not put server secrets such as `RESEND_API_KEY` or payment keys in `VITE_*` variables; configure those in the Convex deployment environment.
+
+### Optional backend deployment (requires Convex access)
+
+If a Convex project owner later provides a production deploy key, the Vercel build can be switched back to the backend-deploying command:
+
+```bash
+bunx convex deploy --cmd "bun run build:frontend" --cmd-url-env-var-name VITE_CONVEX_URL
+```
+
+That command requires `CONVEX_DEPLOY_KEY` in Vercel. Without that key, use the current frontend-only build command.
 
 ### Fixing `401 MissingAccessToken` on Vercel
 
-If the Vercel log contains `401 Unauthorized: MissingAccessToken`, the build command is working but Convex has not received a deploy key. Create a production deploy key from a machine where you are signed in to the correct Convex account and project:
+The current repository build command is frontend-only and does not call Convex, so it does not require a deploy key. If Vercel still shows `401 Unauthorized: MissingAccessToken`, it is using an older cached project build command or an older commit. Confirm that the deployed commit contains this `vercel.json` setting:
+
+```json
+"buildCommand": "bun run build:frontend"
+```
+
+Then redeploy with **Redeploy → Use existing Build Cache: Off**. Also confirm that `VITE_CONVEX_URL` is configured in Vercel for the selected environment.
+
+Only if you intentionally switch back to automatic Convex backend deployment should you create a key from a machine signed in to the correct Convex account:
 
 ```bash
 bunx convex deployment token create lona-production
 ```
 
-Copy the generated token immediately. In Vercel, open **Project Settings → Environment Variables**, create:
-
-```text
-Name:  CONVEX_DEPLOY_KEY
-Value: <the generated Convex production deploy key>
-Scope: Production (and Preview if preview deployments should deploy Convex too)
-```
-
-After saving the variable, redeploy with **Redeploy → Use existing Build Cache: Off**. Do not add the token to GitHub, `.env` files, `vercel.json`, or any client-side `VITE_*` variable. Do not set `CONVEX_DEPLOYMENT` for this CI build; `CONVEX_DEPLOY_KEY` already identifies the target Convex deployment.
-
-The exact Vercel error means:
-
-```text
-MissingAccessToken = CONVEX_DEPLOY_KEY is missing, empty, malformed, or unavailable to this deployment scope.
-```
-
-If the next build reports `Invalid deploy key` instead, create a new key while signed in to the Convex team that owns the `charming-rabbit-27` project and replace the old Vercel value. Never paste the key into chat or commit it to the repository.
+Then store it only in Vercel as `CONVEX_DEPLOY_KEY`. Never add it to GitHub, `.env` files, `vercel.json`, or a client-side `VITE_*` variable. Never paste the token into chat.
 
 ## Environment Variables
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
+The client requires `VITE_CONVEX_URL`, which should point to the already-deployed production Convex URL. `CONVEX_DEPLOYMENT` and `CONVEX_DEPLOY_KEY` are not needed for the current frontend-only Vercel build.
 
 The convex server has a separate set of environment variables that are accessible by the convex backend.
 
