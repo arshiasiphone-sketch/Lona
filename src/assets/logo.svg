@@ -1,30 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Lona">
-  <defs>
-    <radialGradient id="pearl" cx="50%" cy="38%" r="68%">
-      <stop offset="0%" stop-color="#FBF1E2" />
-      <stop offset="55%" stop-color="#F1DDC6" />
-      <stop offset="100%" stop-color="#D9B8A0" />
-    </radialGradient>
-    <radialGradient id="sheen" cx="32%" cy="22%" r="35%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85" />
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
-    </radialGradient>
-    <linearGradient id="ink" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3A2C2A" />
-      <stop offset="100%" stop-color="#1F1816" />
-    </linearGradient>
-  </defs>
-  <circle cx="100" cy="100" r="96" fill="url(#pearl)" />
-  <circle cx="100" cy="100" r="96" fill="url(#sheen)" />
-  <circle cx="100" cy="100" r="95" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="1" />
-  <!-- LONA wordmark -->
-  <text x="100" y="118" text-anchor="middle"
-        font-family="'Cormorant Garamond', 'Fraunces', 'Times New Roman', serif"
-        font-size="44" font-weight="500" fill="url(#ink)"
-        letter-spacing="6">LONA</text>
-  <!-- 4-point sparkle nested inside the O -->
-  <g transform="translate(100 100)" fill="#7C5A3E">
-    <path d="M0,-5.2 C0.6,-1.8 1.8,-0.6 5.2,0 C1.8,0.6 0.6,1.8 0,5.2 C-0.6,1.8 -1.8,0.6 -5.2,0 C-1.8,-0.6 -0.6,-1.8 0,-5.2 Z" />
-    <circle r="0.9" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="logo-title logo-desc">
+  <title id="logo-title">LONA</title>
+  <desc id="logo-desc">نشان دایره‌ای لونا با زمینه کرم و نوشته مشکی</desc>
+
+  <circle cx="500" cy="500" r="496" fill="#F4E5D8" />
+
+  <!-- L -->
+  <path fill="#080808" d="M151 381c0-9 7-15 19-15h32c-8 6-11 13-11 25v181c0 7 3 11 11 14l78 25c21 7 39 14 57 14 16 0 30-3 44-11-13 22-39 35-66 35-19 0-40-6-62-14l-55-20c-19-7-32-11-47-11V407c0-12-1-19-10-26-6-5-10-8-10-0z" />
+
+  <!-- O -->
+  <path fill="#080808" fill-rule="evenodd" d="M365 381c65 0 111 43 111 101 0 65-50 110-112 110-66 0-111-43-111-101 0-64 49-110 112-110zm-1 8c-47 0-82 38-82 96 0 56 35 98 83 98 48 0 82-38 82-96 0-57-35-98-83-98z" />
+  <!-- sparkle inside O -->
+  <path fill="#080808" d="M389 463c4 16 10 22 27 26-17 4-23 10-27 27-4-17-10-23-27-27 17-4 23-10 27-26z" />
+
+  <!-- N -->
+  <path fill="#080808" d="M495 402c0-12-5-18-17-26h37l126 154V414c0-18-4-29-16-38h43c-11 9-15 20-15 38v168h-14L520 430v137c0 19 4 29 16 38h-42c11-9 15-19 15-38V402h-14z" />
+
+  <!-- A -->
+  <path fill="#080808" d="M671 579l70-181c5-14 4-22-7-29h38l72 191c6 16 14 26 27 34h-61c12-8 14-16 9-30l-17-46h-83l-17 45c-5 14-2 23 10 31h-57c9-7 13-13 16-15zm54-69h69l-35-91-34 91z" />
+  <!-- A's delicate lower sweep -->
+  <path fill="#080808" d="M692 573c22-34 48-51 76-51 21 0 35 9 50 18 12 7 23 12 36 12 11 0 20-3 29-10-10 17-24 25-41 25-17 0-32-7-47-15-13-7-25-13-38-13-21 0-42 13-65 34z" />
 </svg>
