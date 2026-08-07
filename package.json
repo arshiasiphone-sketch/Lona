@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:frontend": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "convex:codegen": "convex dev --once",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "bun test",

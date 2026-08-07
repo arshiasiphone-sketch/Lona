@@ -21,6 +21,33 @@ Use bun for the package manager.
 
 This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
 
+## Deployment on Vercel
+
+This is a Vite SPA backed by Convex. Vercel must generate Convex's `_generated` types before compiling the frontend. The repository includes `convex.json` and `vercel.json`. `convex.json` points the Convex CLI at `src/convex/`, while Vercel runs this build command:
+
+```bash
+bunx convex deploy --cmd "bun run build:frontend" --cmd-url-env-var-name VITE_CONVEX_URL
+```
+
+`convex deploy` regenerates `src/convex/_generated` as part of the deployment and passes the production Convex URL to the Vite build through `VITE_CONVEX_URL`. The Vercel project must have a `CONVEX_DEPLOY_KEY` environment variable.
+
+For a local frontend build (without deploying Convex), run:
+
+```bash
+bun install
+bun run typecheck
+bun run build
+```
+
+For a local Convex code-generation check, run:
+
+```bash
+bun run convex:codegen
+bun run typecheck
+```
+
+In Vercel → Project Settings → Environment Variables, add a production `CONVEX_DEPLOY_KEY`. The `convex deploy --cmd` wrapper generates the Convex client types and provides `VITE_CONVEX_URL` to the frontend build. Do not put server secrets such as `RESEND_API_KEY` or payment keys in `VITE_*` variables; configure those in the Convex deployment environment.
+
 ## Environment Variables
 
 The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
