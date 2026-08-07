@@ -13,8 +13,7 @@ import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 // client bundle, source code, or a public chat.
 
 const APP_NAME = process.env.VLY_APP_NAME || "لونا";
-const RESEND_FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL || `لونا <onboarding@resend.dev>`;
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
 
 function isDevFallbackEnabled(): boolean {
   // Explicit opt-in only. Never infer this from NODE_ENV because an unset or
@@ -24,7 +23,7 @@ function isDevFallbackEnabled(): boolean {
 
 async function sendViaResend(email: string, token: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return false;
+  if (!apiKey || !RESEND_FROM_EMAIL) return false;
 
   try {
     const res = await axios.post(
