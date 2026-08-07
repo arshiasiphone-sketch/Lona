@@ -82,6 +82,28 @@ bunx convex deployment token create lona-production
 
 Then store it only in Vercel as `CONVEX_DEPLOY_KEY`. Never add it to GitHub, `.env` files, `vercel.json`, or a client-side `VITE_*` variable. Never paste the token into chat.
 
+## Deployment on Netlify (simpler alternative to Vercel)
+
+Netlify is a better fit for this project than Vercel because the repository build is
+frontend-only and the site is a static SPA. The repo already includes a `netlify.toml`
+that Netlify reads automatically — no dashboard build settings are required.
+
+1. Push the repository (including `netlify.toml`, `public/`, and the committed
+   `src/convex/_generated/` files) to GitHub.
+2. In Netlify: **Add new site → Import an existing project → connect the GitHub repo**.
+3. Netlify auto-detects Vite and reads `netlify.toml`:
+   - Build command: `npm run build:frontend`
+   - Publish directory: `dist`
+4. Add the environment variable (Site configuration → Environment variables):
+   ```text
+   VITE_CONVEX_URL=https://<your-deployment>.convex.cloud
+   ```
+5. Deploy. SPA routes (`/shop`, `/account`, `/admin/...`) fall through to
+   `index.html` via the redirects already defined in `netlify.toml`.
+
+No `CONVEX_DEPLOY_KEY` is needed on Netlify. Backend changes (Convex functions,
+schema, server env vars) still require someone with access to the Convex account.
+
 ## Environment Variables
 
 The client requires `VITE_CONVEX_URL`, which should point to the already-deployed production Convex URL. `CONVEX_DEPLOYMENT` and `CONVEX_DEPLOY_KEY` are not needed for the current frontend-only Vercel build.
