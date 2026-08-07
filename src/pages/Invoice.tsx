@@ -93,9 +93,6 @@ export default function Invoice() {
           <div className="flex items-center gap-3">
             <LonaLogo variant="default" size={40} />
             <div>
-              <p className="font-latin-display text-2xl tracking-[0.32em] text-ink">
-                LONA
-              </p>
               <p className="type-eyebrow text-ink-muted">{shopName}</p>
             </div>
           </div>

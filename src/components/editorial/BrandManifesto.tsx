@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion/Reveal";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 interface Props {
   eyebrow?: string;
@@ -33,7 +34,7 @@ export function BrandManifesto({
           ))}
           <div className="mt-12 flex items-center gap-3">
             <span className="h-px w-10 bg-ink/40" />
-            <span className="font-display text-sm tracking-[0.2em] text-ink">LONA</span>
+            <LonaLogo variant="default" size={28} title="لوگوی لونا" className="h-7 w-7" />
           </div>
         </div>
       </div>

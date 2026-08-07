@@ -3,6 +3,7 @@ import { Instagram } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 import { useHomepageImages } from "@/lib/homepage-images";
 
 const gradients: Array<
@@ -79,7 +80,7 @@ export function InstagramGallery() {
               fallbackClassName={g}
             />
             <span className="absolute right-3 top-3 rounded-full bg-ink/85 px-2 py-1 font-latin-display text-[9px] tracking-[0.36em] text-canvas opacity-0 transition group-hover:opacity-100">
-              LONA
+              <LonaLogo variant="default" size={24} title="لوگوی لونا" className="h-6 w-6" />
             </span>
             <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3">
               <span className="line-clamp-1 font-sans text-[11px] font-medium text-ink/85">

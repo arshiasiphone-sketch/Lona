@@ -7,6 +7,7 @@ import { useMouseParallax } from "@/hooks/use-mouse-parallax";
 import { useReducedMotionStrict } from "@/hooks/use-prefers-reduced-motion";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { ImageMaskReveal } from "@/components/motion/ImageMaskReveal";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 const MotionParagraph = motion.p;
 const MotionDiv = motion.div;
@@ -206,7 +207,7 @@ export function HeroChoreography() {
                 ۰۱
               </div>
               <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-ink/55">
-                LONA
+                <LonaLogo variant="default" size={28} title="لوگوی لونا" className="h-7 w-7" />
               </span>
             </div>
           </ImageMaskReveal>
@@ -238,7 +239,7 @@ export function HeroChoreography() {
                   ۰۲
                 </div>
                 <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-ink/55">
-                  LONA
+                  <LonaLogo variant="default" size={28} title="لوگوی لونا" className="h-7 w-7" />
                 </span>
               </MotionDiv>
             </ImageMaskReveal>
@@ -255,7 +256,7 @@ export function HeroChoreography() {
                 ۰۳
               </div>
               <span className="absolute right-4 top-4 font-display text-[10px] tracking-[0.4em] text-canvas/60">
-                LONA
+                <LonaLogo variant="default" size={28} title="لوگوی لونا" className="h-7 w-7" />
               </span>
             </div>
           </ImageMaskReveal>

@@ -6,7 +6,7 @@
  * no stat dl. Reads like a quiet magazine letter.
  */
 import { Reveal } from "@/components/motion/Reveal";
-import { LonaMark } from "@/components/brand/LonaLogo";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 interface Props {
   eyebrow?: string;
@@ -29,10 +29,7 @@ export function BrandStory({
         <div className="lg:sticky lg:top-32 lg:h-fit">
           <p className="type-eyebrow text-ink-muted">{eyebrow}</p>
           <div className="mt-8 flex items-center gap-3">
-            <LonaMark size={32} />
-            <span className="font-latin-display text-base tracking-[0.32em] text-ink">
-              LONA
-            </span>
+            <LonaLogo variant="default" size={38} title="لوگوی لونا" className="h-10 w-10" />
           </div>
           <p className="mt-3 font-display text-base font-light text-ink-soft">
             بوتیک لباس زیر زنانه
@@ -51,9 +48,12 @@ export function BrandStory({
           </p>
           <div className="mt-4 flex items-center gap-3">
             <span className="h-px w-10 bg-ink/35" />
-            <span className="font-latin-display text-sm tracking-[0.32em] text-ink">
-              LONA
-            </span>
+            <LonaLogo
+              variant="default"
+              size={28}
+              title="لوگوی لونا"
+              className="h-7 w-7"
+            />
           </div>
         </div>
       </div>

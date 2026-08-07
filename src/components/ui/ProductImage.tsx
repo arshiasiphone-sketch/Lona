@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { cn, type GradientKey } from "@/lib/glass";
 import { LONA_MOCK_FALLBACK } from "@/data/mock-images";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 /** Accept either the unprefixed key ("mist") or the full class ("gradient-mist"). */
 type GradientInput =
@@ -285,9 +286,12 @@ export function ProductImage({
           }}
         />
       {withMark && (
-        <span className="absolute bottom-3 start-3 font-display text-[10px] tracking-[0.4em] text-ink/50">
-          LONA
-        </span>
+        <LonaLogo
+          variant="default"
+          size={24}
+          title="لوگوی لونا"
+          className="absolute bottom-3 start-3 h-6 w-6 opacity-70"
+        />
       )}
     </div>
   );

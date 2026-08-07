@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 const categoryLabel: Record<string, string> = {
   journal: "مجله",
@@ -132,9 +133,12 @@ export default function PressArticle() {
         </p>
         <div className="flex items-center gap-3 pt-4">
           <div className="h-px w-8 bg-ink/35" />
-          <span className="font-latin-display text-sm tracking-[0.32em] text-ink">
-            LONA
-          </span>
+          <LonaLogo
+            variant="default"
+            size={28}
+            title="لوگوی لونا"
+            className="h-7 w-7"
+          />
         </div>
       </motion.article>
 

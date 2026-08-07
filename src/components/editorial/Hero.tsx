@@ -16,6 +16,7 @@ import { ArrowLeft } from "lucide-react";
 import { EASE_LUXURY } from "@/lib/motion";
 import { useReducedMotionStrict } from "@/hooks/use-prefers-reduced-motion";
 import { EditorialImage } from "@/components/ui/EditorialImage";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 import { useHomepageImages } from "@/lib/homepage-images";
 
 export function Hero() {
@@ -67,9 +68,12 @@ export function Hero() {
         </div>
         {/* Editorial label, bottom-left */}
         <div className="absolute bottom-6 left-6 lg:bottom-10 lg:left-10">
-          <p className="font-latin-display text-[10px] tracking-[0.36em] text-canvas/65">
-            LONA · INTIMATES
-          </p>
+          <LonaLogo
+            variant="default"
+            size={30}
+            title="لوگوی لونا"
+            className="h-8 w-8"
+          />
           <p className="mt-2 font-display text-[clamp(2rem,4vw,3.6rem)] font-light leading-[0.96] text-canvas">
             <span className="italic font-light">زنانه</span>،{" "}
             <span className="italic font-light">روزمره</span>.

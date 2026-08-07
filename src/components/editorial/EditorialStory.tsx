@@ -6,6 +6,7 @@
  */
 import { motion } from "framer-motion";
 import { EASE_LUXURY } from "@/lib/motion";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 interface Props {
   eyebrow?: string;
@@ -51,9 +52,7 @@ export function EditorialStory({
           </p>
           <div className="mt-8 flex items-center gap-3">
             <div className="h-px w-8 bg-ink/35" />
-            <span className="font-latin-display text-sm tracking-[0.32em] text-ink">
-              LONA
-            </span>
+            <LonaLogo variant="default" size={28} title="لوگوی لونا" className="h-7 w-7" />
           </div>
         </div>
       </motion.div>

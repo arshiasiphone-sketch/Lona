@@ -39,7 +39,7 @@ import {
   type AdminPermission,
   type AdminRole,
 } from "@/lib/data/permissions";
-import { LonaMark } from "@/components/brand/LonaLogo";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 const GROUP_LABEL_FA: Record<string, string> = {
   Catalogue: "کاتالوگ",
@@ -105,10 +105,7 @@ function AdminSidebar({ role }: { role?: AdminRole }) {
     <aside className="sticky top-0 hidden h-screen border-r border-edge bg-canvas/95 backdrop-blur-xl lg:block">
       <div className="flex h-16 items-center gap-3 border-b border-edge px-5">
         <Link to="/admin" className="flex items-center gap-3">
-          <LonaMark size={28} />
-          <span className="font-latin-display text-base tracking-[0.32em] text-ink">
-            LONA
-          </span>
+          <LonaLogo variant="default" size={32} title="لوگوی لونا" className="h-8 w-8" />
           <span className="text-ink-muted">— مدیریت</span>
         </Link>
       </div>

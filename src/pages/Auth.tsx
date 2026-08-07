@@ -12,6 +12,7 @@ import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Reveal } from "@/components/motion/Reveal";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -102,9 +103,12 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         <ArrowRight className="h-3.5 w-3.5" />
       </Link>
 
-      <p className="absolute left-6 top-6 z-10 font-display text-lg tracking-[0.36em] text-ink">
-        LONA
-      </p>
+      <LonaLogo
+        variant="default"
+        size={48}
+        title="لوگوی لونا"
+        className="absolute left-6 top-6 z-10 h-12 w-12"
+      />
 
       <div className="relative grid min-h-screen place-items-center px-6 py-32">
         <Reveal className="w-full max-w-md">

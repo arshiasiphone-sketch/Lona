@@ -5,7 +5,6 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/glass";
 import { LonaLogo } from "@/components/brand/LonaLogo";
-import { useHomepageImages } from "@/lib/homepage-images";
 
 const sections: { title: string; links: { label: string; to: string }[] }[] = [
   {
@@ -53,7 +52,6 @@ const sections: { title: string; links: { label: string; to: string }[] }[] = [
 export function Footer() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const images = useHomepageImages();
   // Phase 8.2 — store legal/contact info from admin settings.
   const store = useQuery(api.admin_settings.getStoreInfo, {});
   // Phase 8.2 — keep the trust copy honest: only claim the Zarinpal
@@ -135,19 +133,15 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <div className="flex items-center gap-3">
-              {images.logo && images.logo !== "/logo.svg" ? (
-                <img src={images.logo} alt="لونا" className="h-11 w-auto" />
-              ) : (
-                <LonaLogo variant="default" size={44} />
-              )}
-              <div className="flex flex-col items-start leading-tight">
-                <span className="font-latin-display text-2xl tracking-[0.32em] text-ink">
-                  LONA
-                </span>
-                <span className="type-eyebrow mt-1 text-ink-muted">
-                  بوتیک لباس زیر زنانه
-                </span>
-              </div>
+              <LonaLogo
+                variant="default"
+                size={64}
+                title="لوگوی لونا"
+                className="h-16 w-16"
+              />
+              <span className="type-eyebrow text-ink-muted">
+                بوتیک لباس زیر زنانه
+              </span>
             </div>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-ink-muted">
               لونا یک خانه‌ی طراحی لباس زیر زنانه است. تکه‌هایی که برای ماندن

@@ -16,8 +16,7 @@ import { useWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
 import { useOverlay } from "@/hooks/use-overlay";
 import { EASE_LUXURY, SPRING_GENTLE, SPRING_SNAP } from "@/lib/motion";
-import { LonaLogo, LonaMark } from "@/components/brand/LonaLogo";
-import { useHomepageImages } from "@/lib/homepage-images";
+import { LonaLogo } from "@/components/brand/LonaLogo";
 
 const PRIMARY_LINKS: { label: string; to: string }[] = [
   { label: "بوتیک", to: "/shop" },
@@ -32,7 +31,6 @@ export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { isAuthenticated } = useAuth();
   const { openSideCart, openCommand } = useOverlay();
   const navigate = useNavigate();
-  const images = useHomepageImages();
 
   const [scrolled, setScrolled] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -158,21 +156,12 @@ export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
           aria-label="لونا — خانه"
         >
-          {images.logo && images.logo !== "/logo.svg" ? (
-            <img
-              src={images.logo}
-              alt="لونا"
-              className="h-8 w-auto"
-              loading="eager"
-            />
-          ) : (
-            <>
-              <LonaMark size={28} />
-              <span className="font-latin-display text-[18px] uppercase tracking-[0.32em] text-ink">
-                LONA
-              </span>
-            </>
-          )}
+          <LonaLogo
+            variant="default"
+            size={34}
+            title="لونا — خانه"
+            className="h-9 w-9"
+          />
         </Link>
 
         {/* Left — utilities */}
