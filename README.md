@@ -48,6 +48,32 @@ bun run typecheck
 
 In Vercel → Project Settings → Environment Variables, add a production `CONVEX_DEPLOY_KEY`. The `convex deploy --cmd` wrapper generates the Convex client types and provides `VITE_CONVEX_URL` to the frontend build. Do not put server secrets such as `RESEND_API_KEY` or payment keys in `VITE_*` variables; configure those in the Convex deployment environment.
 
+### Fixing `401 MissingAccessToken` on Vercel
+
+If the Vercel log contains `401 Unauthorized: MissingAccessToken`, the build command is working but Convex has not received a deploy key. Create a production deploy key from a machine where you are signed in to the correct Convex account and project:
+
+```bash
+bunx convex deployment token create lona-production
+```
+
+Copy the generated token immediately. In Vercel, open **Project Settings → Environment Variables**, create:
+
+```text
+Name:  CONVEX_DEPLOY_KEY
+Value: <the generated Convex production deploy key>
+Scope: Production (and Preview if preview deployments should deploy Convex too)
+```
+
+After saving the variable, redeploy with **Redeploy → Use existing Build Cache: Off**. Do not add the token to GitHub, `.env` files, `vercel.json`, or any client-side `VITE_*` variable. Do not set `CONVEX_DEPLOYMENT` for this CI build; `CONVEX_DEPLOY_KEY` already identifies the target Convex deployment.
+
+The exact Vercel error means:
+
+```text
+MissingAccessToken = CONVEX_DEPLOY_KEY is missing, empty, malformed, or unavailable to this deployment scope.
+```
+
+If the next build reports `Invalid deploy key` instead, create a new key while signed in to the Convex team that owns the `charming-rabbit-27` project and replace the old Vercel value. Never paste the key into chat or commit it to the repository.
+
 ## Environment Variables
 
 The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
