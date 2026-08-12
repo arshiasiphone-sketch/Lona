@@ -21,20 +21,25 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Upload, X, AlertTriangle, RefreshCw, Star, ChevronUp, ChevronDown, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import {
+  IMAGE_ACCEPT,
+  MAX_PRODUCT_IMAGE_BYTES,
+  formatAcceptedImageTypes,
+  getImageContentType,
+} from "@/lib/media";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface MediaUploaderProps {
   productId: Id<"products">;
 }
 
-const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — mirrors the server-side cap
+const MAX_BYTES = MAX_PRODUCT_IMAGE_BYTES;
 const MAX_IMAGES = 12;
 
 type Row =
   | { key: string; state: "uploading"; progress: number; localUrl: string; name: string; size: number }
   | { key: string; state: "success"; storageId: Id<"_storage">; localUrl: string; name: string }
-  | { key: string; state: "failed"; error: string; name: string; size: number; file?: File };
+  | { key: string; state: "failed"; error: string; name: string; size: number; file: File };
 
 export function MediaUploader({ productId }: MediaUploaderProps) {
   const [rows, setRows] = React.useState<Row[]>([]);
@@ -45,6 +50,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
   const attachMedia = useMutation(api.admin_products.attachMedia);
   const reorderMedia = useMutation(api.admin_products.reorderMedia);
   const deleteMedia = useMutation(api.admin_products.deleteMedia);
+  const discardUpload = useMutation(api.admin_media.discardUpload);
   const liveMedia = useQuery(api.admin_products.listMedia, { productId });
 
   type PersistedImage = {
@@ -58,26 +64,46 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
 
   const beginUpload = React.useCallback(
     async (file: File) => {
-      if (!ACCEPTED.includes(file.type)) {
+      const contentType = getImageContentType(file);
+      if (!contentType) {
         const key = `${file.name}-${Date.now()}`;
-        setRows((r) => [...r, { key, state: "failed", error: "فرمت فایل پشتیبانی نمی‌شود", name: file.name, size: file.size, file }]);
+        setRows((r) => [
+          ...r,
+          {
+            key,
+            state: "failed",
+            error: `فرمت فایل پشتیبانی نمی‌شود. فرمت‌های مجاز: ${formatAcceptedImageTypes()}`,
+            name: file.name,
+            size: file.size,
+            file,
+          },
+        ]);
         return;
       }
-      if (file.size > MAX_BYTES) {
+      if (file.size <= 0 || file.size > MAX_BYTES) {
         const key = `${file.name}-${Date.now()}`;
-        setRows((r) => [...r, { key, state: "failed", error: "حجم تصویر زیاد است — حداکثر ۵ مگابایت", name: file.name, size: file.size, file }]);
+        setRows((r) => [
+          ...r,
+          {
+            key,
+            state: "failed",
+            error: "حجم تصویر باید بیشتر از صفر و حداکثر ۵ مگابایت باشد.",
+            name: file.name,
+            size: file.size,
+            file,
+          },
+        ]);
         return;
       }
       const key = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const localUrl = URL.createObjectURL(file);
       setRows((r) => [...r, { key, state: "uploading", progress: 12, localUrl, name: file.name, size: file.size }]);
 
+      let uploadedStorageId: Id<"_storage"> | null = null;
       try {
         const url = await generateUploadUrl();
-        const form = new FormData();
-        form.append("file", file);
         const result = await new Promise<{ storageId: Id<"_storage"> }>((resolve, reject) => {
-          // Convex storage uploads are direct POSTs to the issued URL.
+          // Convex storage requires the raw file body and its MIME header.
           const xhr = new XMLHttpRequest();
           xhr.upload.addEventListener("progress", (e) => {
             if (!e.lengthComputable) return;
@@ -90,33 +116,34 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
               ),
             );
           });
-          const handleError = () => reject(new Error("Upload failed"));
+          const handleError = () => reject(new Error("خطای شبکه در بارگذاری تصویر"));
           xhr.addEventListener("error", handleError);
-          xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+          xhr.addEventListener("abort", () => reject(new Error("بارگذاری لغو شد")));
           xhr.addEventListener("load", () => {
             if (xhr.status < 200 || xhr.status >= 300) {
               reject(new Error(`HTTP ${xhr.status}`));
               return;
             }
-            // Convex responds with { storageId: string }
             try {
               const data = JSON.parse(xhr.responseText) as { storageId: Id<"_storage"> };
               resolve({ storageId: data.storageId });
             } catch {
-              reject(new Error("Malformed upload response"));
+              reject(new Error("پاسخ نامعتبر از سرویس ذخیره‌سازی"));
             }
           });
           xhr.open("POST", url);
-          xhr.send(form);
+          xhr.setRequestHeader("Content-Type", contentType);
+          xhr.send(file);
         });
 
+        uploadedStorageId = result.storageId;
         await attachMedia({
           productId,
           storageId: result.storageId,
-          alt: file.name.replace(/\.[^.]+$/, ""),
+          alt: file.name.replace(/\.[^.]+$/, "").trim() || "تصویر محصول",
           order: persisted.length + rows.filter((r) => r.state === "success").length,
           dominantGradient: undefined,
-          contentType: file.type,
+          contentType,
           size: file.size,
         });
         setRows((r) =>
@@ -127,16 +154,20 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
           ),
         );
       } catch (err) {
+        if (uploadedStorageId) {
+          await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
+        }
         setRows((r) =>
           r.map((row) =>
             row.key === key && row.state === "uploading"
-              ? { ...row, state: "failed", error: (err as Error).message }
+              ? { ...row, state: "failed", error: (err as Error).message, file }
               : row,
           ),
         );
+        URL.revokeObjectURL(localUrl);
       }
     },
-    [generateUploadUrl, attachMedia, productId, persisted.length, rows],
+    [generateUploadUrl, attachMedia, discardUpload, productId, persisted.length, rows],
   );
 
   const handleFiles = React.useCallback(
@@ -155,7 +186,9 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
   };
 
   const retry = (key: string) => {
+    const failed = rows.find((row) => row.key === key);
     setRows((r) => r.filter((row) => row.key !== key));
+    if (failed?.state === "failed") void beginUpload(failed.file);
   };
 
   const move = async (index: number, delta: number) => {
@@ -192,7 +225,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
         </div>
         <p className="font-display text-lg text-ink">تصاویر تکه را در اینجا رها کنید.</p>
         <p className="mt-1 text-xs text-ink-muted">
-          PNG, JPG, WebP, AVIF — حداکثر ۸ مگابایت، ۱۲ تصویر برای هر محصول.
+          PNG، JPG، WebP، AVIF — حداکثر ۵ مگابایت، ۱۲ تصویر برای هر محصول.
         </p>
         <button
           type="button"
@@ -207,7 +240,7 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
           type="file"
           hidden
           multiple
-          accept={ACCEPTED.join(",")}
+          accept={IMAGE_ACCEPT}
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>

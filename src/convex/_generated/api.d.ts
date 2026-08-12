@@ -33,6 +33,7 @@ import type * as crons from "../crons.js";
 import type * as editorials from "../editorials.js";
 import type * as http from "../http.js";
 import type * as marketplace from "../marketplace.js";
+import type * as mediaValidation from "../mediaValidation.js";
 import type * as notificationCenter from "../notificationCenter.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   editorials: typeof editorials;
   http: typeof http;
   marketplace: typeof marketplace;
+  mediaValidation: typeof mediaValidation;
   notificationCenter: typeof notificationCenter;
   notifications: typeof notifications;
   orders: typeof orders;

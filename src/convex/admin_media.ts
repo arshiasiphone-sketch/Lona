@@ -20,22 +20,17 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { requirePermission, audit } from "./admin";
+import {
+  isAllowedImageType,
+  MAX_LIBRARY_IMAGE_BYTES,
+  normalizeImageContentType,
+} from "./mediaValidation";
 
 /* ────────────────────────────────────────────────────────────
  * SERVER-SIDE FILE VALIDATION (Phase 8.2) — never trust the
  * client. Every attach / replace path validates content type
  * and size before persisting, with Persian error messages.
  * ──────────────────────────────────────────────────────────── */
-
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/avif",
-]);
-
-/** Library/brand assets may be larger than product crops (10 MB). */
-const MAX_LIBRARY_BYTES = 10 * 1024 * 1024;
 
 async function assertImageMeta(
   ctx: MutationCtx,
@@ -46,15 +41,21 @@ async function assertImageMeta(
   // The client-provided MIME and size are hints only. Convex storage
   // metadata is the server-side source of truth after the upload.
   const metadata = await ctx.storage.getMetadata(storageId);
-  if (!metadata || !metadata.contentType || !ALLOWED_IMAGE_TYPES.has(metadata.contentType)) {
+  const metadataType = normalizeImageContentType(metadata?.contentType);
+  if (!metadata || !metadataType || !isAllowedImageType(metadataType)) {
     await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("فرمت فایل پشتیبانی نمی‌شود");
   }
-  if (!Number.isFinite(metadata.size) || metadata.size <= 0 || metadata.size > MAX_LIBRARY_BYTES) {
+  if (
+    !Number.isFinite(metadata.size) ||
+    metadata.size <= 0 ||
+    metadata.size > MAX_LIBRARY_IMAGE_BYTES
+  ) {
     await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("حجم تصویر زیاد است");
   }
-  if (claimedType && claimedType !== metadata.contentType) {
+  const claimed = normalizeImageContentType(claimedType);
+  if (claimed && claimed !== metadataType) {
     await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("فرمت فایل پشتیبانی نمی‌شود");
   }
@@ -62,7 +63,7 @@ async function assertImageMeta(
     await ctx.storage.delete(storageId).catch(() => {});
     throw new Error("فایل تصویر معتبر نیست");
   }
-  return { contentType: metadata.contentType, size: metadata.size };
+  return { contentType: metadataType, size: metadata.size };
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -75,6 +76,27 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     await requirePermission(ctx, "manage_media");
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Remove a just-uploaded file when the following attach step fails. */
+export const discardUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    const user = await requirePermission(ctx, "manage_media");
+    const [libraryRows, productRows] = await Promise.all([
+      ctx.db.query("media_library").collect(),
+      ctx.db.query("product_images").collect(),
+    ]);
+    const isReferenced =
+      libraryRows.some((row) => row.storageId === storageId) ||
+      productRows.some((row) => row.storageId === storageId);
+    if (isReferenced) {
+      throw new Error("فایل در حال استفاده است");
+    }
+    await ctx.storage.delete(storageId).catch(() => {});
+    await audit(ctx, user, "media.upload.discard", "_storage", storageId);
+    return storageId;
   },
 });
 
@@ -114,6 +136,7 @@ export const attachToLibrary = mutation({
     );
     const id = await ctx.db.insert("media_library", {
       ...args,
+      section: args.section ?? "general",
       contentType: fileMeta.contentType,
       size: fileMeta.size,
       uploadedAt: Date.now(),
@@ -215,14 +238,17 @@ export const replaceLibraryAsset = mutation({
   },
   handler: async (ctx, { id, storageId, ...meta }) => {
     const user = await requirePermission(ctx, "manage_media");
+    const row = await ctx.db.get(id);
+    if (!row) {
+      await ctx.storage.delete(storageId).catch(() => {});
+      return null;
+    }
     const fileMeta = await assertImageMeta(
       ctx,
       storageId,
       meta.contentType,
       meta.size,
     );
-    const row = await ctx.db.get(id);
-    if (!row) return null;
     const oldStorage = row.storageId;
     await ctx.db.patch(id, {
       storageId,
@@ -231,7 +257,7 @@ export const replaceLibraryAsset = mutation({
       size: fileMeta.size,
     });
     if (oldStorage && oldStorage !== storageId) {
-      await ctx.storage.delete(oldStorage);
+      await ctx.storage.delete(oldStorage).catch(() => {});
     }
     const url = await ctx.storage.getUrl(storageId);
     await audit(ctx, user, "media.library.replace", "media_library", id);
@@ -250,7 +276,7 @@ export const deleteLibraryAsset = mutation({
     const user = await requirePermission(ctx, "manage_media");
     const row = await ctx.db.get(id);
     if (!row) return null;
-    await ctx.storage.delete(row.storageId);
+    await ctx.storage.delete(row.storageId).catch(() => {});
     await ctx.db.delete(id);
     await audit(ctx, user, "media.library.delete", "media_library", id);
     return id;
@@ -271,9 +297,11 @@ export const updateLibraryAlt = mutation({
   },
   handler: async (ctx, { id, alt, caption }) => {
     const user = await requirePermission(ctx, "manage_media");
-    await ctx.db.patch(id, { alt, caption });
+    const cleanAlt = alt.trim();
+    if (!cleanAlt) throw new Error("متن جایگزین تصویر الزامی است");
+    await ctx.db.patch(id, { alt: cleanAlt, caption: caption?.trim() });
     await audit(ctx, user, "media.library.updateAlt", "media_library", id, {
-      alt,
+      alt: cleanAlt,
     });
     return id;
   },

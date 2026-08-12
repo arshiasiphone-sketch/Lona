@@ -48,6 +48,12 @@ import {
 } from "@/lib/homepage-images";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
+import {
+  IMAGE_ACCEPT,
+  MAX_LIBRARY_IMAGE_BYTES,
+  formatAcceptedImageTypes,
+  getImageContentType,
+} from "@/lib/media";
 
 type SettingRow = { _id: string; key: string; value: unknown };
 
@@ -1041,6 +1047,8 @@ function ImageSlotCard({
 
   const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
   const attachToLibrary = useMutation(api.admin_media.attachToLibrary);
+  const deleteLibraryAsset = useMutation(api.admin_media.deleteLibraryAsset);
+  const discardUpload = useMutation(api.admin_media.discardUpload);
   const setImage = useMutation(api.admin_settings.setHomepageImage);
 
   const applyDraft = async () => {
@@ -1072,24 +1080,46 @@ function ImageSlotCard({
   };
 
   const upload = async (file: File) => {
+    const contentType = getImageContentType(file);
+    if (!contentType) {
+      setError(`فرمت فایل پشتیبانی نمی‌شود (${formatAcceptedImageTypes()})`);
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_LIBRARY_IMAGE_BYTES) {
+      setError("حجم تصویر باید بیشتر از صفر و حداکثر ۱۰ مگابایت باشد");
+      return;
+    }
     setBusy("upload");
     setError(null);
+    let uploadedStorageId: Id<"_storage"> | null = null;
+    let attachedId: Id<"media_library"> | null = null;
     try {
       const uploadUrl = await generateUploadUrl();
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { storageId: Id<"_storage"> };
+      uploadedStorageId = data.storageId;
       const attached = await attachToLibrary({
         storageId: data.storageId,
         filename: file.name,
         alt: label,
+        contentType,
+        size: file.size,
       });
+      attachedId = attached.id;
       if (!attached.url) throw new Error("آدرس تصویر دریافت نشد");
       await setImage({ key: slotKey, url: attached.url });
       setDraft(attached.url);
     } catch (err) {
+      if (attachedId) {
+        await deleteLibraryAsset({ id: attachedId }).catch(() => {});
+      } else if (uploadedStorageId) {
+        await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
+      }
       setError((err as Error).message ?? "بارگذاری ناموفق بود");
     } finally {
       setBusy(null);
@@ -1173,7 +1203,7 @@ function ImageSlotCard({
             ref={inputRef}
             type="file"
             hidden
-            accept="image/png,image/jpeg,image/webp,image/avif"
+            accept={IMAGE_ACCEPT}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void upload(file);

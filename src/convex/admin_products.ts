@@ -34,6 +34,11 @@ import { Doc } from "./_generated/dataModel";
 import { requirePermission, audit } from "./admin";
 import { api } from "./_generated/api";
 import {
+  isAllowedImageType,
+  MAX_PRODUCT_IMAGE_BYTES,
+  normalizeImageContentType,
+} from "./mediaValidation";
+import {
   vBadge,
   vColorOption,
   vGradient,
@@ -471,23 +476,24 @@ export const attachMedia = mutation({
     const user = await requirePermission(ctx, "manage_media");
     const { contentType, size } = args;
     const metadata = await ctx.storage.getMetadata(args.storageId);
-    const allowed = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+    const metadataType = normalizeImageContentType(metadata?.contentType);
     if (
       !metadata ||
-      !metadata.contentType ||
-      !allowed.includes(metadata.contentType) ||
+      !metadataType ||
+      !isAllowedImageType(metadataType) ||
       !Number.isFinite(metadata.size) ||
       metadata.size <= 0 ||
-      metadata.size > 5 * 1024 * 1024
+      metadata.size > MAX_PRODUCT_IMAGE_BYTES
     ) {
       await ctx.storage.delete(args.storageId).catch(() => {});
       throw new Error(
-        metadata?.size && metadata.size > 5 * 1024 * 1024
+        metadata?.size && metadata.size > MAX_PRODUCT_IMAGE_BYTES
           ? "حجم تصویر زیاد است"
           : "فرمت فایل پشتیبانی نمی‌شود",
       );
     }
-    if (contentType && contentType !== metadata.contentType) {
+    const claimedType = normalizeImageContentType(contentType);
+    if (claimedType && claimedType !== metadataType) {
       await ctx.storage.delete(args.storageId).catch(() => {});
       throw new Error("فرمت فایل پشتیبانی نمی‌شود");
     }
@@ -531,7 +537,7 @@ export const deleteMedia = mutation({
     const row = await ctx.db.get(id);
     if (!row) return null;
     if (row.storageId) {
-      await ctx.storage.delete(row.storageId);
+      await ctx.storage.delete(row.storageId).catch(() => {});
     }
     await ctx.db.delete(id);
     await audit(ctx, user, "media.delete", "products", row.productId, { id });

@@ -45,7 +45,14 @@ import {
 } from "@/components/admin";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { cn } from "@/lib/glass";
+import {
+  IMAGE_ACCEPT,
+  MAX_LIBRARY_IMAGE_BYTES,
+  formatAcceptedImageTypes,
+  getImageContentType,
+} from "@/lib/media";
 import { EASE_LUXURY } from "@/lib/motion";
+import { useToast } from "@/lib/toast";
 
 type LibraryRow = {
   id: string;
@@ -80,13 +87,12 @@ const SECTION_LABEL: Record<string, string> = {
   general: "عمومی",
 };
 
-const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
-const MAX_BYTES = 12 * 1024 * 1024; // 12 MB for the global library
+const MAX_BYTES = MAX_LIBRARY_IMAGE_BYTES;
 
 type UploadRow =
   | { key: string; state: "uploading"; progress: number; localUrl: string; name: string; size: number }
   | { key: string; state: "success"; storageId: Id<"_storage">; localUrl: string; name: string }
-  | { key: string; state: "failed"; error: string; name: string; size: number };
+  | { key: string; state: "failed"; error: string; name: string; size: number; file: File };
 
 export default function MediaLibrary() {
   const list = useQuery(api.admin_media.listLibrary, {});
@@ -94,6 +100,9 @@ export default function MediaLibrary() {
   const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
   const attachToLibrary = useMutation(api.admin_media.attachToLibrary);
   const deleteLibrary = useMutation(api.admin_media.deleteLibraryAsset);
+  const deleteProductMedia = useMutation(api.admin_products.deleteMedia);
+  const discardUpload = useMutation(api.admin_media.discardUpload);
+  const toast = useToast();
 
   const [term, setTerm] = React.useState("");
   const [source, setSource] = React.useState<"all" | "library" | "product">("all");
@@ -121,31 +130,35 @@ export default function MediaLibrary() {
   }, [list, term, source, section]);
 
   const selected = filtered.find((r) => r.id === selectedId) ?? null;
+  const deleteTarget = delId ? filtered.find((r) => r.id === delId) ?? null : null;
 
   const beginUpload = React.useCallback(
     async (file: File) => {
-      if (!ACCEPTED.includes(file.type)) {
+      const contentType = getImageContentType(file);
+      if (!contentType) {
         setUploads((u) => [
           ...u,
           {
             key: `${file.name}-${Date.now()}`,
             state: "failed",
-            error: `نوع فایل پشتیبانی نمی‌شود: ${file.type}`,
+            error: `فرمت فایل پشتیبانی نمی‌شود. فرمت‌های مجاز: ${formatAcceptedImageTypes()}`,
             name: file.name,
             size: file.size,
+            file,
           },
         ]);
         return;
       }
-      if (file.size > MAX_BYTES) {
+      if (file.size <= 0 || file.size > MAX_BYTES) {
         setUploads((u) => [
           ...u,
           {
             key: `${file.name}-${Date.now()}`,
             state: "failed",
-            error: "حجم فایل بیش از ۱۲ مگابایت است.",
+            error: "حجم فایل باید بیشتر از صفر و حداکثر ۱۰ مگابایت باشد.",
             name: file.name,
             size: file.size,
+            file,
           },
         ]);
         return;
@@ -157,10 +170,9 @@ export default function MediaLibrary() {
         { key, state: "uploading", progress: 12, localUrl, name: file.name, size: file.size },
       ]);
 
+      let uploadedStorageId: Id<"_storage"> | null = null;
       try {
         const uploadUrl = await generateUploadUrl();
-        const form = new FormData();
-        form.append("file", file);
         const storageId = await new Promise<Id<"_storage">>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.upload.addEventListener("progress", (e) => {
@@ -187,16 +199,18 @@ export default function MediaLibrary() {
             }
           });
           xhr.open("POST", uploadUrl);
-          xhr.send(form);
+          xhr.setRequestHeader("Content-Type", contentType);
+          xhr.send(file);
         });
 
+        uploadedStorageId = storageId;
         await attachToLibrary({
           storageId,
           filename: file.name,
-          alt: file.name.replace(/\.[^.]+$/, ""),
+          alt: file.name.replace(/\.[^.]+$/, "").trim() || "تصویر لونا",
           width: undefined,
           height: undefined,
-          contentType: file.type,
+          contentType,
           size: file.size,
         });
         setUploads((u) =>
@@ -206,21 +220,25 @@ export default function MediaLibrary() {
               : r,
           ),
         );
-        // Auto-clear successful rows after 2s so they don't pile up.
         setTimeout(() => {
+          URL.revokeObjectURL(localUrl);
           setUploads((u) => u.filter((r) => r.key !== key));
         }, 2000);
       } catch (err) {
+        if (uploadedStorageId) {
+          await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
+        }
         setUploads((u) =>
           u.map((r) =>
             r.key === key && r.state === "uploading"
-              ? { ...r, state: "failed", error: (err as Error).message }
+              ? { ...r, state: "failed", error: (err as Error).message, file }
               : r,
           ),
         );
+        URL.revokeObjectURL(localUrl);
       }
     },
-    [generateUploadUrl, attachToLibrary],
+    [generateUploadUrl, attachToLibrary, discardUpload],
   );
 
   const handleFiles = React.useCallback(
@@ -244,15 +262,19 @@ export default function MediaLibrary() {
       setDelId(null);
       return;
     }
-    if (row.source === "library") {
-      try {
+    try {
+      if (row.source === "library") {
         await deleteLibrary({ id: delId as Id<"media_library"> });
-      } catch {
-        // Silent: the toast hook would surface the error in v1.1.
+      } else {
+        await deleteProductMedia({ id: delId as Id<"product_images"> });
       }
+      toast.success("تصویر با موفقیت حذف شد");
+    } catch (err) {
+      toast.error("حذف تصویر انجام نشد", (err as Error).message);
+    } finally {
+      setDelId(null);
+      if (selectedId === delId) setSelectedId(null);
     }
-    setDelId(null);
-    if (selectedId === delId) setSelectedId(null);
   };
 
   return (
@@ -283,7 +305,7 @@ export default function MediaLibrary() {
             type="file"
             hidden
             multiple
-            accept={ACCEPTED.join(",")}
+            accept={IMAGE_ACCEPT}
             onChange={(e) => handleFiles(e.target.files)}
           />
         </header>
@@ -325,7 +347,7 @@ export default function MediaLibrary() {
             فایل‌ها را اینجا رها کنید یا برای انتخاب، روی «آپلود تصویر» بزنید.
           </p>
           <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            PNG, JPG, WebP, AVIF · حداکثر ۱۲ مگابایت · هشت فایل در هر نوبت
+            PNG، JPG، WebP، AVIF · حداکثر ۱۰ مگابایت · هشت فایل در هر نوبت
           </p>
         </div>
 
@@ -461,9 +483,10 @@ export default function MediaLibrary() {
                   </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setUploads((u) => u.filter((r) => r.key !== row.key))
-                    }
+                    onClick={() => {
+                      setUploads((u) => u.filter((r) => r.key !== row.key));
+                      void beginUpload(row.file);
+                    }}
                     className="grid h-8 w-8 place-items-center rounded-full hairline bg-white hover:bg-canvas-soft"
                     aria-label="بستن"
                   >
@@ -566,14 +589,14 @@ export default function MediaLibrary() {
         open={delId !== null}
         onOpenChange={(o) => !o && setDelId(null)}
         title="حذف این تصویر؟"
-        confirmLabel="حذف از کتابخانه"
+        confirmLabel="حذف تصویر"
         destructive
         tone="destructive"
         body={
           <span>
-            فایل و ردیف کتابخانه برای همیشه حذف می‌شوند. تصاویر متصل به یک
-            محصول از این مسیر حذف نمی‌شوند — برای آن‌ها از صفحهٔ خود محصول
-            اقدام کنید.
+            {deleteTarget?.source === "product"
+              ? "این تصویر از محصول و کتابخانه رسانه حذف می‌شود و قابل بازگشت نیست."
+              : "فایل و ردیف کتابخانه برای همیشه حذف می‌شوند و قابل بازگشت نیستند."}
           </span>
         }
         onConfirm={handleDelete}
@@ -647,6 +670,7 @@ function MediaDetailsPanel({
   const updateAlt = useMutation(api.admin_media.updateLibraryAlt);
   const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
   const replaceAsset = useMutation(api.admin_media.replaceLibraryAsset);
+  const discardUpload = useMutation(api.admin_media.discardUpload);
 
   const isLibrary = row.source === "library";
 
@@ -677,21 +701,35 @@ function MediaDetailsPanel({
   const replace = async (file: File) => {
     setReplaceBusy(true);
     setReplaceError(null);
+    let uploadedStorageId: Id<"_storage"> | null = null;
     try {
+      const contentType = getImageContentType(file);
+      if (!contentType) {
+        throw new Error(`فرمت فایل پشتیبانی نمی‌شود. فرمت‌های مجاز: ${formatAcceptedImageTypes()}`);
+      }
+      if (file.size <= 0 || file.size > MAX_LIBRARY_IMAGE_BYTES) {
+        throw new Error("حجم تصویر باید بیشتر از صفر و حداکثر ۱۰ مگابایت باشد.");
+      }
       const uploadUrl = await generateUploadUrl();
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { storageId: Id<"_storage"> };
+      uploadedStorageId = data.storageId;
       const result = await replaceAsset({
         id: row.id as Id<"media_library">,
         storageId: data.storageId,
-        contentType: file.type,
+        contentType,
         size: file.size,
       });
       if (!result?.url) throw new Error("فایل جایگزین ذخیره نشد");
     } catch (err) {
+      if (uploadedStorageId) {
+        await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
+      }
       setReplaceError((err as Error).message ?? "جایگزینی ناموفق بود");
     } finally {
       setReplaceBusy(false);

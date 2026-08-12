@@ -20,9 +20,14 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Check, ImagePlus, Loader2, RotateCcw, Upload, X } from "lucide-react";
 import { cn } from "@/lib/glass";
+import {
+  IMAGE_ACCEPT,
+  MAX_LIBRARY_IMAGE_BYTES,
+  formatAcceptedImageTypes,
+  getImageContentType,
+} from "@/lib/media";
 
-const ACCEPTED = ["image/png", "image/jpeg", "image/webp", "image/avif"];
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_BYTES = MAX_LIBRARY_IMAGE_BYTES;
 
 export function CoverImageField({
   label,
@@ -44,6 +49,8 @@ export function CoverImageField({
 
   const generateUploadUrl = useMutation(api.admin_media.generateUploadUrl);
   const attachToLibrary = useMutation(api.admin_media.attachToLibrary);
+  const deleteLibraryAsset = useMutation(api.admin_media.deleteLibraryAsset);
+  const discardUpload = useMutation(api.admin_media.discardUpload);
 
   React.useEffect(() => {
     setDraft(value);
@@ -64,33 +71,45 @@ export function CoverImageField({
   };
 
   const upload = async (file: File) => {
-    if (!ACCEPTED.includes(file.type)) {
-      setError("فرمت فایل پشتیبانی نمی‌شود (PNG، JPG، WebP یا AVIF)");
+    const contentType = getImageContentType(file);
+    if (!contentType) {
+      setError(`فرمت فایل پشتیبانی نمی‌شود (${formatAcceptedImageTypes()})`);
       return;
     }
-    if (file.size > MAX_BYTES) {
-      setError("حجم تصویر زیاد است (حداکثر ۱۰ مگابایت)");
+    if (file.size <= 0 || file.size > MAX_BYTES) {
+      setError("حجم تصویر باید بیشتر از صفر و حداکثر ۱۰ مگابایت باشد");
       return;
     }
     setBusy("upload");
     setError(null);
+    let uploadedStorageId: Id<"_storage"> | null = null;
+    let attachedId: Id<"media_library"> | null = null;
     try {
       const uploadUrl = await generateUploadUrl();
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(uploadUrl, { method: "POST", body: form });
+      const res = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { storageId: Id<"_storage"> };
+      uploadedStorageId = data.storageId;
       const attached = await attachToLibrary({
         storageId: data.storageId,
         filename: file.name,
         alt: label,
         section,
       });
+      attachedId = attached.id;
       if (!attached.url) throw new Error("آدرس تصویر دریافت نشد");
       onChange(attached.url);
       setDraft(attached.url);
     } catch (err) {
+      if (attachedId) {
+        await deleteLibraryAsset({ id: attachedId }).catch(() => {});
+      } else if (uploadedStorageId) {
+        await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
+      }
       setError((err as Error).message ?? "بارگذاری ناموفق بود");
     } finally {
       setBusy(null);
@@ -189,8 +208,7 @@ export function CoverImageField({
         <input
           ref={inputRef}
           type="file"
-          hidden
-          accept={ACCEPTED.join(",")}
+          hidden            accept={IMAGE_ACCEPT}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) void upload(file);
