@@ -91,26 +91,32 @@ export default function ProductWizard() {
   // /admin/products/new → createDraft → replace with create-flow.
   const createDraft = useMutation(api.admin_products.createDraft);
   const [creating, setCreating] = React.useState(false);
+  const isNewRoute = params.id === "new";
   React.useEffect(() => {
-    if (params.id !== "new") return;
-    if (creating) return;
+    if (!isNewRoute || creating) return;
     setCreating(true);
     void (async () => {
-      const tempSlug = `draft-${Math.random().toString(36).slice(2, 10)}`;
-      const id = await createDraft({
-        name: "تکهٔ بدون نام",
-        slug: tempSlug,
-        category: "accessories",
-        collectionSlug: "essentials",
-      });
-      navigate(`/admin/products/${id}?step=basic`, { replace: true });
+      try {
+        const tempSlug = `draft-${crypto.randomUUID().slice(0, 8)}`;
+        const id = await createDraft({
+          name: "تکهٔ بدون نام",
+          slug: tempSlug,
+          category: "accessories",
+          collectionSlug: "",
+        });
+        navigate(`/admin/products/${id}?step=basic`, { replace: true });
+      } catch {
+        setCreating(false);
+      }
     })();
-  }, [params.id, creating, createDraft, navigate]);
+  }, [isNewRoute, creating, createDraft, navigate]);
 
-  const id = params.id as Id<"products"> | undefined;
+  const rawId = params.id;
+  const isNew = rawId === "new";
+  const id = !isNew && rawId ? (rawId as Id<"products">) : undefined;
   const product = useQuery(api.admin_products.getById, id ? { id } : "skip");
 
-  if (!id || params.id === "new") {
+  if (!id) {
     return (
       <div className="grid min-h-[40vh] place-items-center">
         <Loader2 className="h-5 w-5 animate-spin text-ink-soft" />
@@ -132,7 +138,7 @@ export default function ProductWizard() {
           to="/admin/products"
           className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          Back to catalogue
+          بازگشت به محصولات
         </Link>
       </div>
     );
@@ -219,7 +225,7 @@ function WizardHeader({
     <div>
       <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
         <Link to="/admin/products" className="hover:text-ink">
-          ← Catalogue
+          ← محصولات
         </Link>
         <span className="text-edge">/</span>
         <span className="text-ink">{product.name}</span>
@@ -230,7 +236,7 @@ function WizardHeader({
         </h1>
         <StatusBadge status={product.status as StatusKind} />
         <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-          updated{" "}
+          آخرین تغییر: {" "}
           {new Date(product._creationTime).toLocaleDateString()}
         </span>
       </div>
@@ -286,7 +292,7 @@ function WizardFooter({
         <ArrowLeft className="h-3.5 w-3.5" /> بازگشت
       </button>
       <div className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-        Step {index + 1} of {STEPS.length} · {step}
+        مرحلهٔ {index + 1} از {STEPS.length} · {step}
       </div>
       {!isLast ? (
         <button
@@ -294,7 +300,7 @@ function WizardFooter({
           onClick={onNext}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          Continue <ArrowRight className="h-3.5 w-3.5" />
+          ادامه <ArrowRight className="h-3.5 w-3.5" />
         </button>
       ) : (
         <Link
@@ -376,14 +382,14 @@ function BasicInfoStep({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Field label="Title">
+        <Field label="عنوان محصول">
           <input
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
             className="admin-input"
           />
         </Field>
-        <Field label="Slug">
+        <Field label="شناسه انگلیسی">
           <input
             value={form.slug}
             onChange={(e) =>
@@ -418,7 +424,7 @@ function BasicInfoStep({
             placeholder="پاییز-زمستان، ضروریات، شب، اکسسوری…"
           />
         </Field>
-        <Field label="Description" full>
+        <Field label="توضیحات" full>
           <textarea
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
@@ -426,7 +432,7 @@ function BasicInfoStep({
             className="admin-input"
           />
         </Field>
-        <Field label="Composition">
+        <Field label="ترکیب پارچه">
           <input
             value={form.composition}
             onChange={(e) => set("composition", e.target.value)}
@@ -434,7 +440,7 @@ function BasicInfoStep({
             placeholder="۱۰۰٪ مرینو ایتالیایی…"
           />
         </Field>
-        <Field label="Origin" full>
+        <Field label="مبدأ تولید" full>
           <input
             value={form.origin}
             onChange={(e) => set("origin", e.target.value)}
@@ -485,7 +491,7 @@ function BasicInfoStep({
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-          Save & continue
+          ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -501,8 +507,7 @@ function MediaStep({ product }: { product: Doc<"products"> }) {
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۲ از ۸</p>
       <h3 className="font-display text-2xl text-ink">کتابخانهٔ رسانه</h3>
       <p className="text-sm text-ink-soft">
-        Drop or browse pieces of editorial photography. The first image
-        becomes the primary card on the storefront.
+        تصویر محصول را بارگذاری کنید. اولین تصویر به‌عنوان تصویر اصلی محصول نمایش داده می‌شود.
       </p>
       <div className="pt-3">
         <MediaUploader productId={product._id} />
@@ -666,10 +671,7 @@ function VariantsStep({
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۵ از ۸</p>
       <h3 className="mt-2 font-display text-2xl text-ink">تنوع‌ها</h3>
       <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-        Layer size × colour combinations. Stock held in a row is never
-        hard-deleted — any variant removed from the table is
-        automatically flagged as unavailable so historical orders can
-        still be audited.
+        ترکیب‌های سایز و رنگ را مدیریت کنید. موجودی هر تنوع در همین بخش ثبت می‌شود.
       </p>
       <div className="mt-4">
         <VariantEditor
@@ -732,9 +734,7 @@ function PricingInventoryStep({
       )}
       <div className="mt-6 rounded-2xl bg-canvas-soft p-4 text-sm text-ink-soft">
         <p>
-          <strong className="text-ink">موجودی:</strong> stock is owned by
-          the Variants step. Use the matrix for column-level totals; reach out
-          about low-stock alerts from the dashboard.
+          <strong className="text-ink">موجودی:</strong> در مرحلهٔ تنوع‌ها مدیریت می‌شود. برای ثبت موجودی هر سایز و رنگ از جدول تنوع‌ها استفاده کنید.
         </p>
       </div>
       <div className="mt-6 flex justify-end">
@@ -886,8 +886,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
         <p className="type-eyebrow text-ink-muted">مرحلهٔ ۸ از ۸</p>
         <h3 className="mt-2 font-display text-2xl text-ink">انتشار نهایی</h3>
         <p className="mt-2 text-sm text-ink-soft">
-          Promote the piece into featured, trending and editorial modules,
-          then commit it to the storefront.
+این محصول را برای بخش‌های ویژه، پرطرفدار و ادیتوریال انتخاب کنید و سپس آن را در فروشگاه منتشر کنید.
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -939,7 +938,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-primary-foreground hover:bg-ink hover:text-canvas disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            Publish to storefront
+            انتشار در فروشگاه
           </button>
           {product.status === "published" ? (
             <button
@@ -955,7 +954,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
               }}
               className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
             >
-              Archive
+              بایگانی
             </button>
           ) : product.status === "archived" ? (
             <button
@@ -972,7 +971,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
               }}
               className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
             >
-              Restore as draft
+              بازگردانی به پیش‌نویس
             </button>
           ) : null}
         </div>
@@ -984,8 +983,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
             transition={{ duration: 0.35, ease: EASE_LUXURY }}
             className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700"
           >
-            Live on the storefront. Storefront subscriptions will reflect
-            the change within their next roundtrip.
+            محصول با موفقیت در فروشگاه منتشر شد.
           </motion.p>
         ) : null}
         {published && !published.ok ? (
@@ -995,11 +993,11 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
             transition={{ duration: 0.35, ease: EASE_LUXURY }}
             className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-[12px] text-amber-800"
           >
-            Missing fields before publishing:{" "}
+            فیلدهای لازم برای انتشار تکمیل نشده‌اند: {" "}
             <strong>
               {(published.missing ?? ["unknown"]).join(", ")}
             </strong>
-            . Step back and complete them, then return to publish.
+            . به مراحل قبل برگردید، موارد را تکمیل کنید و دوباره انتشار دهید.
           </motion.p>
         ) : null}
 
@@ -1043,7 +1041,7 @@ function Field({
 
 function SaveIndicator({ state }: { state: "idle" | "ok" | "err" }) {
   if (state === "idle") return null;
-  const text = state === "ok" ? "Saved" : "Could not save";
+  const text = state === "ok" ? "ذخیره شد" : "ذخیره انجام نشد";
   const cls =
     state === "ok"
       ? "bg-emerald-50 text-emerald-700"
