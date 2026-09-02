@@ -91,6 +91,7 @@ export default function ProductWizard() {
   // /admin/products/new → createDraft → replace with create-flow.
   const createDraft = useMutation(api.admin_products.createDraft);
   const [creating, setCreating] = React.useState(false);
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const isNewRoute = params.id === "new";
   React.useEffect(() => {
     if (!isNewRoute || creating) return;
@@ -105,7 +106,15 @@ export default function ProductWizard() {
           collectionSlug: "",
         });
         navigate(`/admin/products/${id}?step=basic`, { replace: true });
-      } catch {
+      } catch (err) {
+        const message = (err as Error).message ?? "";
+        setCreateError(
+          message.includes("FORBIDDEN")
+            ? "شما اجازهٔ افزودن محصول ندارید. با حساب مالک یا مدیر وارد شوید."
+            : message.includes("SLUG_TAKEN")
+              ? "شناسهٔ محصول تکراری است. دوباره تلاش کنید."
+              : "ایجاد محصول انجام نشد. اتصال به سرور را بررسی کنید و دوباره تلاش کنید.",
+        );
         setCreating(false);
       }
     })();
@@ -115,6 +124,33 @@ export default function ProductWizard() {
   const isNew = rawId === "new";
   const id = !isNew && rawId ? (rawId as Id<"products">) : undefined;
   const product = useQuery(api.admin_products.getById, id ? { id } : "skip");
+
+  if (createError) {
+    return (
+      <div className="rounded-3xl border border-edge bg-white/85 p-10 text-center">
+        <p className="font-display text-2xl text-ink">ایجاد محصول ناموفق بود</p>
+        <p className="mt-2 text-sm text-ink-soft">{createError}</p>
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setCreateError(null);
+              setCreating(false);
+            }}
+            className="rounded-full bg-ink px-5 py-2.5 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
+          >
+            تلاش دوباره
+          </button>
+          <Link
+            to="/admin/products"
+            className="rounded-full hairline bg-white/70 px-5 py-2.5 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
+          >
+            بازگشت به محصولات
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (!id) {
     return (
@@ -232,7 +268,7 @@ function WizardHeader({
       </div>
       <div className="mt-4 flex items-center gap-3">
         <h1 className="font-display text-3xl text-ink lg:text-4xl">
-          {product.name || "Untitled piece"}
+          {product.name || "بدون عنوان"}
         </h1>
         <StatusBadge status={product.status as StatusKind} />
         <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -416,7 +452,7 @@ function BasicInfoStep({
             ))}
           </select>
         </Field>
-        <Field label="Collection (اسلاگ کالکسیون)">
+        <Field label="کالکسیون (اسلاگ)">
           <input
             value={form.collectionSlug}
             onChange={(e) => set("collectionSlug", e.target.value.toLowerCase())}
@@ -1002,7 +1038,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
         ) : null}
 
         <p className="mt-5 rounded-xl bg-canvas-soft px-3 py-2 text-[12px] text-ink-soft">
-          پیش‌نمایش قیمت:{" "}
+          پیش‌نمایش قیمت: {" "}
           <strong className="text-ink type-caption">
             {formatPrice(product.priceCents)}
           </strong>
