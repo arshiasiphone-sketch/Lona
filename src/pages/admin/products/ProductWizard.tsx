@@ -22,6 +22,7 @@ import {
   useNavigate,
   useParams,
   useSearchParams,
+  useLocation,
 } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { Doc, Id } from "@/convex/_generated/dataModel";
@@ -47,6 +48,7 @@ import {
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
+import { getAdminErrorMessage, withAdminTimeout } from "@/lib/admin-errors";
 
 const STEPS = [
   { key: "basic", label: "اطلاعات پایه" },
@@ -85,40 +87,39 @@ type StepKey = (typeof STEPS)[number]["key"];
  * =================================================================== */
 export default function ProductWizard() {
   const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
 
   // /admin/products/new → createDraft → replace with create-flow.
   const createDraft = useMutation(api.admin_products.createDraft);
   const [creating, setCreating] = React.useState(false);
+  const createStarted = React.useRef(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
-  const isNewRoute = params.id === "new";
+  // `/admin/products/new` is a sibling route, not the `:id` route, so
+  // React Router does not populate `params.id` on the create screen.
+  const isNewRoute =
+    params.id === "new" || location.pathname === "/admin/products/new";
   React.useEffect(() => {
-    if (!isNewRoute || creating) return;
+    if (!isNewRoute || creating || createStarted.current) return;
+    createStarted.current = true;
     setCreating(true);
     void (async () => {
       try {
         const tempSlug = `draft-${crypto.randomUUID().slice(0, 8)}`;
-        const id = await createDraft({
+        const id = await withAdminTimeout(createDraft({
           name: "تکهٔ بدون نام",
           slug: tempSlug,
           category: "accessories",
           collectionSlug: "",
-        });
+        }));
         navigate(`/admin/products/${id}?step=basic`, { replace: true });
       } catch (err) {
-        const message = (err as Error).message ?? "";
-        setCreateError(
-          message.includes("FORBIDDEN")
-            ? "شما اجازهٔ افزودن محصول ندارید. با حساب مالک یا مدیر وارد شوید."
-            : message.includes("SLUG_TAKEN")
-              ? "شناسهٔ محصول تکراری است. دوباره تلاش کنید."
-              : "ایجاد محصول انجام نشد. اتصال به سرور را بررسی کنید و دوباره تلاش کنید.",
-        );
+        setCreateError(getAdminErrorMessage(err));
         setCreating(false);
       }
     })();
-  }, [isNewRoute, creating, createDraft, navigate]);
+  }, [isNewRoute, creating, createDraft, navigate, location.pathname]);
 
   const rawId = params.id;
   const isNew = rawId === "new";
@@ -135,6 +136,7 @@ export default function ProductWizard() {
             type="button"
             onClick={() => {
               setCreateError(null);
+              createStarted.current = false;
               setCreating(false);
             }}
             className="rounded-full bg-ink px-5 py-2.5 text-[11px] uppercase tracking-[0.18em] text-canvas hover:bg-primary"
@@ -154,8 +156,10 @@ export default function ProductWizard() {
 
   if (!id) {
     return (
-      <div className="grid min-h-[40vh] place-items-center">
-        <Loader2 className="h-5 w-5 animate-spin text-ink-soft" />
+      <div className="rounded-3xl border border-edge bg-white/85 p-10 text-center">
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-ink-soft" />
+        <p className="mt-4 text-sm text-ink-soft">در حال ایجاد پیش‌نویس محصول…</p>
+        <p className="mt-2 text-xs text-ink-muted">در صورت طولانی‌شدن، صفحه را تازه‌سازی نکنید؛ از گزینهٔ تلاش دوباره استفاده کنید.</p>
       </div>
     );
   }
@@ -376,6 +380,7 @@ function BasicInfoStep({
   });
   const [busy, setBusy] = React.useState(false);
   const [saved, setSaved] = React.useState<"idle" | "ok" | "err">("idle");
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -383,8 +388,9 @@ function BasicInfoStep({
   const handleSave = async () => {
     setBusy(true);
     setSaved("idle");
+    setSaveError(null);
     try {
-      await updateBasics({
+      await withAdminTimeout(updateBasics({
         id: product._id,
         name: form.name,
         slug: form.slug,
@@ -397,11 +403,12 @@ function BasicInfoStep({
         barcode: form.barcode,
         material: form.material,
         care: form.care,
-      });
+      }));
       setSaved("ok");
       onAdvance();
-    } catch {
+    } catch (error) {
       setSaved("err");
+      setSaveError(getAdminErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -414,7 +421,10 @@ function BasicInfoStep({
           <p className="type-eyebrow text-ink-muted">مرحلهٔ ۱ از ۸</p>
           <h3 className="mt-2 font-display text-2xl text-ink">اطلاعات پایه</h3>
         </div>
-        <SaveIndicator state={saved} />
+        <div className="flex items-center gap-2">
+          <SaveIndicator state={saved} />
+          {saveError ? <span className="text-[11px] text-rose-700">{saveError}</span> : null}
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -565,6 +575,7 @@ function CategoriesStep({
   const updateBasics = useMutation(api.admin_products.updateBasics);
   const [category, setCategory] = React.useState(product.category);
   const [busy, setBusy] = React.useState(false);
+  const [categoryError, setCategoryError] = React.useState<string | null>(null);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۳ از ۸</p>
@@ -599,9 +610,12 @@ function CategoriesStep({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setCategoryError(null);
             try {
-              await updateBasics({ id: product._id, category });
+              await withAdminTimeout(updateBasics({ id: product._id, category }));
               onAdvance();
+            } catch (error) {
+              setCategoryError(getAdminErrorMessage(error));
             } finally {
               setBusy(false);
             }
@@ -633,6 +647,8 @@ function CollectionsStep({
   const [picked, setPicked] = React.useState<string[]>(
     product.collectionSlug ? [product.collectionSlug] : [],
   );
+  const [collectionError, setCollectionError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۴ از ۸</p>
@@ -669,17 +685,31 @@ function CollectionsStep({
           })
         )}
       </div>
+      {collectionError ? (
+        <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+          {collectionError}
+        </p>
+      ) : null}
       <div className="mt-6 flex justify-end">
         <button
           type="button"
+          disabled={busy}
           onClick={async () => {
-            if (picked.length) {
-              await updateBasics({
-                id: product._id,
-                collectionSlug: picked[0],
-              });
+            setBusy(true);
+            setCollectionError(null);
+            try {
+              if (picked.length) {
+                await withAdminTimeout(updateBasics({
+                  id: product._id,
+                  collectionSlug: picked[0],
+                }));
+              }
+              onAdvance();
+            } catch (error) {
+              setCollectionError(getAdminErrorMessage(error));
+            } finally {
+              setBusy(false);
             }
-            onAdvance();
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
@@ -791,11 +821,11 @@ function PricingInventoryStep({
                 );
                 return;
               }
-              await updatePricing({
+              await withAdminTimeout(updatePricing({
                 id: product._id,
                 priceCents: sale,
                 compareAtCents: original,
-              });
+              }));
               onAdvance();
             } finally {
               setBusy(false);
@@ -825,6 +855,8 @@ function SeoStep({
   const [seoDescription, setSeoDescription] = React.useState(
     product.seoDescription ?? "",
   );
+  const [seoError, setSeoError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۷ از ۸</p>
@@ -850,20 +882,34 @@ function SeoStep({
           />
         </Field>
       </div>
+      {seoError ? (
+        <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+          {seoError}
+        </p>
+      ) : null}
       <div className="mt-6 flex justify-end">
         <button
           type="button"
+          disabled={busy}
           onClick={async () => {
-            await updateSeo({
-              id: product._id,
-              seoTitle,
-              seoDescription,
-            });
-            onAdvance();
+            setBusy(true);
+            setSeoError(null);
+            try {
+              await withAdminTimeout(updateSeo({
+                id: product._id,
+                seoTitle,
+                seoDescription,
+              }));
+              onAdvance();
+            } catch (error) {
+              setSeoError(getAdminErrorMessage(error));
+            } finally {
+              setBusy(false);
+            }
           }}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
         >
-          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} ذخیره و ادامه
         </button>
       </div>
     </div>
@@ -892,14 +938,14 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
   const handlePublish = async () => {
     setBusy(true);
     setPublished(null);
-    try {
-      await updateFlags({
-        id: product._id,
-        featured,
-        trending,
-        editorial,
-      });
-      await publishMut({ id: product._id });
+    try {              await withAdminTimeout(updateFlags({
+                id: product._id,
+                featured,
+                trending,
+                editorial,
+              }));
+              await withAdminTimeout(publishMut({ id: product._id }));
+
       setPublished({ ok: true });
     } catch (err) {
       const message = (err as Error).message;
@@ -981,13 +1027,16 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
               type="button"
               disabled={busy}
               onClick={async () => {
-                setBusy(true);
-                try {
-                  await archive({ id: product._id });
-                } finally {
-                  setBusy(false);
-                }
-              }}
+                  setBusy(true);
+                  try {
+                    await withAdminTimeout(archive({ id: product._id }));
+                  } catch (error) {
+                    setPublished({ ok: false, missing: [getAdminErrorMessage(error)] });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+
               className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
             >
               بایگانی
@@ -995,16 +1044,18 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
           ) : product.status === "archived" ? (
             <button
               type="button"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await restore({ id: product._id });
-                  navigate("/admin/products");
-                } finally {
-                  setBusy(false);
-                }
-              }}
+              disabled={busy}                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await withAdminTimeout(restore({ id: product._id }));
+                    navigate("/admin/products");
+                  } catch (error) {
+                    setPublished({ ok: false, missing: [getAdminErrorMessage(error)] });
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+
               className="inline-flex items-center gap-2 rounded-full hairline bg-canvas/70 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-white"
             >
               بازگردانی به پیش‌نویس

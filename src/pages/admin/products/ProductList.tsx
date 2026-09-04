@@ -40,6 +40,7 @@ import { StatusBadge, type StatusKind } from "@/components/admin";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import { formatPrice } from "@/lib/format";
+import { getAdminErrorMessage, withAdminTimeout } from "@/lib/admin-errors";
 
 type ProductRow = Doc<"products">;
 
@@ -61,6 +62,8 @@ export default function ProductList() {
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilterValue>("all");
   const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set());
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = React.useState(false);
 
   React.useEffect(() => {
     setSelectedKeys(new Set());
@@ -91,9 +94,18 @@ export default function ProductList() {
     <div className="flex items-center gap-2">
       <button
         type="button"
+        disabled={bulkBusy}
         onClick={async () => {
-          await bulkArchive({ ids: [...selectedKeys] as Id<"products">[] });
-          setSelectedKeys(new Set());
+          setBulkBusy(true);
+          setActionError(null);
+          try {
+            await withAdminTimeout(bulkArchive({ ids: [...selectedKeys] as Id<"products">[] }));
+            setSelectedKeys(new Set());
+          } catch (error) {
+            setActionError(getAdminErrorMessage(error));
+          } finally {
+            setBulkBusy(false);
+          }
         }}
         className="rounded-full bg-canvas/40 px-2 py-1 text-[10px] uppercase tracking-[0.18em] hover:bg-canvas/60"
       >
@@ -101,9 +113,18 @@ export default function ProductList() {
       </button>
       <button
         type="button"
+        disabled={bulkBusy}
         onClick={async () => {
-          await bulkPublish({ ids: [...selectedKeys] as Id<"products">[] });
-          setSelectedKeys(new Set());
+          setBulkBusy(true);
+          setActionError(null);
+          try {
+            await withAdminTimeout(bulkPublish({ ids: [...selectedKeys] as Id<"products">[] }));
+            setSelectedKeys(new Set());
+          } catch (error) {
+            setActionError(getAdminErrorMessage(error));
+          } finally {
+            setBulkBusy(false);
+          }
         }}
         className="rounded-full bg-canvas/40 px-2 py-1 text-[10px] uppercase tracking-[0.18em] hover:bg-canvas/60"
       >
@@ -261,6 +282,19 @@ export default function ProductList() {
         </span>
       </motion.div>
 
+      {actionError ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <span>{actionError}</span>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="rounded-full bg-white/80 px-3 py-1 text-[11px] text-rose-800 hover:bg-white"
+          >
+            بستن
+          </button>
+        </div>
+      ) : null}
+
       <AdminTable
         rows={rows}
         rowKey={(row) => row._id}
@@ -356,6 +390,7 @@ function RowActions({
   const archive = useMutation(api.admin_products.archive);
   const restore = useMutation(api.admin_products.restore);
   const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   return (
     <div className="flex items-center justify-end gap-1">
       <Link
@@ -370,8 +405,11 @@ function RowActions({
         disabled={busy}
         onClick={async () => {
           setBusy(true);
+          setError(null);
           try {
-            await onDuplicate(row._id);
+            await withAdminTimeout(onDuplicate(row._id));
+          } catch (actionError) {
+            setError(getAdminErrorMessage(actionError));
           } finally {
             setBusy(false);
           }
@@ -387,8 +425,11 @@ function RowActions({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
-              await restore({ id: row._id });
+              await withAdminTimeout(restore({ id: row._id }));
+            } catch (actionError) {
+              setError(getAdminErrorMessage(actionError));
             } finally {
               setBusy(false);
             }
@@ -404,8 +445,11 @@ function RowActions({
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
-              await archive({ id: row._id });
+              await withAdminTimeout(archive({ id: row._id }));
+            } catch (actionError) {
+              setError(getAdminErrorMessage(actionError));
             } finally {
               setBusy(false);
             }
@@ -417,6 +461,7 @@ function RowActions({
         </button>
       )}
       <PublishGate row={row} />
+      {error ? <span className="max-w-32 text-[10px] text-rose-700">{error}</span> : null}
     </div>
   );
 }
@@ -424,6 +469,7 @@ function RowActions({
 function PublishGate({ row }: { row: ProductRow }) {
   const publish = useMutation(api.admin_products.publish);
   const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   if (row.status === "published") return null;
   return (
     <button
@@ -431,12 +477,11 @@ function PublishGate({ row }: { row: ProductRow }) {
       disabled={busy}
       onClick={async () => {
         setBusy(true);
+        setError(null);
         try {
-          await publish({ id: row._id });
-        } catch {
-          // The publish mutation throws INCOMPLETE:… — the wizard
-          // already shows the validation summary on /edit. We just
-          // swallow here so the user isn't surprised by a toast.
+          await withAdminTimeout(publish({ id: row._id }));
+        } catch (actionError) {
+          setError(getAdminErrorMessage(actionError));
         } finally {
           setBusy(false);
         }
@@ -446,6 +491,7 @@ function PublishGate({ row }: { row: ProductRow }) {
       className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
     >
       <Send className="h-3.5 w-3.5 text-ink" />
+      {error ? <span className="sr-only">{error}</span> : null}
     </button>
   );
 }
