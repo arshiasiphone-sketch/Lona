@@ -37,6 +37,7 @@ import {
   type AdminTableColumn,
 } from "@/components/admin";
 import { StatusBadge, type StatusKind } from "@/components/admin";
+import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import { formatPrice } from "@/lib/format";
@@ -295,6 +296,11 @@ export default function ProductList() {
         </div>
       ) : null}
 
+      <QueryErrorBoundary
+        title="بارگذاری محصولات انجام نشد"
+        backTo="/admin"
+        backLabel="بازگشت به داشبورد"
+      >
       <AdminTable
         rows={rows}
         rowKey={(row) => row._id}
@@ -330,6 +336,7 @@ export default function ProductList() {
           />
         }
       />
+      </QueryErrorBoundary>
     </div>
   );
 }

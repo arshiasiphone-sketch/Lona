@@ -49,6 +49,7 @@ import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
 import { getAdminErrorMessage, withAdminTimeout } from "@/lib/admin-errors";
+import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
 
 const STEPS = [
   { key: "basic", label: "اطلاعات پایه" },
@@ -86,6 +87,18 @@ type StepKey = (typeof STEPS)[number]["key"];
  * Wizard entry — same mountable used at /new and /:id
  * =================================================================== */
 export default function ProductWizard() {
+  return (
+    <QueryErrorBoundary
+      title="بارگذاری محصول انجام نشد"
+      backTo="/admin/products"
+      backLabel="بازگشت به محصولات"
+    >
+      <ProductWizardInner />
+    </QueryErrorBoundary>
+  );
+}
+
+function ProductWizardInner() {
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -933,29 +946,31 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
   const [published, setPublished] = React.useState<{
     ok: boolean;
     missing?: string[];
+    message?: string;
   } | null>(null);
 
   const handlePublish = async () => {
     setBusy(true);
     setPublished(null);
-    try {              await withAdminTimeout(updateFlags({
-                id: product._id,
-                featured,
-                trending,
-                editorial,
-              }));
-              await withAdminTimeout(publishMut({ id: product._id }));
+    try {
+      await withAdminTimeout(updateFlags({
+        id: product._id,
+        featured,
+        trending,
+        editorial,
+      }));
+      await withAdminTimeout(publishMut({ id: product._id }));
 
       setPublished({ ok: true });
     } catch (err) {
-      const message = (err as Error).message;
+      const message = err instanceof Error ? err.message : String(err);
       if (message.startsWith("INCOMPLETE:")) {
         setPublished({
           ok: false,
           missing: message.slice("INCOMPLETE:".length).split(","),
         });
       } else {
-        setPublished({ ok: false });
+        setPublished({ ok: false, message: getAdminErrorMessage(err) });
       }
     } finally {
       setBusy(false);
@@ -1074,18 +1089,29 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
           </motion.p>
         ) : null}
         {published && !published.ok ? (
-          <motion.p
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: EASE_LUXURY }}
-            className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-[12px] text-amber-800"
-          >
-            فیلدهای لازم برای انتشار تکمیل نشده‌اند: {" "}
-            <strong>
-              {(published.missing ?? ["unknown"]).join(", ")}
-            </strong>
-            . به مراحل قبل برگردید، موارد را تکمیل کنید و دوباره انتشار دهید.
-          </motion.p>
+          published.message ? (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: EASE_LUXURY }}
+              className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-800"
+            >
+              {published.message}
+            </motion.p>
+          ) : (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: EASE_LUXURY }}
+              className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-[12px] text-amber-800"
+            >
+              فیلدهای لازم برای انتشار تکمیل نشده‌اند: {" "}
+              <strong>
+                {(published.missing ?? ["unknown"]).join(", ")}
+              </strong>
+              . به مراحل قبل برگردید، موارد را تکمیل کنید و دوباره انتشار دهید.
+            </motion.p>
+          )
         ) : null}
 
         <p className="mt-5 rounded-xl bg-canvas-soft px-3 py-2 text-[12px] text-ink-soft">
