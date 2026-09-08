@@ -28,8 +28,8 @@ interface VariantEditorProps {
   productId: Id<"products">;
   /** Color labels seeded by the parent product's color picker. */
   colorIds: string[];
-  /** Size labels seeded by the parent product's size picker. */
-  sizeLabels: string[];
+  /** Canonical size options seeded by the parent product's size picker. */
+  sizeOptions: Array<{ id: string; label: string }>;
 }
 
 type Row = {
@@ -48,7 +48,7 @@ function buildKey(size: string, color: string) {
 export function VariantEditor({
   productId,
   colorIds,
-  sizeLabels,
+  sizeOptions,
 }: VariantEditorProps) {
   const live = useQuery(api.admin_products.listVariants, { productId });
   const sync = useMutation(api.admin_products.syncVariants);
@@ -60,6 +60,18 @@ export function VariantEditor({
   } | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const colorAxisKey = colorIds.join("|");
+  const sizeAxisKey = sizeOptions.map((size) => size.id).join("|");
+  const stableColorIds = React.useMemo(() => colorIds, [colorAxisKey]);
+  const stableSizeOptions = React.useMemo(() => sizeOptions, [sizeAxisKey]);
+  const sizeIds = React.useMemo(
+    () => stableSizeOptions.map((size) => size.id),
+    [stableSizeOptions],
+  );
+  const sizeLabelById = React.useMemo(
+    () => new Map(stableSizeOptions.map((size) => [size.id, size.label])),
+    [stableSizeOptions],
+  );
 
   React.useEffect(() => {
     if (!live) return;
@@ -68,7 +80,7 @@ export function VariantEditor({
     // existing SKU/stock edits, remove rows for deselected options, and
     // create every newly-required combination automatically.
     const allowedKeys = new Set(
-      sizeLabels.flatMap((size) => colorIds.map((color) => buildKey(size, color))),
+      sizeIds.flatMap((size) => stableColorIds.map((color) => buildKey(size, color))),
     );
     const existing = live
       .map((v: Doc<"variants">) => ({
@@ -81,8 +93,8 @@ export function VariantEditor({
       }))
       .filter((row) => allowedKeys.has(buildKey(row.size, row.color)));
     const existingKeys = new Set(existing.map((row) => buildKey(row.size, row.color)));
-    const generated = sizeLabels.flatMap((size) =>
-      colorIds.flatMap((color) => {
+    const generated = sizeIds.flatMap((size) =>
+      stableColorIds.flatMap((color) => {
         const key = buildKey(size, color);
         if (existingKeys.has(key)) return [];
         return [{
@@ -96,7 +108,7 @@ export function VariantEditor({
     );
     setRows([...existing, ...generated]);
     setDirty(generated.length > 0 || existing.length !== live.length);
-  }, [live, colorIds, sizeLabels]);
+  }, [live, colorAxisKey, sizeAxisKey, stableColorIds, sizeIds]);
 
   const presentKeys = React.useMemo(
     () => new Set(rows.map((r) => buildKey(r.size, r.color))),
@@ -104,7 +116,7 @@ export function VariantEditor({
   );
 
   const toggle = (size: string, color: string, on: boolean) => {
-    if (!colorIds.includes(color) || !sizeLabels.includes(size)) return;
+    if (!stableColorIds.includes(color) || !sizeIds.includes(size)) return;
     setRows((prev) => {
       const key = buildKey(size, color);
       if (on) {
@@ -226,7 +238,7 @@ export function VariantEditor({
           </p>
         ) : null}
 
-        {colorIds.length === 0 || sizeLabels.length === 0 ? (
+        {stableColorIds.length === 0 || sizeIds.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-edge bg-canvas-soft px-5 py-8 text-center text-sm text-ink-muted">
             حداقل یک رنگ و یک سایز را در <strong>مرحلهٔ ۱ · اطلاعات پایه</strong> انتخاب کنید تا جدول تنوع‌ها فعال شود.
           </div>
@@ -245,8 +257,8 @@ export function VariantEditor({
                 </tr>
               </thead>
               <tbody>
-                {sizeLabels.flatMap((size) =>
-                  colorIds.map((color) => {
+                {sizeIds.flatMap((size) =>
+                  stableColorIds.map((color) => {
                     const key = buildKey(size, color);
                     const on = presentKeys.has(key);
                     const rowIdx = rows.findIndex(
@@ -261,7 +273,7 @@ export function VariantEditor({
                           row && !row.available && "bg-rose-50/60",
                         )}
                       >
-                        <td className="px-3 py-2 font-medium text-ink">{size}</td>
+                        <td className="px-3 py-2 font-medium text-ink">{sizeLabelById.get(size) ?? size}</td>
                         <td className="px-3 py-2 text-ink-soft">{color}</td>
                         <td className="px-3 py-2">
                           {on ? (

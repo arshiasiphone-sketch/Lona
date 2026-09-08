@@ -291,7 +291,7 @@ function renderStep(
         <VariantsStep
           product={product}
           colorIds={variantAxes.colors.map((color) => color.id)}
-          sizeLabels={variantAxes.sizes.map((size) => size.label)}
+          sizeOptions={variantAxes.sizes.map((size) => ({ id: size.id, label: size.label }))}
         />
       );
     case "pricing":
@@ -914,11 +914,11 @@ function CollectionsStep({
 function VariantsStep({
   product,
   colorIds,
-  sizeLabels,
+  sizeOptions,
 }: {
   product: Doc<"products">;
   colorIds: string[];
-  sizeLabels: string[];
+  sizeOptions: Array<{ id: string; label: string }>;
 }) {
   return (
     <div>
@@ -931,7 +931,7 @@ function VariantsStep({
         <VariantEditor
           productId={product._id}
           colorIds={colorIds}
-          sizeLabels={sizeLabels}
+          sizeOptions={sizeOptions}
         />
       </div>
     </div>

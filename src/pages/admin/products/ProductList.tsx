@@ -91,6 +91,13 @@ export default function ProductList() {
     });
   };
 
+  const handleDuplicate = React.useCallback(
+    async (productId: Id<"products">) => {
+      await duplicate({ id: productId });
+    },
+    [duplicate],
+  );
+
   const bulkAction = selectedKeys.size > 0 ? (
     <div className="flex items-center gap-2">
       <button
@@ -227,13 +234,6 @@ export default function ProductList() {
       className: "w-[60px]",
     },
   ];
-
-  const handleDuplicate = React.useCallback(
-    async (productId: Id<"products">) => {
-      await duplicate({ id: productId });
-    },
-    [duplicate],
-  );
 
   return (
     <div className="space-y-6">
