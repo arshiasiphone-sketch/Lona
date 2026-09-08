@@ -50,6 +50,11 @@ import { EASE_LUXURY } from "@/lib/motion";
 import { formatPrice } from "@/lib/format";
 import { getAdminErrorMessage, withAdminTimeout } from "@/lib/admin-errors";
 import { QueryErrorBoundary } from "@/components/admin/QueryErrorBoundary";
+import {
+  ACCESSORY_SIZES,
+  LINGERIE_SIZES,
+  LONA_COLOR_OPTIONS,
+} from "@/data/lona-catalog";
 
 const STEPS = [
   { key: "basic", label: "اطلاعات پایه" },
@@ -80,6 +85,13 @@ const CATEGORY_OPTIONS: { value: Doc<"products">["category"]; label: string }[] 
   { value: "accessories", label: "اکسسوری" },
   { value: "bridal", label: "عروس" },
 ];
+
+const COLOR_SWATCH_CLASSES: Record<(typeof LONA_COLOR_OPTIONS)[number]["gradient"], string> = {
+  deep: "bg-ink",
+  mist: "bg-white",
+  oat: "bg-[#d8c3a5]",
+  rose: "bg-[#dba6ae]",
+};
 
 type StepKey = (typeof STEPS)[number]["key"];
 
@@ -138,6 +150,17 @@ function ProductWizardInner() {
   const isNew = rawId === "new";
   const id = !isNew && rawId ? (rawId as Id<"products">) : undefined;
   const product = useQuery(api.admin_products.getById, id ? { id } : "skip");
+  const [variantAxes, setVariantAxes] = React.useState<{
+    colors: Doc<"products">["colors"];
+    sizes: Doc<"products">["sizes"];
+  }>({ colors: [], sizes: [] });
+  const initializedProduct = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!product || initializedProduct.current === product._id) return;
+    initializedProduct.current = product._id;
+    setVariantAxes({ colors: product.colors, sizes: product.sizes });
+  }, [product]);
 
   if (createError) {
     return (
@@ -209,7 +232,13 @@ function ProductWizardInner() {
   return (
     <div className="space-y-8">
       <WizardHeader product={product} step={step} onStepClick={goTo} />
-      {renderStep(step, product, () => goTo(nextStep(idx)))}
+      {renderStep(
+        step,
+        product,
+        () => goTo(nextStep(idx)),
+        variantAxes,
+        (colors, sizes) => setVariantAxes({ colors, sizes }),
+      )}
       <WizardFooter
         step={step}
         index={idx}
@@ -233,10 +262,24 @@ function renderStep(
   step: StepKey,
   product: Doc<"products">,
   onAdvance: () => void,
+  variantAxes: {
+    colors: Doc<"products">["colors"];
+    sizes: Doc<"products">["sizes"];
+  },
+  onVariantAxesChange: (
+    colors: Doc<"products">["colors"],
+    sizes: Doc<"products">["sizes"],
+  ) => void,
 ) {
   switch (step) {
     case "basic":
-      return <BasicInfoStep product={product} onAdvance={onAdvance} />;
+      return (
+        <BasicInfoStep
+          product={product}
+          onAdvance={onAdvance}
+          onAxesChange={onVariantAxesChange}
+        />
+      );
     case "media":
       return <MediaStep product={product} />;
     case "categories":
@@ -247,8 +290,8 @@ function renderStep(
       return (
         <VariantsStep
           product={product}
-          colorIds={product.colors.map((c) => c.id)}
-          sizeLabels={product.sizes.map((s) => s.label)}
+          colorIds={variantAxes.colors.map((color) => color.id)}
+          sizeLabels={variantAxes.sizes.map((size) => size.label)}
         />
       );
     case "pricing":
@@ -258,7 +301,13 @@ function renderStep(
     case "publishing":
       return <PublishingStep product={product} />;
     default:
-      return <BasicInfoStep product={product} onAdvance={onAdvance} />;
+      return (
+        <BasicInfoStep
+          product={product}
+          onAdvance={onAdvance}
+          onAxesChange={onVariantAxesChange}
+        />
+      );
   }
 }
 
@@ -373,9 +422,14 @@ function WizardFooter({
 function BasicInfoStep({
   product,
   onAdvance,
+  onAxesChange,
 }: {
   product: Doc<"products">;
   onAdvance: () => void;
+  onAxesChange: (
+    colors: Doc<"products">["colors"],
+    sizes: Doc<"products">["sizes"],
+  ) => void;
 }) {
   const updateBasics = useMutation(api.admin_products.updateBasics);
   const [form, setForm] = React.useState({
@@ -390,6 +444,8 @@ function BasicInfoStep({
     barcode: product.barcode ?? "",
     material: product.material ?? "",
     care: product.care ?? "",
+    colors: product.colors,
+    sizes: product.sizes,
   });
   const [busy, setBusy] = React.useState(false);
   const [saved, setSaved] = React.useState<"idle" | "ok" | "err">("idle");
@@ -403,6 +459,9 @@ function BasicInfoStep({
     setSaved("idle");
     setSaveError(null);
     try {
+      if (form.colors.length === 0 || form.sizes.length === 0) {
+        throw new Error("تنوع محصول: حداقل یک رنگ و یک سایز انتخاب کنید.");
+      }
       await withAdminTimeout(updateBasics({
         id: product._id,
         name: form.name,
@@ -416,6 +475,8 @@ function BasicInfoStep({
         barcode: form.barcode,
         material: form.material,
         care: form.care,
+        colors: form.colors,
+        sizes: form.sizes,
       }));
       setSaved("ok");
       onAdvance();
@@ -463,9 +524,18 @@ function BasicInfoStep({
         <Field label="دسته‌بندی">
           <select
             value={form.category}
-            onChange={(e) =>
-              set("category", e.target.value as typeof form.category)
-            }
+            onChange={(e) => {
+              const nextCategory = e.target.value as typeof form.category;
+              set("category", nextCategory);
+              if (nextCategory === "accessories") {
+                const nextSizes = ACCESSORY_SIZES.map((size) => ({ ...size }));
+                set("sizes", nextSizes);
+                onAxesChange(form.colors, nextSizes);
+              } else if (form.category === "accessories") {
+                set("sizes", []);
+                onAxesChange(form.colors, []);
+              }
+            }}
             className="admin-input"
           >
             {CATEGORY_OPTIONS.map((c) => (
@@ -483,6 +553,111 @@ function BasicInfoStep({
             placeholder="پاییز-زمستان، ضروریات، شب، اکسسوری…"
           />
         </Field>
+
+        <div className="lg:col-span-2 rounded-2xl border border-edge bg-canvas-soft/70 p-5">
+          <div className="flex flex-col gap-1">
+            <span className="type-eyebrow text-ink-muted">تنوع محصول</span>
+            <h4 className="font-display text-xl text-ink">رنگ‌ها و سایزهای قابل فروش</h4>
+            <p className="text-xs leading-6 text-ink-soft">
+              رنگ و سایزهای این بخش منبع اصلی ساخت جدول تنوع‌ها هستند. در مرحلهٔ بعد، ترکیب‌های لازم به‌صورت خودکار ساخته می‌شوند.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-6 lg:grid-cols-2">
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">رنگ‌ها</p>
+                  <p className="mt-1 text-[11px] text-ink-muted">حداقل یک رنگ انتخاب کنید.</p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[10px] text-ink-muted">
+                  {form.colors.length.toLocaleString("fa-IR")} انتخاب
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {LONA_COLOR_OPTIONS.map((color) => {
+                  const selected = form.colors.some((item) => item.id === color.id);
+                  return (
+                    <button
+                      key={color.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        const nextColors = selected
+                          ? form.colors.filter((item) => item.id !== color.id)
+                          : [...form.colors, { ...color }];
+                        set("colors", nextColors);
+                        onAxesChange(nextColors, form.sizes);
+                      }}
+                      className={cn(
+                        "flex min-h-16 flex-col items-center justify-center gap-2 rounded-xl border px-2 py-2 text-[11px] transition focus:outline-none focus:ring-2 focus:ring-primary",
+                        selected
+                          ? "border-primary bg-white ring-2 ring-primary/30"
+                          : "border-edge bg-white/50 hover:bg-white",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-7 w-7 rounded-full border border-ink/15 shadow-sm",
+                          COLOR_SWATCH_CLASSES[color.gradient],
+                          selected && "ring-2 ring-primary ring-offset-2",
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span className="text-ink">{color.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-ink">سایزها</p>
+                  <p className="mt-1 text-[11px] text-ink-muted">سایزهای موجود برای این محصول را انتخاب کنید.</p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[10px] text-ink-muted">
+                  {form.sizes.length.toLocaleString("fa-IR")} انتخاب
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(form.category === "accessories" ? ACCESSORY_SIZES : LINGERIE_SIZES).map((size) => {
+                  const selected = form.sizes.some((item) => item.id === size.id);
+                  return (
+                    <button
+                      key={size.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        const nextSizes = selected
+                          ? form.sizes.filter((item) => item.id !== size.id)
+                          : [...form.sizes, { ...size }];
+                        set("sizes", nextSizes);
+                        onAxesChange(form.colors, nextSizes);
+                      }}
+                      className={cn(
+                        "min-w-16 rounded-full border px-4 py-2.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-primary",
+                        selected
+                          ? "border-ink bg-ink text-canvas"
+                          : "border-edge bg-white/70 text-ink-soft hover:bg-white",
+                      )}
+                    >
+                      {size.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {(form.colors.length === 0 || form.sizes.length === 0) && (
+            <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              برای فعال‌شدن مرحلهٔ تنوع‌ها، حداقل یک رنگ و یک سایز انتخاب کنید.
+            </p>
+          )}
+        </div>
+
         <Field label="توضیحات" full>
           <textarea
             value={form.description}

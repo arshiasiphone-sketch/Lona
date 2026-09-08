@@ -22,6 +22,7 @@ import { Plus, Trash2, AlertCircle, Check, Save, RotateCcw } from "lucide-react"
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { getAdminErrorMessage, withAdminTimeout } from "@/lib/admin-errors";
 
 interface VariantEditorProps {
   productId: Id<"products">;
@@ -57,22 +58,45 @@ export function VariantEditor({
     rows: number;
     softWarned: number;
   } | null>(null);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!live) return;
-    setRows(
-      live.map((v: Doc<"variants">) => ({
+
+    // Step 1 is the only source of truth for the available axes. Keep
+    // existing SKU/stock edits, remove rows for deselected options, and
+    // create every newly-required combination automatically.
+    const allowedKeys = new Set(
+      sizeLabels.flatMap((size) => colorIds.map((color) => buildKey(size, color))),
+    );
+    const existing = live
+      .map((v: Doc<"variants">) => ({
         size: v.size,
         color: v.color,
         sku: v.sku,
         stock: v.stock,
         priceCentsOverride: v.priceCentsOverride,
         available: v.available,
-      })),
+      }))
+      .filter((row) => allowedKeys.has(buildKey(row.size, row.color)));
+    const existingKeys = new Set(existing.map((row) => buildKey(row.size, row.color)));
+    const generated = sizeLabels.flatMap((size) =>
+      colorIds.flatMap((color) => {
+        const key = buildKey(size, color);
+        if (existingKeys.has(key)) return [];
+        return [{
+          size,
+          color,
+          sku: `${size.toUpperCase()}-${color.toUpperCase()}-${existing.length + 1}`,
+          stock: 0,
+          available: false,
+        }];
+      }),
     );
-    setDirty(false);
-  }, [live]);
+    setRows([...existing, ...generated]);
+    setDirty(generated.length > 0 || existing.length !== live.length);
+  }, [live, colorIds, sizeLabels]);
 
   const presentKeys = React.useMemo(
     () => new Set(rows.map((r) => buildKey(r.size, r.color))),
@@ -125,8 +149,9 @@ export function VariantEditor({
 
   const handleSave = async () => {
     setBusy(true);
+    setSaveError(null);
     try {
-      const result = await sync({
+      const result = await withAdminTimeout(sync({
         productId,
         rows: rows.map((r) => ({
           size: r.size,
@@ -136,9 +161,11 @@ export function VariantEditor({
           priceCentsOverride: r.priceCentsOverride,
           available: r.available,
         })),
-      });
+      }));
       setLastResult(result);
       setDirty(false);
+    } catch (error) {
+      setSaveError(getAdminErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -149,9 +176,9 @@ export function VariantEditor({
       <div className="rounded-2xl border border-edge bg-white/85 p-5">
         <div className="flex items-baseline justify-between">
           <div>
-            <p className="type-eyebrow text-ink-muted">Step 5 / 9 · Variants</p>
+            <p className="type-eyebrow text-ink-muted">مرحلهٔ ۵ · تنوع‌ها</p>
             <h3 className="mt-2 font-display text-2xl text-ink">
-              Sizes × Colours matrix
+              جدول سایز × رنگ
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -185,18 +212,23 @@ export function VariantEditor({
               className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700"
             >
               <Check className="h-3.5 w-3.5" />
-              Saved: {lastResult.rows} variants.
+              {lastResult.rows.toLocaleString("fa-IR")} تنوع ذخیره شد.
               {lastResult.softWarned > 0
-                ? ` ${lastResult.softWarned} kept in stock but flagged unavailable — review before publishing.`
+                ? ` ${lastResult.softWarned.toLocaleString("fa-IR")} تنوع دارای موجودی، غیرفعال نگه داشته شد.`
                 : ""}
             </motion.div>
           )}
         </AnimatePresence>
 
+        {saveError ? (
+          <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+            {saveError}
+          </p>
+        ) : null}
+
         {colorIds.length === 0 || sizeLabels.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-edge bg-canvas-soft px-5 py-8 text-center text-sm text-ink-muted">
-            Pick at least one colour and one size in <strong>Step 1 · Basic Info</strong>{" "}
-            to enable the variant matrix.
+            حداقل یک رنگ و یک سایز را در <strong>مرحلهٔ ۱ · اطلاعات پایه</strong> انتخاب کنید تا جدول تنوع‌ها فعال شود.
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto rounded-2xl border border-edge bg-white">
@@ -207,7 +239,7 @@ export function VariantEditor({
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">رنگ</th>
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">کد محصول</th>
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">موجودی</th>
-                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">Price Δ¢</th>
+                  <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">تغییر قیمت</th>
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em]">موجود</th>
                   <th className="px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-right">مدیریت</th>
                 </tr>
@@ -293,7 +325,7 @@ export function VariantEditor({
                                 "inline-flex h-6 w-11 items-center rounded-full p-1 transition",
                                 row?.available ? "bg-emerald-500" : "bg-zinc-300",
                               )}
-                              aria-label={`Toggle available: ${row?.available ? "on" : "off"}`}
+                              aria-label={`وضعیت موجودی: ${row?.available ? "فعال" : "غیرفعال"}`}
                             >
                               <span
                                 className={cn(
@@ -340,9 +372,7 @@ export function VariantEditor({
         {rows.some((r) => !r.available && r.stock > 0) && (
           <div className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
             <AlertCircle className="h-3.5 w-3.5" />
-            Some variants still hold stock but are flagged unavailable. They
-            will be removed from storefront filters but stay reserved for order
-            refunds and reissue.
+            بعضی تنوع‌ها هنوز موجودی دارند اما غیرفعال هستند؛ پیش از انتشار وضعیت آن‌ها را بررسی کنید.
           </div>
         )}
       </div>

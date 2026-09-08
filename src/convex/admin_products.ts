@@ -184,6 +184,8 @@ export const updateBasics = mutation({
     barcode: v.optional(v.string()),
     material: v.optional(v.string()),
     care: v.optional(v.string()),
+    colors: v.optional(v.array(vColorOption)),
+    sizes: v.optional(v.array(vSizeOption)),
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_products");
