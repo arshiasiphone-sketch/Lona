@@ -32,6 +32,7 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { requirePermission, audit } from "./admin";
+import { withResolvedProductImages } from "./_productImages";
 import { api } from "./_generated/api";
 import {
   isAllowedImageType,
@@ -60,7 +61,8 @@ export const listForAdmin = query({
     await requirePermission(ctx, "manage_products");
     const rows = await ctx.db.query("products").collect();
     rows.sort((a, b) => b._creationTime - a._creationTime);
-    return limit ? rows.slice(0, limit) : rows;
+    const resolved = await withResolvedProductImages(ctx, rows);
+    return limit ? resolved.slice(0, limit) : resolved;
   },
 });
 

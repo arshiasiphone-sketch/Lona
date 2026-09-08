@@ -377,13 +377,29 @@ function GradientChip({ row }: { row: ProductRow }) {
         : grad === "rose"
           ? "gradient-rose-quartz"
           : "gradient-deep";
+  const imageUrl = row.imageUrls?.[0];
   return (
     <div
       className={cn(
         "h-12 w-10 overflow-hidden rounded-lg ring-1 ring-inset ring-white/40",
         cls,
       )}
-    />
+    >
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          width={80}
+          height={96}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+    </div>
   );
 }
 

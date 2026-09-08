@@ -9,6 +9,7 @@
  */
 
 import type * as _helpers from "../_helpers.js";
+import type * as _productImages from "../_productImages.js";
 import type * as addresses from "../addresses.js";
 import type * as admin from "../admin.js";
 import type * as admin_bootstrap from "../admin_bootstrap.js";
@@ -61,6 +62,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   _helpers: typeof _helpers;
+  _productImages: typeof _productImages;
   addresses: typeof addresses;
   admin: typeof admin;
   admin_bootstrap: typeof admin_bootstrap;

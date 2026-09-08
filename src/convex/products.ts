@@ -8,6 +8,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { requireAdmin } from "./_helpers";
+import { withResolvedProductImages } from "./_productImages";
 import {
   badgeLiterals,
   vBadge,
@@ -33,7 +34,8 @@ export const list = query({
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
     const visible = rows.filter((p) => p.visible);
-    return limit ? visible.slice(0, limit) : visible;
+    const resolved = await withResolvedProductImages(ctx, visible);
+    return limit ? resolved.slice(0, limit) : resolved;
   },
 });
 
@@ -57,7 +59,7 @@ export const featured = query({
       .query("products")
       .withIndex("by_featured", (q) => q.eq("featured", true))
       .collect();
-    return await publishedOnly(rows);
+    return await withResolvedProductImages(ctx, await publishedOnly(rows));
   },
 });
 
@@ -69,7 +71,7 @@ export const trending = query({
       .query("products")
       .withIndex("by_trending", (q) => q.eq("trending", true))
       .collect();
-    return await publishedOnly(rows);
+    return await withResolvedProductImages(ctx, await publishedOnly(rows));
   },
 });
 
@@ -81,7 +83,7 @@ export const editorial = query({
       .query("products")
       .withIndex("by_editorial", (q) => q.eq("editorial", true))
       .collect();
-    return await publishedOnly(rows);
+    return await withResolvedProductImages(ctx, await publishedOnly(rows));
   },
 });
 
@@ -93,7 +95,7 @@ export const byCategory = query({
       .query("products")
       .withIndex("by_category", (q) => q.eq("category", category))
       .collect();
-    return await publishedOnly(rows);
+    return await withResolvedProductImages(ctx, await publishedOnly(rows));
   },
 });
 
@@ -107,7 +109,10 @@ export const byCollection = query({
         q.eq("collectionSlug", collectionSlug)
       )
       .collect();
-    return rows.filter((p) => p.visible && p.status === "published");
+    return await withResolvedProductImages(
+      ctx,
+      rows.filter((p) => p.visible && p.status === "published"),
+    );
   },
 });
 
@@ -115,10 +120,13 @@ export const byCollection = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
-    return await ctx.db
+    const product = await ctx.db
       .query("products")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .unique();
+    if (!product) return null;
+    const [resolved] = await withResolvedProductImages(ctx, [product]);
+    return resolved ?? null;
   },
 });
 
@@ -140,7 +148,7 @@ export const search = query({
         return category ? base.eq("category", category) : base;
       })
       .take(limit ?? 24);
-    return rows;
+    return await withResolvedProductImages(ctx, rows);
   },
 });
 
