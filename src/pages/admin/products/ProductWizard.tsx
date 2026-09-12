@@ -37,6 +37,7 @@ import {
   Send,
   Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 
 import { MediaUploader } from "@/components/admin/MediaUploader";
@@ -472,6 +473,10 @@ function BasicInfoStep({
         colors: form.colors,
         sizes: form.sizes,
       }));
+      // Update the parent wizard's variant axes immediately so Step 5
+      // (Variants) can generate the matrix from the freshly-saved values
+      // before the Convex query refetches.
+      onAxesChange(form.colors, form.sizes);
       setSaved("ok");
       onAdvance();
     } catch (error) {
@@ -721,6 +726,26 @@ function BasicInfoStep({
  * Step: Media
  * =================================================================== */
 function MediaStep({ product }: { product: Doc<"products"> }) {
+  const listMedia = useQuery(api.admin_products.listMedia, { productId: product._id });
+  const deleteMedia = useMutation(api.admin_products.deleteMedia);
+  const [removingId, setRemovingId] = React.useState<Id<"product_images"> | null>(null);
+  const [removeError, setRemoveError] = React.useState<string | null>(null);
+
+  const primaryImage = listMedia && listMedia.find((m) => m.order === 0);
+
+  const handleRemovePrimary = async () => {
+    if (!primaryImage) return;
+    setRemovingId(primaryImage._id);
+    setRemoveError(null);
+    try {
+      await deleteMedia({ id: primaryImage._id });
+    } catch (err) {
+      setRemoveError(getAdminErrorMessage(err));
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   return (
     <div className="space-y-3 rounded-3xl border border-edge bg-white/85 p-6">
       <p className="type-eyebrow text-ink-muted">مرحلهٔ ۲ از ۷</p>
@@ -728,6 +753,55 @@ function MediaStep({ product }: { product: Doc<"products"> }) {
       <p className="text-sm text-ink-soft">
         تصویر محصول را بارگذاری کنید. اولین تصویر به‌عنوان تصویر اصلی محصول نمایش داده می‌شود.
       </p>
+
+      {primaryImage && (
+        <div className="mt-4 rounded-2xl border border-edge bg-canvas-soft/50 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-20 overflow-hidden rounded-xl bg-white shadow-sm">
+                {primaryImage.url ? (
+                  <img
+                    src={primaryImage.url}
+                    alt={primaryImage.alt}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-ink-muted text-sm">
+                    بدون پیش‌نمایش
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-ink">تصویر اصلی</p>
+                <p className="text-xs text-ink-muted">{primaryImage.alt}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={removingId !== null}
+              onClick={handleRemovePrimary}
+              className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white transition hover:bg-rose-700 disabled:opacity-50"
+              aria-label="حذف تصویر"
+            >
+              {removingId ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> در حال حذف...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" /> حذف تصویر
+                </>
+              )}
+            </button>
+          </div>
+          {removeError && (
+            <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+              {removeError}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="pt-3">
         <MediaUploader productId={product._id} />
       </div>
