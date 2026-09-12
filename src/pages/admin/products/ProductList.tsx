@@ -76,7 +76,7 @@ export default function ProductList() {
     return products.filter((row: ProductRow) => {
       if (status !== "all" && row.status !== status) return false;
       if (!needle) return true;
-      return [row.name, row.slug, row.category, row.collectionSlug]
+      return [row.name, row.slug, row.category]
         .join(" ")
         .toLowerCase()
         .includes(needle);
@@ -306,7 +306,7 @@ export default function ProductList() {
         rowKey={(row) => row._id}
         columns={columns}
         isLoading={products === undefined}
-        searchPlaceholder="جست‌وجو بر اساس نام، اسلاگ یا کالکسیون…"
+        searchPlaceholder="جست‌وجو بر اساس نام، اسلاگ یا دسته‌بندی…"
         searchValue={query}
         onSearchChange={setQuery}
         selectedKeys={[...selectedKeys]}

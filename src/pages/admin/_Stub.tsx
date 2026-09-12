@@ -1,6 +1,6 @@
 /**
  * Phase 5.1 — shared stub page used by every non-Product admin
- * route (Categories / Collections / Inventory / Orders / Customers /
+ * route (Categories / Inventory / Orders / Customers /
  * Reviews / Coupons / Editorial / Media / Settings).
  *
  * Each route renders the same shell but supplies its own copy via
@@ -63,7 +63,7 @@ export default function AdminStub() {
             to="/admin/products"
             className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
           >
-            شروع با کالکسیون <ArrowLeft className="h-3 w-3" />
+            شروع با محصولات <ArrowLeft className="h-3 w-3" />
           </Link>
           <Link
             to="/admin"
@@ -115,7 +115,6 @@ type Spec = {
 
 const ICONS: Record<string, React.ReactNode> = {
   Tree: <ListTree className="h-3 w-3" />,
-  Collection: <Boxes className="h-3 w-3" />,
   Boxes: <Boxes className="h-3 w-3" />,
   Receipt: <Receipt className="h-3 w-3" />,
   Wallet: <Wallet className="h-3 w-3" />,
@@ -134,7 +133,7 @@ const ICONS: Record<string, React.ReactNode> = {
 
 const DOMAIN_MAP: Record<string, Spec> = {
   categories: {
-    eyebrow: "کالکسیون · دسته‌بندی‌ها",
+    eyebrow: "کاتالوگ · دسته‌بندی‌ها",
     title: "دسته‌بندی، در حال تکمیل.",
     body:
       "در حال حاضر دسته‌بندی‌ها در فیلتر فروشگاه به‌صورت تک‌انتخابی است. در فاز بعدی، دسته‌بندی‌ها به ساختار درختی با والد، فرزند، ترتیب و قابلیت دیده‌شدن ارتقا پیدا می‌کنند و گردش کار تخصیص محصول به آن‌ها افزوده می‌شود.",
@@ -145,20 +144,8 @@ const DOMAIN_MAP: Record<string, Spec> = {
       "دسته‌بندی‌های تو در تو برای فصل بهار و تابستان ۱۴۰۵",
     ],
   },
-  collections: {
-    eyebrow: "کالکسیون · مجموعه‌ها",
-    title: "داستان‌های مجموعه‌ها، به‌زودی.",
-    body:
-      "در فاز ۵.۱، مجموعه‌ها به‌عنوان یک فیلد روی محصول قرار گرفته‌اند. ویرایشگر کامل مجموعه‌ها (چیدمان کمپین، ترتیب، ترکیب آرشیو) در تکه بعدی ادمین اضافه می‌شود.",
-    icon: "Collection",
-    permission: "مدیریت محصولات",
-    upNext: [
-      "مرتب‌سازی کارت‌ها در مجموعه با کشیدن و رها کردن",
-      "ویرایشگر تصویر جلد فصلی",
-    ],
-  },
   inventory: {
-    eyebrow: "کالکسیون · موجودی",
+    eyebrow: "کاتالوگ · موجودی",
     title: "موجودی در یک نگاه.",
     body:
       "تنوع‌ها همراه با موجودی، SKU و وضعیت در دسترس ارائه می‌شوند؛ ماتریس ویزارد عمیق‌ترین سطح است. ثبت حرکت‌های موجودی بر اساس انبار و صندوق هشدار کمبود، در فاز بعدی اضافه می‌شود.",
@@ -170,7 +157,7 @@ const DOMAIN_MAP: Record<string, Spec> = {
     ],
   },
   media: {
-    eyebrow: "کالکسیون · کتابخانه رسانه",
+    eyebrow: "کاتالوگ · کتابخانه رسانه",
     title: "کتابخانه تصاویر، در حال تکمیل.",
     body:
       "تصاویر محصول از طریق MediaUploader بارگذاری می‌شوند. کتابخانه مشترک بین محصولات (جستجو بر اساس متن جایگزین، فیلتر برچسب، بازیافت تصاویر بدون استفاده) در فاز ۵.۲ ارائه می‌شود.",

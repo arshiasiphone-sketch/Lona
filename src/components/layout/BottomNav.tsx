@@ -1,6 +1,6 @@
 import { NavLink } from "react-router";
 import { motion } from "framer-motion";
-import { Home, ShoppingBag, Heart, Layers, User } from "lucide-react";
+import { Home, ShoppingBag, Heart, User } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
@@ -8,7 +8,6 @@ import { useWishlist } from "@/hooks/use-wishlist";
 const bottomLinks = [
   { label: "خانه", to: "/", icon: Home },
   { label: "فروشگاه", to: "/shop", icon: ShoppingBag },
-  { label: "کالکسیون‌ها", to: "/collections", icon: Layers },
   { label: "علاقه‌مندی", to: "/wishlist", icon: Heart, badge: "wishlist" as const },
   { label: "حساب", to: "/account", icon: User },
 ];

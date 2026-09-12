@@ -33,7 +33,7 @@ type EditorialRow = Doc<"editorials">;
 const KIND_LABEL: Record<EditorialRow["kind"], string> = {
   journal: "مجله",
   atelier: "یادداشت کارگاه",
-  campaign: "کالکسیون",
+  campaign: "کمپین",
   blog: "بلاگ",
 };
 
@@ -453,7 +453,7 @@ function EditorialDrawer({
                   [
                     ["journal", "مجله"],
                     ["atelier", "کارگاه"],
-                    ["campaign", "کالکسیون"],
+                    ["campaign", "کمپین"],
                     ["blog", "بلاگ"],
                   ] as const
                 ).map(([k, label]) => (

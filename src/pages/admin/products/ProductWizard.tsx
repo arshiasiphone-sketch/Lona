@@ -60,7 +60,6 @@ const STEPS = [
   { key: "basic", label: "اطلاعات پایه" },
   { key: "media", label: "رسانه" },
   { key: "categories", label: "دسته‌بندی‌ها" },
-  { key: "collections", label: "کالکسیون‌ها" },
   { key: "variants", label: "تنوع‌ها" },
   { key: "pricing", label: "قیمت و موجودی" },
   { key: "seo", label: "سئو" },
@@ -136,7 +135,6 @@ function ProductWizardInner() {
           name: "تکهٔ بدون نام",
           slug: tempSlug,
           category: "accessories",
-          collectionSlug: "",
         }));
         navigate(`/admin/products/${id}?step=basic`, { replace: true });
       } catch (err) {
@@ -284,8 +282,6 @@ function renderStep(
       return <MediaStep product={product} />;
     case "categories":
       return <CategoriesStep product={product} onAdvance={onAdvance} />;
-    case "collections":
-      return <CollectionsStep product={product} onAdvance={onAdvance} />;
     case "variants":
       return (
         <VariantsStep
@@ -436,7 +432,6 @@ function BasicInfoStep({
     name: product.name,
     slug: product.slug,
     category: product.category,
-    collectionSlug: product.collectionSlug,
     description: product.description,
     composition: product.composition,
     origin: product.origin,
@@ -467,7 +462,6 @@ function BasicInfoStep({
         name: form.name,
         slug: form.slug,
         category: form.category,
-        collectionSlug: form.collectionSlug,
         description: form.description,
         composition: form.composition,
         origin: form.origin,
@@ -492,7 +486,7 @@ function BasicInfoStep({
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <p className="type-eyebrow text-ink-muted">مرحلهٔ ۱ از ۸</p>
+          <p className="type-eyebrow text-ink-muted">مرحلهٔ ۱ از ۷</p>
           <h3 className="mt-2 font-display text-2xl text-ink">اطلاعات پایه</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -545,15 +539,6 @@ function BasicInfoStep({
             ))}
           </select>
         </Field>
-        <Field label="کالکسیون (اسلاگ)">
-          <input
-            value={form.collectionSlug}
-            onChange={(e) => set("collectionSlug", e.target.value.toLowerCase())}
-            className="admin-input"
-            placeholder="پاییز-زمستان، ضروریات، شب، اکسسوری…"
-          />
-        </Field>
-
         <div className="lg:col-span-2 rounded-2xl border border-edge bg-canvas-soft/70 p-5">
           <div className="flex flex-col gap-1">
             <span className="type-eyebrow text-ink-muted">تنوع محصول</span>
@@ -738,7 +723,7 @@ function BasicInfoStep({
 function MediaStep({ product }: { product: Doc<"products"> }) {
   return (
     <div className="space-y-3 rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۲ از ۸</p>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۲ از ۷</p>
       <h3 className="font-display text-2xl text-ink">کتابخانهٔ رسانه</h3>
       <p className="text-sm text-ink-soft">
         تصویر محصول را بارگذاری کنید. اولین تصویر به‌عنوان تصویر اصلی محصول نمایش داده می‌شود.
@@ -766,11 +751,11 @@ function CategoriesStep({
   const [categoryError, setCategoryError] = React.useState<string | null>(null);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۳ از ۸</p>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۳ از ۷</p>
       <h3 className="mt-2 font-display text-2xl text-ink">دسته‌بندی‌ها</h3>
       <p className="mt-2 text-sm text-ink-soft">
-        هر محصول در یک دستهٔ اصلی ایندکس می‌شود؛ کالکسیون‌ها برای گروه‌بندی
-        داستانی روی آن لایه می‌شوند.
+        هر محصول در یک دستهٔ اصلی ایندکس می‌شود؛ دسته‌بندی، تنها طبقه‌بندی
+        محصولات در لونا است.
       </p>
       <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {CATEGORY_OPTIONS.map((c) => (
@@ -818,97 +803,6 @@ function CategoriesStep({
 }
 
 /* ===================================================================
- * Step: Collections
- * =================================================================== */
-function CollectionsStep({
-  product,
-  onAdvance,
-}: {
-  product: Doc<"products">;
-  onAdvance: () => void;
-}) {
-  const updateBasics = useMutation(api.admin_products.updateBasics);
-  // Phase 7.5: read live collections instead of a hardcoded demo list
-  // that drifted from the seeded data.
-  const liveCollections = useQuery(api.collections.listAll, {});
-  const collections = (liveCollections ?? []).sort((a, b) => a.order - b.order);
-  const [picked, setPicked] = React.useState<string[]>(
-    product.collectionSlug ? [product.collectionSlug] : [],
-  );
-  const [collectionError, setCollectionError] = React.useState<string | null>(null);
-  const [busy, setBusy] = React.useState(false);
-  return (
-    <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۴ از ۸</p>
-      <h3 className="mt-2 font-display text-2xl text-ink">کالکسیون‌ها</h3>
-      <p className="mt-2 text-sm text-ink-soft">
-        محصول را به کالکسیون اصلی وصل کنید تا در صفحهٔ کالکسیون و ماژول‌های
-        فروشگاهی ظاهر شود.
-      </p>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {collections.length === 0 ? (
-          <p className="text-sm text-ink-muted">کالکسیونی یافت نشد.</p>
-        ) : (
-          collections.map((c) => {
-            const on = picked.includes(c.slug);
-            return (
-              <button
-                key={c.slug}
-                type="button"
-                onClick={() =>
-                  setPicked(
-                    on ? [] : [c.slug],
-                  )
-                }
-                className={cn(
-                  "rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] transition",
-                  on
-                    ? "bg-ink text-canvas"
-                    : "hairline bg-canvas/60 text-ink-soft hover:bg-white",
-                )}
-              >
-                {c.name} ({c.slug})
-              </button>
-            );
-          })
-        )}
-      </div>
-      {collectionError ? (
-        <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
-          {collectionError}
-        </p>
-      ) : null}
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setCollectionError(null);
-            try {
-              if (picked.length) {
-                await withAdminTimeout(updateBasics({
-                  id: product._id,
-                  collectionSlug: picked[0],
-                }));
-              }
-              onAdvance();
-            } catch (error) {
-              setCollectionError(getAdminErrorMessage(error));
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-canvas hover:bg-primary"
-        >
-          <Check className="h-3.5 w-3.5" /> ذخیره و ادامه
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ===================================================================
  * Step: Variants
  * =================================================================== */
 function VariantsStep({
@@ -922,7 +816,7 @@ function VariantsStep({
 }) {
   return (
     <div>
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۵ از ۸</p>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۴ از ۷</p>
       <h3 className="mt-2 font-display text-2xl text-ink">تنوع‌ها</h3>
       <p className="mt-2 max-w-2xl text-sm text-ink-soft">
         ترکیب‌های سایز و رنگ را مدیریت کنید. موجودی هر تنوع در همین بخش ثبت می‌شود.
@@ -957,7 +851,7 @@ function PricingInventoryStep({
   const [pricingError, setPricingError] = React.useState<string | null>(null);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۶ از ۸</p>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۵ از ۷</p>
       <h3 className="mt-2 font-display text-2xl text-ink">قیمت‌گذاری و موجودی</h3>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Field label="قیمت فروش (تومان)">
@@ -1047,7 +941,7 @@ function SeoStep({
   const [busy, setBusy] = React.useState(false);
   return (
     <div className="rounded-3xl border border-edge bg-white/85 p-6">
-      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۷ از ۸</p>
+      <p className="type-eyebrow text-ink-muted">مرحلهٔ ۶ از ۷</p>
       <h3 className="mt-2 font-display text-2xl text-ink">سئو</h3>
       <p className="mt-2 text-sm text-ink-soft">
         متادیتای جست‌وجو و شبکه‌های اجتماعی. این فیلدها مستقل از توضیحات
@@ -1155,7 +1049,7 @@ function PublishingStep({ product }: { product: Doc<"products"> }) {
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-edge bg-white/85 p-6">
-        <p className="type-eyebrow text-ink-muted">مرحلهٔ ۸ از ۸</p>
+        <p className="type-eyebrow text-ink-muted">مرحلهٔ ۷ از ۷</p>
         <h3 className="mt-2 font-display text-2xl text-ink">انتشار نهایی</h3>
         <p className="mt-2 text-sm text-ink-soft">
 این محصول را برای بخش‌های ویژه، پرطرفدار و ادیتوریال انتخاب کنید و سپس آن را در فروشگاه منتشر کنید.

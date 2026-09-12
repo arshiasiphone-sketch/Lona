@@ -11,7 +11,6 @@ interface MobileNavProps {
 
 const links = [
   { label: "خرید", to: "/shop" },
-  { label: "کالکسیون‌ها", to: "/collections" },
   { label: "مجله", to: "/press" },
   { label: "کارگاه", to: "/about" },
   { label: "حساب کاربری", to: "/account" },

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { motion } from "framer-motion";
-import { Search as SearchIcon, Sparkles, ArrowUpLeft, History, X } from "lucide-react";
+import { Search as SearchIcon, ArrowUpLeft, History, X } from "lucide-react";
 import {
   useProducts,
-  useCollections,
   useNewArrivals,
   useSearchProducts,
 } from "@/lib/data/catalog";
@@ -23,7 +22,7 @@ const POPULAR = [
   "سوتین",
   "شورت",
   "لباس خواب",
-  "کالکسیون تابستان",
+  "لباس راحتی",
   "بادی",
   "اکسسوری",
 ];
@@ -60,13 +59,12 @@ export default function Search() {
   }, []);
 
   const products = useProducts() ?? [];
-  const collections = useCollections() ?? [];
   const results = useSearchProducts({ query: q, limit: 24 }) ?? [];
   const trending = useNewArrivals(4) ?? [];
 
   usePageMeta({
     title: q ? `جستجو: ${q}` : "جستجو در محصولات لونا",
-    description: q ? `نتایج جستجوی «${q}» در کالکسیون لونا` : "جستجو در میان محصولات لباس زیر، لباس خواب و پوشاک راحتی زنانه لونا",
+    description: q ? `نتایج جستجوی «${q}» در لونا` : "جستجو در میان محصولات لباس زیر، لباس خواب و پوشاک راحتی زنانه لونا",
     ogType: "website",
     noindex: true,
   });
@@ -97,7 +95,7 @@ export default function Search() {
           {q ? `«${q}»` : "دنبال چه می‌گردید؟"}
         </h1>
         <p className="mt-5 text-sm leading-relaxed text-ink-soft lg:text-base">
-          در کالکسیون بوتیک جستجو کنید. محصولات بر اساس نام، توضیح و دسته‌بندی
+          در بوتیک لونا جست‌وجو کنید. محصولات بر اساس نام، توضیح و دسته‌بندی
           مطابقت داده می‌شوند.
         </p>
       </header>
@@ -255,28 +253,6 @@ export default function Search() {
                 ))}
               </ul>
             )}
-          </div>
-
-          <div className="glass mt-6 rounded-3xl p-6">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <p className="type-eyebrow text-ink-muted">کالکسیون‌های پیشنهادی</p>
-            </div>
-            <ul className="mt-4 space-y-2">
-              {collections.slice(0, 4).map((c) => (
-                <li key={c.id}>
-                  <Link
-                    to={`/collections/${c.slug}`}
-                    className="flex items-center justify-between rounded-2xl px-3 py-2.5 text-sm text-ink transition hover:bg-white/60"
-                  >
-                    <span>{c.name}</span>
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                      {c.eyebrow}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {isAuthenticated && (

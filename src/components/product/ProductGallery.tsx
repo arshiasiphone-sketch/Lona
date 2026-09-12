@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import type { GradientKey } from "@/lib/glass";
+import { categoryLabelFa } from "@/lib/categories";
 import type { Product as TProduct } from "@/data/catalog";
 
 const gradientOf = (k: GradientKey) =>
@@ -239,7 +240,8 @@ export function ProductGallery({ product, colorGradient }: ProductGalleryProps) 
                   {product.name}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-canvas/70">
-                  {product.collection.replace("-", " ")} · {product.colors.length.toLocaleString("fa-IR")} رنگ
+                  {categoryLabelFa(product.category)} ·{" "}
+                  {product.colors.length.toLocaleString("fa-IR")} رنگ
                 </DialogDescription>
               </div>
               <button

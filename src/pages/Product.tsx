@@ -135,7 +135,7 @@ export default function Product() {
         </Link>
         <ChevronLeft className="h-3 w-3" />
         <Link to="/shop" className="hover:text-ink">
-          کالکسیون
+          محصولات
         </Link>
         <ChevronLeft className="h-3 w-3" />
         <span className="text-ink">{product.name}</span>
@@ -149,7 +149,6 @@ export default function Product() {
           {/* Header */}
           <div>
             <p className="type-eyebrow text-ink-muted">
-              {product.collection.replace("-", " · ")} ·{" "}
               {product.badges?.includes("editorial") && "انتخاب بوتیک · "}
               {product.badges?.includes("limited") && "تولید محدود · "}
               {product.colors.find((c) => c.id === color)?.name}

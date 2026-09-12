@@ -1,32 +1,33 @@
 /**
  * Lona — Landing page composition.
  *
- * Locked section order (do not change without consulting the spec):
+ * Locked section order (product-first; do not change without consulting
+ * the spec):
  *   1. Hero
- *   2. New Collection
- *   3. Categories
- *   4. Featured Products
- *   5. Brand Story
- *   6. Benefits
- *   7. Bestsellers
- *   8. Lookbook
- *   9. Journal
- *   10. Instagram
+ *   2. Products — the first shopping destination, immediately after the
+ *      hero so shoppers reach the catalogue with minimal scroll.
+ *   3. Categories — lightweight shortcuts into the taxonomy
+ *   4. Brand Story
+ *   5. Benefits
+ *   6. Lookbook
+ *   7. Journal
+ *   8. Instagram
  *   (Footer + its built-in newsletter band follows via PageShell.)
+ *
+ * Performance: the hero grid fetches a bounded slice (8 rows) rather
+ * than the whole catalogue — the Shop page owns the full paginated list.
  */
+import { Link } from "react-router";
+import { ArrowLeft } from "lucide-react";
 import { Hero } from "@/components/editorial/Hero";
-import { TrendingProducts } from "@/components/editorial/TrendingProducts";
 import { CategoryGrid } from "@/components/editorial/CategoryGrid";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { BrandStory } from "@/components/editorial/BrandStory";
 import { Benefits } from "@/components/editorial/Benefits";
-import { Bestsellers } from "@/components/editorial/Bestsellers";
 import { Lookbook } from "@/components/editorial/Lookbook";
 import { EditorialStory } from "@/components/editorial/EditorialStory";
 import { InstagramGallery } from "@/components/editorial/InstagramGallery";
-import {
-  useNewArrivals,
-} from "@/lib/data/catalog";
+import { useFeaturedProducts, useProducts } from "@/lib/data/catalog";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -35,20 +36,30 @@ import {
   usePageMeta,
 } from "@/lib/seo";
 
+/** Home shows a curated slice — the Shop page owns the full catalog. */
+const HOME_PRODUCT_LIMIT = 8;
+
 export default function Landing() {
   usePageMeta({
     title: "بوتیک لباس زیر زنانه لوکس",
-    description: "لونا — بوتیک آنلاین لباس زیر زنانه لوکس. طراحی‌های ظریف، پارچه‌های مرغوب و تجربه خریدی خاص برای زنان امروزی.",
-    canonical: typeof window !== "undefined" ? window.location.origin : undefined,
+    description:
+      "لونا — بوتیک آنلاین لباس زیر زنانه لوکس. طراحی‌های ظریف، پارچه‌های مرغوب و تجربه خریدی خاص برای زنان امروزی.",
+    canonical:
+      typeof window !== "undefined" ? window.location.origin : undefined,
     ogType: "website",
   });
 
-  const newItems = useNewArrivals();
-  const featured = (newItems ?? []).slice(0, 4);
-  const bestsellers = (newItems ?? []).slice(2, 6);
+  // Prefer admin-curated `featured` products; fall back to the newest
+  // published rows so the section is never empty on a fresh catalogue.
+  const featured = useFeaturedProducts(HOME_PRODUCT_LIMIT);
+  const latest = useProducts({ limit: HOME_PRODUCT_LIMIT });
+  const products =
+    featured && featured.length > 0
+      ? featured
+      : (latest ?? []).slice(0, HOME_PRODUCT_LIMIT);
+
   const store = useQuery(api.admin_settings.getStoreInfo, {});
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="relative bg-canvas text-ink">
@@ -72,24 +83,13 @@ export default function Landing() {
         social={store?.social}
         enamadCode={store?.enamadCode}
       />
+
       {/* 1 · Hero */}
       <Hero />
 
-      {/* 2 · New Collection */}
-      <TrendingProducts
-        products={newItems ?? []}
-        eyebrow="تازه‌ها"
-        title="کالکسیون جدید"
-        ctaLabel="مشاهده همه"
-        ctaTo="/shop"
-      />
-
-      {/* 3 · Categories */}
-      <CategoryGrid />
-
-      {/* 4 · Featured Products */}
+      {/* 2 · Products — the first shopping destination after the hero */}
       <section
-        className="mx-auto mt-36 max-w-[1728px] px-6 lg:px-10"
+        className="mx-auto mt-14 max-w-[1728px] px-6 lg:mt-20 lg:px-10"
         aria-label="محصولات منتخب"
       >
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -99,32 +99,39 @@ export default function Landing() {
               محصولات منتخب
             </h2>
           </div>
-          <p className="max-w-md font-sans text-sm font-light leading-relaxed text-ink-muted md:text-start">
-            چهار تکه‌ی ظریف که تیم لونا این فصل بیشتر پوشیده است.
-          </p>
+          <Link
+            to="/shop"
+            className="group inline-flex items-center gap-2 self-start font-sans text-[12px] font-medium text-ink-soft transition hover:text-ink md:self-end"
+          >
+            <span className="border-b border-ink/30 pb-0.5 transition group-hover:border-ink">
+              مشاهده همه محصولات
+            </span>
+            <ArrowLeft className="h-3.5 w-3.5 transition group-hover:-translate-x-1" />
+          </Link>
         </div>
-        <div className="mt-12">
-          <ProductGrid products={featured} columns={4} priority />
+        <div className="mt-10">
+          <ProductGrid
+            products={products}
+            columns={4}
+            mobileTwoUp
+            priority
+          />
         </div>
       </section>
 
-      {/* 5 · Brand Story */}
+      {/* 3 · Categories */}
+      <CategoryGrid />
+
+      {/* 4 · Brand Story */}
       <BrandStory />
 
-      {/* 6 · Benefits */}
+      {/* 5 · Benefits */}
       <Benefits />
 
-      {/* 7 · Bestsellers */}
-      <Bestsellers
-        products={bestsellers}
-        eyebrow="پرفروش‌ها"
-        title="آنچه مشتریان ما بیشتر سفارش داده‌اند"
-      />
-
-      {/* 8 · Lookbook */}
+      {/* 6 · Lookbook */}
       <Lookbook />
 
-      {/* 9 · Journal */}
+      {/* 7 · Journal */}
       <EditorialStory
         eyebrow="مجله لونا"
         quote="لباس زیر زنانه، اگر درست انتخاب شود، کمتر دیده می‌شود اما بیشتر حس می‌شود."
@@ -132,7 +139,7 @@ export default function Landing() {
         attribution="تحریریه لونا"
       />
 
-      {/* 10 · Instagram */}
+      {/* 8 · Instagram */}
       <InstagramGallery />
     </div>
   );

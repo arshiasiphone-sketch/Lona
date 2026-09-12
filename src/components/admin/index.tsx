@@ -260,7 +260,6 @@ function prettySegmentFa(segment: string) {
   const fa: Record<string, string> = {
     products: "محصولات",
     categories: "دسته‌ها",
-    collections: "کالکسیون‌ها",
     media: "رسانه",
     inventory: "موجودی",
     orders: "سفارش‌ها",

@@ -147,7 +147,7 @@ export function HeroChoreography() {
               />
             </Link>
             <Link
-              to="/collections"
+              to="/shop"
               className="group inline-flex items-center gap-3 rounded-full glass-subtle px-5 py-3.5 text-[12px] font-medium uppercase tracking-[0.18em] text-ink transition hover:bg-white/60"
             >
               مطالعهٔ مجله

@@ -3,7 +3,7 @@
  *
  * Shared by:
  *   • `/admin/categories` — assign products to a category.
- *   • `/admin/collections` — assign + reorder products (the
+ *   • The product workflow — assign + reorder products (the
  *     ordered list mode is selected via `mode="ordered"`, which
  *     uses framer-motion `Reorder.Group` so RTL drag works out
  *     of the box).

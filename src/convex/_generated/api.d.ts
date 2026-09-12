@@ -28,7 +28,6 @@ import type * as browserless from "../browserless.js";
 import type * as browserlessAccess from "../browserlessAccess.js";
 import type * as cart from "../cart.js";
 import type * as categories from "../categories.js";
-import type * as collections from "../collections.js";
 import type * as coupons from "../coupons.js";
 import type * as crons from "../crons.js";
 import type * as editorials from "../editorials.js";
@@ -81,7 +80,6 @@ declare const fullApi: ApiFromModules<{
   browserlessAccess: typeof browserlessAccess;
   cart: typeof cart;
   categories: typeof categories;
-  collections: typeof collections;
   coupons: typeof coupons;
   crons: typeof crons;
   editorials: typeof editorials;

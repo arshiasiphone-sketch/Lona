@@ -19,7 +19,6 @@
 
 export interface AnalyticsEventMap {
   view_product: { productId: string; name: string; category?: string; price?: number };
-  view_collection: { collectionId: string; name: string };
   add_to_cart: { productId: string; name: string; price: number; quantity: number; size?: string; color?: string };
   remove_from_cart: { productId: string; name: string };
   begin_checkout: { itemCount: number; total: number; coupon?: string };

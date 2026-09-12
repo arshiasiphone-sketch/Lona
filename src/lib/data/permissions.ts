@@ -80,7 +80,6 @@ export const ADMIN_NAV: Array<{
   { href: "/admin/team", label: "Team", labelFa: "مدیریت تیم", permission: "manage_admins", group: "Settings" },
   { href: "/admin/products", label: "Products", labelFa: "محصولات", permission: "manage_products", group: "Catalogue" },
   { href: "/admin/categories", label: "Categories", labelFa: "دسته‌ها", permission: "manage_products", group: "Catalogue" },
-  { href: "/admin/collections", label: "Collections", labelFa: "کالکسیون‌ها", permission: "manage_products", group: "Catalogue" },
   { href: "/admin/inventory", label: "Inventory", labelFa: "موجودی", permission: "manage_inventory", group: "Catalogue" },
   { href: "/admin/media", label: "Media Library", labelFa: "کتابخانه رسانه", permission: "manage_media", group: "Catalogue" },
   { href: "/admin/orders", label: "Orders", labelFa: "سفارش‌ها", permission: "manage_orders", group: "Operations" },

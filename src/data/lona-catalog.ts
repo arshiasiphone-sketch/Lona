@@ -183,25 +183,6 @@ const CATEGORY_IMAGE_POOL: Record<LonaCategorySlug, readonly string[]> = {
 };
 
 // ──────────────────────────────────────────────────────────────
-// COLLECTIONS — 12 curated seasonal/thematic sets
-// ──────────────────────────────────────────────────────────────
-
-export const LONA_COLLECTIONS = [
-  { slug: "spring-elegance",    name: "شکوفه‌های بهار",        eyebrow: "بهار ۱۴۰۵",  description: "ترکیب‌های تازه و رنگ‌های شکوفه‌ای برای آغاز فصلی تازه؛ پارچه‌هایی با لمس نرم و دوخت‌هایی که روی پوست نفس می‌کشند.", gradient: "rose"  as GradientKey, kind: "seasonal"  as const, season: "بهار ۱۴۰۵" },
-  { slug: "soft-essentials",    name: "ملزومات نرم",           eyebrow: "Permanent",   description: "اصول روزمره‌ی کمد لباس زیر هر زن ایرانی؛ شش تکه‌ای که هر روز به آن‌ها بازمی‌گردید.",                              gradient: "mist"  as GradientKey, kind: "permanent" as const },
-  { slug: "bridal-moments",     name: "لحظه‌های عروسی",        eyebrow: "Bridal ’25",  description: "کالکشنی برای روزهای پیش از عروسی؛ توری‌های فرانسوی، ابریشم خالص و رنگ‌های عاج و شیری.",                          gradient: "oat"   as GradientKey, kind: "campaign"  as const, season: "Bridal ۲۰۲۵" },
-  { slug: "daily-comfort",      name: "راحتی روزانه",          eyebrow: "Daily",       description: "برای روزهای پُرکار، ساعت‌های طولانی پشت میز یا در مسیر خانه؛ لباس‌هایی که فراموش می‌کنید تن‌تان هست.",            gradient: "oat"   as GradientKey, kind: "permanent" as const },
-  { slug: "silk-stories",       name: "داستان‌های ابریشم",     eyebrow: "Atelier",     description: "ابریشم خالص مولبری در شش تکه‌ی ظریف؛ پیراهن‌های خوابی که با لمس‌شان آرامش را به خواب می‌برند.",                      gradient: "pearl" as GradientKey, kind: "editorial" as const },
-  { slug: "midnight-collection",name: "کالکشن نیمه‌شب",       eyebrow: "بعد از شش",   description: "رنگ‌های عمیق، احساس شب و زرق‌و‌رقی که فقط در نور کم خودنمایی می‌کند.",                                                  gradient: "deep"  as GradientKey, kind: "campaign"  as const },
-  { slug: "summer-escape",      name: "فرار تابستانی",         eyebrow: "تابستان",     description: "پارچه‌های خنک و رنگ‌های روشن برای سفرهای کوتاه و روزهای گرم سال.",                                                       gradient: "mist"  as GradientKey, kind: "seasonal"  as const, season: "تابستان ۱۴۰۵" },
-  { slug: "premium-lace",       name: "توری لوکس",             eyebrow: "Heritage",    description: "توری‌های فرانسوی Chantilly و Calais، انتخابی ظریف برای لحظه‌های خاص.",                                                 gradient: "rose"  as GradientKey, kind: "editorial" as const },
-  { slug: "minimal-line",       name: "خط مینیمال",            eyebrow: "Clean",       description: "خطی بی‌صدا، بدون تزئینات اضافی؛ برای کسانی که زیبایی را در سادگی می‌بینند.",                                              gradient: "mist"  as GradientKey, kind: "permanent" as const },
-  { slug: "lounge-edition",     name: "ویرایش خانه‌نشینی",     eyebrow: "At-home",     description: "راحتی و آرامش در خانه؛ از لباس خواب گرفته تا لباس راحتی صبحانه.",                                                       gradient: "oat"   as GradientKey, kind: "permanent" as const },
-  { slug: "romantic-hours",     name: "ساعت‌های عاشقانه",      eyebrow: "Limited",     description: "تکه‌هایی با رنگ‌های شرابی و مخمل که حس لحظه‌های خاص را زنده می‌کنند.",                                                gradient: "deep"  as GradientKey, kind: "campaign"  as const },
-  { slug: "heritage-edition",   name: "ویرایش میراثی",         eyebrow: "Atelier",     description: "ترکیب سنت ایرانی با ظرافت اروپایی؛ طرح‌هایی که ریشه در گذشته دارند و امروز معنا پیدا می‌کنند.",                     gradient: "oat"   as GradientKey, kind: "editorial" as const },
-];
-
-// ──────────────────────────────────────────────────────────────
 // PRODUCT SCHEMA — used by data/catalog.ts AND convex/seed.ts
 // ──────────────────────────────────────────────────────────────
 
@@ -210,7 +191,6 @@ export interface LonaProductRaw {
   name: string;             // Persian display name
   nameLatin?: string;       // Optional latin version (rare)
   category: LonaCategorySlug;
-  collectionSlug: string;
   /** Toman amount — stored 1:1 in `priceCents` for display purposes. */
   price: number;
   /** Optional higher reference price for discount badges. */
@@ -261,7 +241,6 @@ interface ProfileOpts {
   images: number[];
   /** Optional re-statement for the factory spread (buildProduct uses its first arg). */
   category?: LonaCategorySlug;
-  collectionSlug?: string;
 }
 
 function pickImages(category: LonaCategorySlug, indexes: number[]): string[] {
@@ -269,7 +248,7 @@ function pickImages(category: LonaCategorySlug, indexes: number[]): string[] {
   return indexes.map((i) => photoUrl(pool[i % pool.length]!));
 }
 
-function buildProduct(category: LonaCategorySlug, collectionSlug: string, opts: ProfileOpts): LonaProductRaw {
+function buildProduct(category: LonaCategorySlug, line: string, opts: ProfileOpts): LonaProductRaw {
   const sizes = (opts.sizeSet === "accessory" ? ACCESSORY_SIZES : LINGERIE_SIZES).map((s) => s.id);
   const colors = opts.colors.map((id) => {
     const def = LONA_COLOR_OPTIONS.find((c) => c.id === id);
@@ -277,10 +256,9 @@ function buildProduct(category: LonaCategorySlug, collectionSlug: string, opts: 
     return def.id;
   });
   return {
-    slug: category + "-" + opts.name.replace(/\s+/g, "-").toLowerCase() + "-" + collectionSlug,
+    slug: category + "-" + opts.name.replace(/\s+/g, "-").toLowerCase() + "-" + line,
     name: opts.name,
     category,
-    collectionSlug,
     price: opts.basePrice,
     compareAt: opts.compareAt,
     currency: "USD",
@@ -325,35 +303,35 @@ const braFaqs = [
 // COMMON PROFILE FACTORIES
 // ──────────────────────────────────────────────────────────────
 
-const bra = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("bras", collection, { ...opts, category: "bras", collectionSlug: collection, sizeSet: "lingerie", faqs: braFaqs, images: [0,1,2,3] });
+const bra = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("bras", line, { ...opts, category: "bras", sizeSet: "lingerie", faqs: braFaqs, images: [0,1,2,3] });
 
-const briefs = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("briefs", collection, { ...opts, category: "briefs", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,2,3] });
+const briefs = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("briefs", line, { ...opts, category: "briefs", sizeSet: "lingerie", images: [0,1,2,3] });
 
-const sets = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("sets", collection, { ...opts, category: "sets", collectionSlug: collection, sizeSet: "lingerie", images: [0,2,3,4] });
+const sets = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("sets", line, { ...opts, category: "sets", sizeSet: "lingerie", images: [0,2,3,4] });
 
-const sleepwear = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("sleepwear", collection, { ...opts, category: "sleepwear", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,4,5] });
+const sleepwear = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("sleepwear", line, { ...opts, category: "sleepwear", sizeSet: "lingerie", images: [0,1,4,5] });
 
-const loungewear = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("loungewear", collection, { ...opts, category: "loungewear", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,2,3] });
+const loungewear = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("loungewear", line, { ...opts, category: "loungewear", sizeSet: "lingerie", images: [0,1,2,3] });
 
-const bodysuits = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("bodysuits", collection, { ...opts, category: "bodysuits", collectionSlug: collection, sizeSet: "lingerie", images: [0,2,3,4] });
+const bodysuits = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("bodysuits", line, { ...opts, category: "bodysuits", sizeSet: "lingerie", images: [0,2,3,4] });
 
-const shapewear = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("shapewear", collection, { ...opts, category: "shapewear", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,2,3] });
+const shapewear = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("shapewear", line, { ...opts, category: "shapewear", sizeSet: "lingerie", images: [0,1,2,3] });
 
-const sportswear = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("sportswear", collection, { ...opts, category: "sportswear", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,4,5] });
+const sportswear = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("sportswear", line, { ...opts, category: "sportswear", sizeSet: "lingerie", images: [0,1,4,5] });
 
-const accessories = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("accessories", collection, { ...opts, category: "accessories", collectionSlug: collection, sizeSet: "accessory", images: [0,1,2,3] });
+const accessories = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("accessories", line, { ...opts, category: "accessories", sizeSet: "accessory", images: [0,1,2,3] });
 
-const bridal = (collection: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category"|"collectionSlug">) =>
-  buildProduct("bridal", collection, { ...opts, category: "bridal", collectionSlug: collection, sizeSet: "lingerie", images: [0,1,4,5] });
+const bridal = (line: string, opts: Omit<ProfileOpts,"sizeSet"|"images"|"category">) =>
+  buildProduct("bridal", line, { ...opts, category: "bridal", sizeSet: "lingerie", images: [0,1,4,5] });
 
 // ──────────────────────────────────────────────────────────────
 // PRODUCTS — 90 hand-curated profiles (9 per category)

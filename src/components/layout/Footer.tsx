@@ -1,10 +1,23 @@
 import { Link } from "react-router";
 import { useState } from "react";
-import { ArrowLeft, BadgeCheck, Instagram, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Instagram, Mail, MapPin, MessageCircle, Phone, Send, ShieldCheck } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/glass";
+import { socialHref } from "@/lib/social";
 import { LonaLogo } from "@/components/brand/LonaLogo";
+
+/** Footer social channels, in display order. Each is admin-configured
+ *  through `/admin/settings` → فروشگاه → شبکه‌های اجتماعی. */
+const SOCIAL_LINKS: {
+  key: "instagram" | "telegram" | "whatsapp";
+  label: string;
+  Icon: typeof Instagram;
+}[] = [
+  { key: "instagram", label: "اینستاگرام", Icon: Instagram },
+  { key: "telegram", label: "تلگرام", Icon: Send },
+  { key: "whatsapp", label: "واتساپ", Icon: MessageCircle },
+];
 
 const sections: { title: string; links: { label: string; to: string }[] }[] = [
   {
@@ -59,6 +72,13 @@ export function Footer() {
   const payment = useQuery(api.payments.status, {});
   const paymentLabel =
     payment?.mode === "zarinpal" ? "پرداخت امن زرین‌پال" : "پرداخت امن آنلاین";
+
+  // Only valid http(s) admin-configured links render — an empty or
+  // malformed value simply hides that channel.
+  const socialLinks = SOCIAL_LINKS.map((entry) => ({
+    ...entry,
+    href: socialHref(store?.social?.[entry.key]),
+  })).filter((entry): entry is typeof entry & { href: string } => entry.href !== null);
 
   return (
     <footer className="relative mt-32 overflow-hidden">
@@ -147,13 +167,23 @@ export function Footer() {
               لونا یک خانه‌ی طراحی لباس زیر زنانه است. تکه‌هایی که برای ماندن
               کنار شما ساخته شده‌اند — به آرامی، برای سال‌ها.
             </p>
-            <Link
-              to="https://instagram.com"
-              className="mt-6 inline-flex h-10 w-10 items-center justify-center rounded-full hairline text-ink-soft transition hover:bg-white/40 hover:text-ink"
-              aria-label="اینستاگرام"
-            >
-              <Instagram className="h-4 w-4" />
-            </Link>
+            {socialLinks.length > 0 && (
+              <div className="mt-6 flex items-center gap-2">
+                {socialLinks.map(({ key, label, href, Icon }) => (
+                  <a
+                    key={key}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full hairline text-ink-soft transition hover:bg-white/40 hover:text-ink"
+                    aria-label={label}
+                    title={label}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           {sections.map((section) => (
             <div key={section.title}>

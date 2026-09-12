@@ -1,9 +1,9 @@
 /**
  * Phase 5 — Enterprise Admin Dashboard. Catalog & Content domains.
  *
- * Combined admin surface for the four content / taxonomy tables
+ * Combined admin surface for the content / taxonomy tables
  * that don't yet require their own full slice: categories,
- * collections, coupons, editorials. Each follows the same pattern
+ * coupons, editorials. Each follows the same pattern
  * (`listForAdmin`, `getById`, `create`, `update`, `archive`,
  * `delete` where applicable) and every mutation writes
  * `activity_logs`.
@@ -168,136 +168,6 @@ export const deleteCategory = mutation({
     await ctx.db.delete(id);
     await audit(ctx, user, "category.delete", "categories", id);
     return { deleted: true as const };
-  },
-});
-
-/* ────────────────────────────────────────────────────────────
- * COLLECTIONS
- * ──────────────────────────────────────────────────────────── */
-
-export const listCollectionsForAdmin = query({
-  args: {},
-  handler: async (ctx) => {
-    await requirePermission(ctx, "manage_products");
-    return await ctx.db.query("collections").collect();
-  },
-});
-
-export const getCollectionById = query({
-  args: { id: v.id("collections") },
-  handler: async (ctx, { id }) => {
-    await requirePermission(ctx, "manage_products");
-    return await ctx.db.get(id);
-  },
-});
-
-/**
- * Archive a collection (soft-disable, products keep the slug). Useful
- * to retire a seasonal collection without losing product links.
- */
-export const archiveCollection = mutation({
-  args: { id: v.id("collections") },
-  handler: async (ctx, { id }) => {
-    const user = await requirePermission(ctx, "manage_products");
-    await ctx.db.patch(id, { visible: false });
-    await audit(ctx, user, "collection.archive", "collections", id);
-    return id;
-  },
-});
-
-/**
- * Restore an archived collection to visible.
- */
-export const restoreCollection = mutation({
-  args: { id: v.id("collections") },
-  handler: async (ctx, { id }) => {
-    const user = await requirePermission(ctx, "manage_products");
-    await ctx.db.patch(id, { visible: true });
-    await audit(ctx, user, "collection.restore", "collections", id);
-    return id;
-  },
-});
-
-/**
- * Replace the ordered list of product slugs attached to a collection.
- * The storefront renders products in this exact order; `order` 0 is
- * the lead product on the collection landing page.
- */
-export const setCollectionProducts = mutation({
-  args: {
-    id: v.id("collections"),
-    productSlugs: v.array(v.string()),
-  },
-  handler: async (ctx, { id, productSlugs }) => {
-    const user = await requirePermission(ctx, "manage_products");
-    await ctx.db.patch(id, { productSlugs });
-    await audit(ctx, user, "collection.setProducts", "collections", id, {
-      count: productSlugs.length,
-    });
-    return id;
-  },
-});
-
-/**
- * Hard-delete a collection. Refuses if it's still the primary
- * `collectionSlug` referenced by any product so historical product
- * pages don't break.
- */
-export const deleteCollection = mutation({
-  args: { id: v.id("collections") },
-  handler: async (ctx, { id }) => {
-    const user = await requirePermission(ctx, "manage_products");
-    const col = await ctx.db.get(id);
-    if (!col) return { deleted: false as const };
-    const products = await ctx.db
-      .query("products")
-      .withIndex("by_collectionSlug", (q) => q.eq("collectionSlug", col.slug))
-      .collect();
-    if (products.length > 0) {
-      throw new Error(
-        `COLLECTION_NOT_EMPTY:${products.length} products still linked`,
-      );
-    }
-    await ctx.db.delete(id);
-    await audit(ctx, user, "collection.delete", "collections", id);
-    return { deleted: true as const };
-  },
-});
-
-export const upsertCollection = mutation({
-  args: {
-    slug: v.string(),
-    name: v.string(),
-    eyebrow: v.string(),
-    description: v.string(),
-    productSlugs: v.array(v.string()),
-    gradient: vGradient,
-    coverGradient: v.optional(vGradient),
-    coverImage: v.optional(v.string()),
-    kind: v.union(
-      v.literal("seasonal"),
-      v.literal("campaign"),
-      v.literal("editorial"),
-      v.literal("permanent"),
-    ),
-    season: v.optional(v.string()),
-    order: v.number(),
-    visible: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const user = await requirePermission(ctx, "manage_products");
-    const existing = await ctx.db
-      .query("collections")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
-    let id = existing?._id;
-    if (existing) {
-      await ctx.db.patch(id!, args);
-    } else {
-      id = await ctx.db.insert("collections", args);
-    }
-    await audit(ctx, user, "collection.upsert", "collections", id!, args);
-    return id!;
   },
 });
 
@@ -479,7 +349,7 @@ export const unpublishEditorial = mutation({
 });
 
 /**
- * Hard-delete an editorial. No product / collection referential
+ * Hard-delete an editorial. No product referential
  * integrity to enforce (editorials reference products by slug in
  * copy but the FK is loose), so we just remove the row.
  */
@@ -507,14 +377,6 @@ export const editorialKindLiterals = [
   "atelier",
   "campaign",
   "blog",
-] as const;
-
-// Lightweight type shims re-used by the FE editor step files.
-export const collectionKinds = [
-  "seasonal",
-  "campaign",
-  "editorial",
-  "permanent",
 ] as const;
 
 // Mirror for FE badge literals so the FE doesn't import from

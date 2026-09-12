@@ -49,6 +49,11 @@ import {
 import { EASE_LUXURY } from "@/lib/motion";
 import { cn } from "@/lib/glass";
 import {
+  SOCIAL_NETWORKS,
+  SOCIAL_URL_ERROR,
+  normalizeSocialUrl,
+} from "@/lib/social";
+import {
   IMAGE_ACCEPT,
   MAX_LIBRARY_IMAGE_BYTES,
   formatAcceptedImageTypes,
@@ -284,10 +289,42 @@ function StorePanel({
       whatsapp: "",
     },
   );
+  const [socialError, setSocialError] = React.useState<string | null>(null);
+
+  /** Validate + normalize social links. An empty value hides the link. */
+  const handleSave = () => {
+    const normalized: Record<string, string> = {};
+    for (const spec of SOCIAL_NETWORKS) {
+      const result = normalizeSocialUrl(spec.key, social[spec.key]);
+      if (result === null) {
+        setSocialError(`${spec.labelFa}: ${SOCIAL_URL_ERROR}`);
+        return;
+      }
+      normalized[spec.key] = result;
+    }
+    setSocialError(null);
+    onSave({
+      shopName,
+      legalName,
+      registrationNumber,
+      economicCode,
+      phone,
+      landlinePhone,
+      mobilePhone,
+      email,
+      address,
+      postalCode,
+      nationalId,
+      enamadCode,
+      hours,
+      social: normalized,
+    });
+  };
+
   return (
     <Section
       title="اطلاعات فروشگاه"
-      description="تماس، آدرس و شبکه‌های اجتماعی. این مقادیر در فوتر و صفحه تماس با ما نمایش داده می‌شوند."
+      description="تماس، آدرس و شبکه‌های اجتماعی. اینستاگرام و تلگرام از همین‌جا در فوتر فروشگاه به‌روز می‌شوند."
       icon={ShoppingBag}
     >
       <div className="grid gap-4 sm:grid-cols-2">
@@ -376,34 +413,35 @@ function StorePanel({
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           شبکه‌های اجتماعی
         </p>
-        {(
-          [
-            ["instagram", "Instagram", "@lonaboutique"],
-            ["telegram", "Telegram", "@lona_official"],
-            ["whatsapp", "WhatsApp", "https://wa.me/98…"],
-          ] as const
-        ).map(([key, label, placeholder]) => (
-          <div key={key} className="flex items-center gap-2">
-            <span className="w-28 text-xs text-ink-soft">{label}</span>
+        <p className="text-[11px] text-ink-muted">
+          این نشانی‌ها همان لحظه در فوتر فروشگاه نمایش داده می‌شوند. خالی
+          گذاشتن یک فیلد، آن شبکه را پنهان می‌کند.
+        </p>
+        {SOCIAL_NETWORKS.map((spec) => (
+          <div key={spec.key} className="flex items-center gap-2">
+            <span className="w-28 text-xs text-ink-soft">{spec.labelFa}</span>
             <input
               dir="ltr"
-              value={social[key] ?? ""}
-              onChange={(e) =>
-                setSocial((prev) => ({ ...prev, [key]: e.target.value }))
-              }
-              placeholder={placeholder}
+              type="url"
+              inputMode="url"
+              value={social[spec.key] ?? ""}
+              onChange={(e) => {
+                setSocialError(null);
+                setSocial((prev) => ({ ...prev, [spec.key]: e.target.value }));
+              }}
+              placeholder={spec.placeholder}
               className="flex-1 rounded-xl border border-edge bg-white px-3 py-2 text-sm text-ink focus:border-primary focus:outline-none"
             />
           </div>
         ))}
+        {socialError ? (
+          <p className="rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+            {socialError}
+          </p>
+        ) : null}
       </div>
 
-      <SaveBar
-        busy={pending === "store"}
-        onSave={() =>
-          onSave({ shopName, legalName, registrationNumber, economicCode, phone, landlinePhone, mobilePhone, email, address, postalCode, nationalId, enamadCode, hours, social })
-        }
-      />
+      <SaveBar busy={pending === "store"} onSave={handleSave} />
     </Section>
   );
 }
@@ -967,22 +1005,9 @@ const IMAGE_GROUPS: { title: string; keys: HomepageImageSlot[] }[] = [
     ],
   },
   {
-    title: "کالکشن‌های منتخب",
-    keys: [
-      "featured_collection_1",
-      "featured_collection_2",
-      "featured_collection_3",
-    ],
-  },
-  {
-    title: "درباره، کالکشن‌ها و مجله",
+    title: "درباره و مجله",
     keys: [
       "about_workshop",
-      "collections_1",
-      "collections_2",
-      "collections_3",
-      "collections_4",
-      "collection_hero",
       "press_hero",
       "press_1",
       "press_2",

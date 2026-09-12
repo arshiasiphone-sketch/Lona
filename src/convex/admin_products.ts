@@ -135,7 +135,6 @@ export const createDraft = mutation({
     name: v.string(),
     slug: v.string(),
     category: vProductCategory,
-    collectionSlug: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await requirePermission(ctx, "manage_products");
@@ -151,7 +150,6 @@ export const createDraft = mutation({
       slug: args.slug,
       name: args.name,
       category: args.category,
-      collectionSlug: args.collectionSlug,
       priceCents: 0,
       currency: "USD",
       description: "",
@@ -177,7 +175,6 @@ export const updateBasics = mutation({
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     category: v.optional(vProductCategory),
-    collectionSlug: v.optional(v.string()),
     description: v.optional(v.string()),
     composition: v.optional(v.string()),
     origin: v.optional(v.string()),

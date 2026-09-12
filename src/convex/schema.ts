@@ -28,8 +28,8 @@ import {
  * explicit ordering (recently viewed pushes, order history).
  *
  * Index strategy follows the thinker's Phase-4 design:
- *   • products: by_slug, by_category, by_status, by_collectionSlug,
- *     by_featured, by_trending, by_editorial, AND a searchIndex on name.
+ *   • products: by_slug, by_category, by_status, by_featured,
+ *     by_trending, by_editorial, AND a searchIndex on name.
  *   • storage-bearing tables: by_user + by_session (cart / wishlist / recent).
  *   • orders: by_user, by_number, by_status.
  *   • order_items: by_order.
@@ -145,7 +145,7 @@ const schema = defineSchema(
       .index("by_resource", ["resource"]),
 
     // ============================================================
-    // PRODUCT · categories / collections / products / variants
+    // PRODUCT · categories / products / variants
     // ============================================================
 
     categories: defineTable({
@@ -163,43 +163,10 @@ const schema = defineSchema(
       .index("by_slug", ["slug"])
       .index("by_parent", ["parentId"]),
 
-    collections: defineTable({
-      slug: v.string(),
-      name: v.string(),
-      eyebrow: v.string(),
-      description: v.string(),
-      /**
-       * Mirror of "products in this collection" — denormalized for read
-       * speed. `product_collections` is the canonical index for queries.
-       */
-      productSlugs: v.array(v.string()),
-      gradient: vGradient,
-      coverGradient: v.optional(vGradient),
-      /**
-       * Phase 7.4 — real cover image (Convex storage URL or any http
-       * URL) uploaded from the admin CMS. Rendered on the collection
-       * hero when present; the gradient remains the fallback.
-       */
-      coverImage: v.optional(v.string()),
-      kind: v.union(
-        v.literal("seasonal"),
-        v.literal("campaign"),
-        v.literal("editorial"),
-        v.literal("permanent")
-      ),
-      season: v.optional(v.string()),
-      order: v.number(),
-      visible: v.boolean(),
-    })
-      .index("by_slug", ["slug"])
-      .index("by_kind", ["kind"])
-      .index("by_visible", ["visible"]),
-
     products: defineTable({
       slug: v.string(),
       name: v.string(),
       category: vProductCategory,
-      collectionSlug: v.string(),
       priceCents: v.number(),
       compareAtCents: v.optional(v.number()),
       currency: v.literal("USD"),
@@ -232,7 +199,6 @@ const schema = defineSchema(
       .index("by_slug", ["slug"])
       .index("by_category", ["category"])
       .index("by_status", ["status"])
-      .index("by_collectionSlug", ["collectionSlug"])
       .index("by_featured", ["featured"])
       .index("by_trending", ["trending"])
       .index("by_editorial", ["editorial"])
@@ -240,15 +206,6 @@ const schema = defineSchema(
         searchField: "name",
         filterFields: ["status", "category", "visible"],
       }),
-
-    /** M:N registry `product x collection` — kept tiny, indexed both ways. */
-    product_collections: defineTable({
-      productId: v.id("products"),
-      collectionId: v.id("collections"),
-      order: v.number(),
-    })
-      .index("by_product", ["productId"])
-      .index("by_collection", ["collectionId"]),
 
     /**
      * Inventory-aware variants. Keys are (productId, size, colorId).

@@ -10,7 +10,6 @@ import {
   X as CloseIcon,
 } from "lucide-react";
 import { cn } from "@/lib/glass";
-import { collections } from "@/data/catalog";
 import { useCart } from "@/hooks/use-cart";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useAuth } from "@/hooks/use-auth";
@@ -19,8 +18,7 @@ import { EASE_LUXURY, SPRING_GENTLE, SPRING_SNAP } from "@/lib/motion";
 import { LonaLogo } from "@/components/brand/LonaLogo";
 
 const PRIMARY_LINKS: { label: string; to: string }[] = [
-  { label: "بوتیک", to: "/shop" },
-  { label: "کالکسیون‌ها", to: "/collections" },
+  { label: "محصولات", to: "/shop" },
   { label: "مجله", to: "/press" },
   { label: "درباره لونا", to: "/about" },
 ];
@@ -33,7 +31,6 @@ export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const navigate = useNavigate();
 
   const [scrolled, setScrolled] = useState(false);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [mobileSearch, setMobileSearch] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const searchRef = useRef<HTMLInputElement | null>(null);
@@ -82,13 +79,8 @@ export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
             <Search className="h-4 w-4" />
           </button>
           <ul className="hidden items-center gap-1 lg:flex">
-            {PRIMARY_LINKS.map((link, i) => (
-              <li
-                key={link.to}
-                onMouseEnter={() => setHoverIndex(i)}
-                onMouseLeave={() => setHoverIndex(null)}
-                className="relative"
-              >
+            {PRIMARY_LINKS.map((link) => (
+              <li key={link.to} className="relative">
                 <NavLink
                   to={link.to}
                   className={({ isActive }) =>
@@ -100,51 +92,6 @@ export function Navbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
                 >
                   {link.label}
                 </NavLink>
-                <AnimatePresence>
-                  {hoverIndex === i && link.label === "کالکسیون‌ها" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.32, ease: EASE_LUXURY }}
-                      className="absolute left-1/2 top-full z-50 mt-2 w-[640px] -translate-x-1/2"
-                    >
-                      <div className="glass-strong rounded-2xl p-6">
-                        <div className="grid grid-cols-2 gap-4">
-                          {collections.map((c) => (
-                            <Link
-                              key={c.id}
-                              to={`/collections/${c.slug}`}
-                              className="group flex items-start gap-3 rounded-xl p-3 transition hover:bg-white/40"
-                              onClick={() => setHoverIndex(null)}
-                            >
-                              <div
-                                className={cn(
-                                  "h-14 w-14 shrink-0 rounded-lg",
-                                  c.gradient === "oat" && "gradient-oat",
-                                  c.gradient === "mist" && "gradient-mist",
-                                  c.gradient === "deep" && "gradient-deep",
-                                  c.gradient === "rose" && "gradient-rose-quartz"
-                                )}
-                              />
-                              <div>
-                                <p className="type-eyebrow text-ink-muted">
-                                  {c.eyebrow}
-                                </p>
-                                <p className="font-display text-base text-ink transition group-hover:text-primary">
-                                  {c.name}
-                                </p>
-                                <p className="mt-0.5 text-xs text-ink-muted line-clamp-1">
-                                  {c.description}
-                                </p>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </li>
             ))}
           </ul>

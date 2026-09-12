@@ -6,7 +6,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
 import { CartProvider } from "@/hooks/use-cart";
@@ -29,8 +29,6 @@ const Checkout = lazy(() => import("./pages/Checkout.tsx"));
 const CheckoutCallback = lazy(() => import("./pages/CheckoutCallback.tsx"));
 const InvoicePage = lazy(() => import("./pages/Invoice.tsx"));
 const ContactPage = lazy(() => import("./pages/Contact.tsx"));
-const Collections = lazy(() => import("./pages/Collections.tsx"));
-const Collection = lazy(() => import("./pages/Collection.tsx"));
 const About = lazy(() => import("./pages/About.tsx"));
 const Press = lazy(() => import("./pages/Press.tsx"));
 const PressArticle = lazy(() => import("./pages/PressArticle.tsx"));
@@ -58,9 +56,6 @@ const ProductWizard = lazy(() =>
 );
 const CategoriesPage = lazy(() =>
   import("./pages/admin/categories/Categories.tsx"),
-);
-const CollectionsPage = lazy(() =>
-  import("./pages/admin/collections/Collections.tsx"),
 );
 const EditorialsPage = lazy(() =>
   import("./pages/admin/editorials/Editorials.tsx"),
@@ -238,10 +233,15 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="/shop/:slug" element={<Product />} />
                         {/* Legacy product URL kept as a stable alias for shared links. */}
                         <Route path="/product/:slug" element={<Product />} />
-                        <Route path="/collections" element={<Collections />} />
+                        {/* Collections were retired — permanent redirects keep
+                            old shared links alive without dead routes. */}
+                        <Route
+                          path="/collections"
+                          element={<Navigate to="/shop" replace />}
+                        />
                         <Route
                           path="/collections/:slug"
-                          element={<Collection />}
+                          element={<Navigate to="/shop" replace />}
                         />
                         <Route path="/cart" element={<Cart />} />
                         <Route path="/wishlist" element={<Wishlist />} />
@@ -377,14 +377,6 @@ createRoot(document.getElementById("root")!).render(
                             element={
                               <Suspense fallback={<RouteLoading />}>
                                 <CategoriesPage />
-                              </Suspense>
-                            }
-                          />
-                          <Route
-                            path="collections"
-                            element={
-                              <Suspense fallback={<RouteLoading />}>
-                                <CollectionsPage />
                               </Suspense>
                             }
                           />

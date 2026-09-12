@@ -3,7 +3,7 @@
  *
  * Controlled Radix AlertDialog with Persian defaults (action
  * labels, RTL layout, glass surface). Used by every destructive
- * admin mutation (category.delete, collection.delete,
+ * admin mutation (category.delete, coupon.delete,
  * media.delete, settings.reset). Kept page-local — each page
  * owns an `open` piece of state — to avoid a singleton
  * provider. Five pages, five tiny `useState` calls.

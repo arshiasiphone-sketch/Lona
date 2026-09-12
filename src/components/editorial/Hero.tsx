@@ -104,10 +104,10 @@ export function Hero() {
 
         <div className="mt-12 flex flex-col items-start gap-5">
           <Link
-            to="/collections"
+            to="/shop"
             className="group inline-flex items-center gap-3 rounded-full border border-ink/20 bg-canvas/30 px-7 py-3 font-sans text-[13px] font-medium tracking-[0.04em] text-ink transition hover:border-ink hover:bg-ink hover:text-canvas"
           >
-            مشاهده کالکسیون
+            مشاهده محصولات
             <ArrowLeft className="h-3.5 w-3.5 transition group-hover:-translate-x-1" />
           </Link>
           <Link

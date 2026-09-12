@@ -1,7 +1,7 @@
 /**
  * Phase 7.4 — CoverImageField.
  *
- * Reusable admin field for a single cover image (collection covers,
+ * Reusable admin field for a single cover image (editorial covers,
  * editorial covers, …). Mirrors the Settings → تصاویر slot card recipe:
  *
  *   1. client calls `admin_media.generateUploadUrl` for a one-shot URL

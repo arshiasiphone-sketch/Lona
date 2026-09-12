@@ -20,7 +20,6 @@ import { v as convV } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   LONA_CATEGORIES,
-  LONA_COLLECTIONS,
   LONA_PRODUCTS,
   LONA_EDITORIALS,
   LONA_COUPONS,
@@ -34,7 +33,6 @@ interface SeedResult {
   categories: number;
   products: number;
   variants: number;
-  collections: number;
   editorials: number;
   reviews: number;
   coupons: number;
@@ -91,7 +89,6 @@ export const runAll = action({
         slug: p.slug,
         name: p.name,
         category: p.category as LonaCategorySlug,
-        collectionSlug: p.collectionSlug,
         priceCents: p.price,
         compareAtCents: p.compareAt,
         currency: "USD",
@@ -172,27 +169,7 @@ export const runAll = action({
       variantCount += chunk.length;
     }
 
-    // ── 4) Collections ────────────────────────────────────
-    for (const c of LONA_COLLECTIONS) {
-      const productSlugs = LONA_PRODUCTS
-        .filter((p) => p.collectionSlug === c.slug)
-        .map((p) => p.slug);
-      await ctx.runMutation(internal.seed.upsertCollection, {
-        slug: c.slug,
-        name: c.name,
-        eyebrow: c.eyebrow,
-        description: c.description,
-        productSlugs,
-        gradient: c.gradient as "mist" | "oat" | "rose" | "deep" | "ivory",
-        coverGradient: undefined,
-        kind: c.kind,
-        season: c.season,
-        order: LONA_COLLECTIONS.indexOf(c) + 1,
-        visible: true,
-      });
-    }
-
-    // ── 5) Editorials ──────────────────────────────────────
+    // ── 4) Editorials ──────────────────────────────────────
     for (const e of LONA_EDITORIALS) {
       await ctx.runMutation(internal.seed.upsertEditorial, {
         slug: e.slug,
@@ -281,7 +258,6 @@ export const runAll = action({
       categories: categoryCount,
       products: LONA_PRODUCTS.length,
       variants: variantCount,
-      collections: LONA_COLLECTIONS.length,
       editorials: LONA_EDITORIALS.length,
       reviews: reviewCount,
       coupons: couponCount,
@@ -370,7 +346,6 @@ export const upsertProduct = internalMutation({
       convV.literal("accessories"),
       convV.literal("bridal"),
     ),
-    collectionSlug: convV.string(),
     priceCents: convV.number(),
     compareAtCents: convV.optional(convV.number()),
     currency: convV.literal("USD"),
@@ -468,52 +443,6 @@ export const upsertVariantsBulk = internalMutation({
         await ctx.db.insert("variants", row);
       }
     }
-  },
-});
-
-export const upsertCollection = internalMutation({
-  args: {
-    slug: convV.string(),
-    name: convV.string(),
-    eyebrow: convV.string(),
-    description: convV.string(),
-    productSlugs: convV.array(convV.string()),
-    gradient: convV.union(
-      convV.literal("mist"),
-      convV.literal("oat"),
-      convV.literal("rose"),
-      convV.literal("deep"),
-      convV.literal("ivory"),
-          convV.literal("pearl"),
-    ),
-    coverGradient: convV.optional(
-      convV.union(
-        convV.literal("mist"),
-        convV.literal("oat"),
-        convV.literal("rose"),
-        convV.literal("deep"),
-        convV.literal("ivory"),
-          convV.literal("pearl"),
-      )
-    ),
-    kind: convV.union(
-      convV.literal("seasonal"),
-      convV.literal("campaign"),
-      convV.literal("editorial"),
-      convV.literal("permanent"),
-    ),
-    season: convV.optional(convV.string()),
-    order: convV.number(),
-    visible: convV.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("collections").withIndex("by_slug", (q) => q.eq("slug", args.slug)).unique();
-    if (existing) {
-      await ctx.db.patch(existing._id, args);
-      return existing._id;
-    }
-    return await ctx.db.insert("collections", args);
   },
 });
 

@@ -1,7 +1,7 @@
 /**
  * Phase 4.5 — Live Data Migration Layer.
  *
- * Bridges the legacy "Product / Collection / Editorial" shapes (used by
+ * Bridges the legacy "Product / Editorial" shapes (used by
  * the locked Phase 1–3 UI) and the live Convex schema. Public surface
  * is intentionally identical to `src/data/catalog.ts` so the existing
  * components keep working without edits — only the *source* of truth
@@ -9,16 +9,16 @@
  *
  * Strategy
  * ────────
- *   • All hooks return the legacy `Product | Collection | Editorial`
+ *   • All hooks return the legacy `Product | Editorial`
  *     interface defined here (re-exported via `@/data/catalog`-shaped
  *     types already used by components).
  *
- *   • Lists (useProducts, useCollections, useEditorials, …) read from
+ *   • Lists (useProducts, useEditorials, …) read from
  *     Convex only. While the live query is loading, they return
  *     `undefined` — the Phase-2 skeleton states already cover that
  *     case in the page components.
  *
- *   • Single-row lookups (useProduct, useCollection, useEditorial)
+ *   • Single-row lookups (useProduct, useEditorial)
  *     use live Convex data only. A missing row is returned as `null`
  *     instead of being replaced with stale static catalog data.
  *
@@ -40,13 +40,10 @@ import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { GradientKey } from "@/lib/glass";
 import {
-  collections as staticCollections,
-  collections as _staticCollections,
   editorials as staticEditorials,
   newArrivals as staticNewArrivals,
   products as staticProducts,
   testimonials as staticTestimonials,
-  type Collection as StaticCollection,
   type Editorial as StaticEditorial,
   type Product as StaticProduct,
   type Testimonial as StaticTestimonial,
@@ -62,7 +59,6 @@ export type Product = StaticProduct;
 export type ProductCategory = StaticProduct["category"];
 export type ProductColor = StaticProduct["colors"][number];
 export type ProductSize = StaticProduct["sizes"][number];
-export type Collection = StaticCollection;
 export type Editorial = StaticEditorial;
 export type Testimonial = StaticTestimonial;
 export type Order = StaticOrder;
@@ -72,7 +68,6 @@ export type Order = StaticOrder;
  * ──────────────────────────────────────────────────────────────── */
 
 type ConvexProduct = Doc<"products">;
-type ConvexCollection = Doc<"collections">;
 type ConvexEditorial = Doc<"editorials">;
 type ConvexOrder = Doc<"orders">;
 type ConvexOrderItem = Doc<"order_items">;
@@ -112,7 +107,6 @@ function adaptProduct(row: ConvexProduct): Product {
     slug: row.slug,
     name: row.name,
     category: row.category as ProductCategory,
-    collection: row.collectionSlug,
     price: centsToWhole(row.priceCents),
     compareAt: row.compareAtCents != null ? centsToWhole(row.compareAtCents) : undefined,
     currency: "USD",
@@ -132,20 +126,6 @@ function adaptProduct(row: ConvexProduct): Product {
       ? coverGradientKey(row.secondaryGradient)
       : undefined,
     imageUrls: row.imageUrls?.filter((url): url is string => Boolean(url)),
-  };
-}
-
-function adaptCollection(row: ConvexCollection): Collection {
-  return {
-    id: row.slug,
-    slug: row.slug,
-    name: row.name,
-    eyebrow: row.eyebrow,
-    description: row.description,
-    productIds: row.productSlugs,
-    gradient: coverGradientKey(row.gradient),
-    cover: row.coverGradient ? coverGradientKey(row.coverGradient) : undefined,
-    coverImage: row.coverImage ?? undefined,
   };
 }
 
@@ -186,7 +166,6 @@ export function getProductBySlug(list: Product[] | undefined, slug: string) {
 
 export interface UseProductsArgs {
   category?: ProductCategory;
-  collection?: string;
   featured?: boolean;
   trending?: boolean;
   editorial?: boolean;
@@ -195,11 +174,11 @@ export interface UseProductsArgs {
 
 /** Reactive list. Returns `undefined` while Convex is still loading. */
 export function useProducts(args: UseProductsArgs = {}): Product[] | undefined {
-  const { category, collection, limit } = args;
+  const { category, limit } = args;
 
   // When no narrowing applies, use the unfiltered list query.
   const noNarrowing =
-    !category && !collection && !args.featured && !args.trending && !args.editorial;
+    !category && !args.featured && !args.trending && !args.editorial;
   const base = useQuery(
     api.products.list,
     noNarrowing ? (limit ? { limit } : {}) : "skip"
@@ -207,23 +186,19 @@ export function useProducts(args: UseProductsArgs = {}): Product[] | undefined {
 
   const featured = useQuery(
     api.products.featured,
-    args.featured && !category && !collection ? {} : "skip"
+    args.featured && !category ? {} : "skip"
   );
   const trending = useQuery(
     api.products.trending,
-    args.trending && !category && !collection ? {} : "skip"
+    args.trending && !category ? {} : "skip"
   );
   const editorial = useQuery(
     api.products.editorial,
-    args.editorial && !category && !collection ? {} : "skip"
+    args.editorial && !category ? {} : "skip"
   );
   const byCategory = useQuery(
     api.products.byCategory,
-    category && !collection ? { category } : "skip"
-  );
-  const byCollection = useQuery(
-    api.products.byCollection,
-    collection ? { collectionSlug: collection } : "skip"
+    category ? { category } : "skip"
   );
 
   const picked =
@@ -232,7 +207,6 @@ export function useProducts(args: UseProductsArgs = {}): Product[] | undefined {
     trending ??
     editorial ??
     byCategory ??
-    byCollection ??
     undefined;
 
   const adapted = useMemo(
@@ -296,12 +270,6 @@ export function useProductsByCategory(
   return useProducts({ category });
 }
 
-export function useProductsByCollection(
-  collectionSlug: string | undefined
-): Product[] | undefined {
-  return useProducts({ collection: collectionSlug });
-}
-
 export interface UseSearchArgs {
   query: string;
   category?: ProductCategory;
@@ -327,58 +295,6 @@ export function useSearchProducts({
   );
 
   return adapted as Product[] | undefined;
-}
-
-/* ────────────────────────────────────────────────────────────────
- *  Hooks — collections
- * ──────────────────────────────────────────────────────────────── */
-
-export function useCollections(): Collection[] | undefined {
-  const remote = useQuery(api.collections.list, {});
-  return useMemo(
-    () => (remote ? remote.map(adaptCollection).sort((a: Collection, b: Collection) => a.slug.localeCompare(b.slug)) : undefined),
-    [remote]
-  );
-}
-
-export function useCollection(
-  slug: string | undefined
-): Collection | null | undefined {
-  const remote = useQuery(
-    api.collections.getBySlug,
-    slug ? { slug } : "skip"
-  );
-
-  const live = useMemo(() => {
-    if (remote === undefined) return undefined;
-    return remote ? adaptCollection(remote) : null;
-  }, [remote]);
-
-  return live;
-}
-
-/**
- * Resolve the products belonging to a collection. Honors the
- * explicit `productSlugs` order from Convex.
- */
-export function useCollectionProducts(
-  slug: string | undefined
-): Product[] | undefined {
-  const collection = useCollection(slug);
-  const liveProducts = useProducts();
-
-  return useMemo(() => {
-    if (!collection) return undefined;
-    if (!liveProducts && !collection.productIds.length) return undefined;
-    if (collection.productIds.length === 0) return liveProducts ?? [];
-    const byKey = new Map<string, Product>();
-    (liveProducts ?? []).forEach((p) => byKey.set(p.slug, p));
-    // Compose from the live collection order only. Missing products are
-    // omitted rather than silently replaced with stale static data.
-    return collection.productIds
-      .map((id) => byKey.get(id))
-      .filter((p): p is Product => Boolean(p));
-  }, [collection, liveProducts]);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -483,12 +399,9 @@ export function useOrdersByUser(): AdaptedOrder[] | undefined {
  * ──────────────────────────────────────────────────────────────── */
 
 export {
-  staticCollections,
   staticEditorials,
   staticProducts,
   staticTestimonials,
   staticNewArrivals,
   staticMockOrders,
 };
-
-export const _staticCollectionsInternal = _staticCollections;

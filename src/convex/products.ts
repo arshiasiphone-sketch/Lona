@@ -51,7 +51,7 @@ async function publishedOnly<T extends { visible: boolean; status: string }>(
   return rows.filter((p) => p.visible && p.status === "published");
 }
 
-/** Featured products — drives the home FeaturedCollections block. */
+/** Featured products — drives the home featured grid. */
 export const featured = query({
   args: {},
   handler: async (ctx) => {
@@ -96,23 +96,6 @@ export const byCategory = query({
       .withIndex("by_category", (q) => q.eq("category", category))
       .collect();
     return await withResolvedProductImages(ctx, await publishedOnly(rows));
-  },
-});
-
-/** Products in a collection, ordered by their position in the collection. */
-export const byCollection = query({
-  args: { collectionSlug: v.string() },
-  handler: async (ctx, { collectionSlug }) => {
-    const rows = await ctx.db
-      .query("products")
-      .withIndex("by_collectionSlug", (q) =>
-        q.eq("collectionSlug", collectionSlug)
-      )
-      .collect();
-    return await withResolvedProductImages(
-      ctx,
-      rows.filter((p) => p.visible && p.status === "published"),
-    );
   },
 });
 
@@ -162,7 +145,6 @@ export const upsertBySlug = mutation({
     slug: v.string(),
     name: v.string(),
     category: vProductCategory,
-    collectionSlug: v.string(),
     priceCents: v.number(),
     compareAtCents: v.optional(v.number()),
     currency: v.literal("USD"),

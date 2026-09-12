@@ -2,7 +2,7 @@
  * Phase 5.8 — FE static fallback mirror.
  *
  * Thin adapter over `src/data/lona-catalog.ts`. Re-exposes the
- * legacy `Product | Collection | Editorial | Order | Testimonial`
+ * legacy `Product | Editorial | Order | Testimonial`
  * shape so the locked Phase 1–3 UI keeps working, while the actual
  * data lives in the single source-of-truth file.
  *
@@ -15,7 +15,6 @@
 import type { GradientKey } from "@/lib/glass";
 import {
   LONA_PRODUCTS,
-  LONA_COLLECTIONS,
   LONA_EDITORIALS,
   LONA_CATEGORIES,
   LINGERIE_SIZES,
@@ -56,7 +55,6 @@ export interface Product {
   slug: string;
   name: string;
   category: ProductCategory;
-  collection: string;
   price: number;
   compareAt?: number;
   currency: "USD";
@@ -71,19 +69,6 @@ export interface Product {
   secondaryGradient?: GradientKey;
   /** Optional — Phase 5.8 image URLs (live data uses Convex). */
   imageUrls?: string[];
-}
-
-export interface Collection {
-  id: string;
-  slug: string;
-  name: string;
-  eyebrow: string;
-  description: string;
-  productIds: string[];
-  gradient: GradientKey;
-  cover?: string;
-  /** Phase 7.4 — real cover image URL (admin-uploaded); gradient remains fallback. */
-  coverImage?: string;
 }
 
 export interface Editorial {
@@ -139,7 +124,6 @@ function adaptProduct(p: LonaProductRaw): Product {
     slug: p.slug,
     name: p.name,
     category: p.category as ProductCategory,
-    collection: p.collectionSlug,
     price: p.price,
     compareAt: p.compareAt,
     currency: "USD",
@@ -153,20 +137,6 @@ function adaptProduct(p: LonaProductRaw): Product {
     reviewCount: p.reviewCount,
     secondaryGradient: p.secondaryGradient,
     imageUrls: p.imageUrls,
-  };
-}
-
-function adaptCollection(c: (typeof LONA_COLLECTIONS)[number]): Collection {
-  return {
-    id: c.slug,
-    slug: c.slug,
-    name: c.name,
-    eyebrow: c.eyebrow,
-    description: c.description,
-    productIds: LONA_PRODUCTS.filter((p) => p.collectionSlug === c.slug).map((p) => p.slug),
-    gradient: c.gradient,
-    cover: undefined,
-    coverImage: undefined,
   };
 }
 
@@ -189,7 +159,6 @@ function adaptEditorial(e: (typeof LONA_EDITORIALS)[number]): Editorial {
 // ──────────────────────────────────────────────────────────────
 
 export const products: Product[] = LONA_PRODUCTS.map(adaptProduct);
-export const collections: Collection[] = LONA_COLLECTIONS.map(adaptCollection);
 export const editorials: Editorial[] = LONA_EDITORIALS.map(adaptEditorial);
 
 // Categories array — used by Phase 5 legacy filter consumers that haven't
@@ -212,18 +181,6 @@ export function getProduct(slug: string): Product | undefined {
 
 export function getProductById(id: string): Product | undefined {
   return products.find((p) => p.id === id || p.slug === id);
-}
-
-export function getCollection(slug: string): Collection | undefined {
-  return collections.find((c) => c.slug === slug);
-}
-
-export function getCollectionProducts(slug: string): Product[] {
-  const coll = getCollection(slug);
-  if (!coll) return [];
-  if (coll.productIds.length === 0) return products;
-  const byId = new Map(products.map((p) => [p.id, p]));
-  return coll.productIds.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
 
 export function newArrivals(limit?: number): Product[] {

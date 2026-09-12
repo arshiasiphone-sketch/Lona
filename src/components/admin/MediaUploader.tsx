@@ -18,9 +18,10 @@ import * as React from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Upload, X, AlertTriangle, RefreshCw, Star, ChevronUp, ChevronDown, ImagePlus } from "lucide-react";
+import { Upload, X, AlertTriangle, RefreshCw, Star, ChevronUp, ChevronDown, ImagePlus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
+import { getAdminErrorMessage } from "@/lib/admin-errors";
 import {
   IMAGE_ACCEPT,
   MAX_PRODUCT_IMAGE_BYTES,
@@ -38,13 +39,16 @@ const MAX_IMAGES = 12;
 
 type Row =
   | { key: string; state: "uploading"; progress: number; localUrl: string; name: string; size: number }
-  | { key: string; state: "success"; storageId: Id<"_storage">; localUrl: string; name: string }
   | { key: string; state: "failed"; error: string; name: string; size: number; file: File };
 
 export function MediaUploader({ productId }: MediaUploaderProps) {
   const [rows, setRows] = React.useState<Row[]>([]);
   const [dragging, setDragging] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  /** Persisted image awaiting an explicit destructive confirmation. */
+  const [confirmId, setConfirmId] = React.useState<Id<"product_images"> | null>(null);
+  const [deletingId, setDeletingId] = React.useState<Id<"product_images"> | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const generateUploadUrl = useMutation(api.admin_products.generateUploadUrl);
   const attachMedia = useMutation(api.admin_products.attachMedia);
@@ -141,18 +145,18 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
           productId,
           storageId: result.storageId,
           alt: file.name.replace(/\.[^.]+$/, "").trim() || "تصویر محصول",
-          order: persisted.length + rows.filter((r) => r.state === "success").length,
+          order:
+            persisted.length +
+            rows.filter((r) => r.state === "uploading").length,
           dominantGradient: undefined,
           contentType,
           size: file.size,
         });
-        setRows((r) =>
-          r.map((row) =>
-            row.key === key && row.state === "uploading"
-              ? { key, state: "success", storageId: result.storageId, localUrl, name: file.name }
-              : row,
-          ),
-        );
+        // The image now lives in the persisted grid (via the reactive
+        // `listMedia` query), so the transient progress row is removed
+        // instead of lingering as a duplicate entry.
+        setRows((r) => r.filter((row) => row.key !== key));
+        URL.revokeObjectURL(localUrl);
       } catch (err) {
         if (uploadedStorageId) {
           await discardUpload({ storageId: uploadedStorageId }).catch(() => {});
@@ -202,9 +206,26 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
     await reorderMedia({ productId, order: nextOrder });
   };
 
-  const remove = async (id: Id<"product_images">) => {
-    await deleteMedia({ id });
-  };
+  /**
+   * Remove an image from the product. Convex `deleteMedia` detaches the
+   * `product_images` row and its storage object, so the storefront,
+   * list, and gallery all drop the image consistently.
+   */
+  const confirmRemove = React.useCallback(
+    async (id: Id<"product_images">) => {
+      setDeletingId(id);
+      setDeleteError(null);
+      try {
+        await deleteMedia({ id });
+        setConfirmId(null);
+      } catch (err) {
+        setDeleteError(getAdminErrorMessage(err));
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deleteMedia],
+  );
 
   return (
     <div className="space-y-6">
@@ -276,26 +297,6 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 </div>
               </div>
             )}
-            {row.state === "success" && (
-              <div className="flex items-center gap-4">
-                <div className="h-16 w-16 overflow-hidden rounded-xl bg-emerald-100 text-emerald-700 grid place-items-center text-[10px] uppercase">
-                  آماده
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-ink">{row.name}</p>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-700">
-                    ذخیره شد.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => retry(row.key)}
-                  className="grid h-8 w-8 place-items-center rounded-full hairline"
-                >
-                  <X className="h-3.5 w-3.5 text-ink-soft" />
-                </button>
-              </div>
-            )}
             {row.state === "failed" && (
               <div className="flex items-center gap-4">
                 <div className="grid h-16 w-16 place-items-center rounded-xl bg-rose-100 text-rose-700">
@@ -361,11 +362,15 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(row._id)}
-                  className="grid h-7 w-7 place-items-center rounded-full bg-white/20"
-                  aria-label="حذف"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setConfirmId(row._id);
+                  }}
+                  className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition hover:bg-rose-600"
+                  aria-label="حذف تصویر"
+                  title="حذف تصویر"
                 >
-                  <X className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -374,9 +379,42 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
                 <Star className="h-3 w-3" /> اصلی
               </div>
             )}
+            {confirmId === row._id && (
+              <div className="absolute inset-0 grid place-items-center bg-ink/75 p-4 text-canvas backdrop-blur-sm">
+                <div className="w-full text-center">
+                  <p className="text-[12px] leading-6">
+                    این تصویر از محصول حذف شود؟
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      disabled={deletingId === row._id}
+                      onClick={() => void confirmRemove(row._id)}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-rose-600 px-4 text-[11px] font-medium text-white transition hover:bg-rose-700 disabled:opacity-60"
+                    >
+                      {deletingId === row._id ? "در حال حذف…" : "حذف تصویر"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingId === row._id}
+                      onClick={() => setConfirmId(null)}
+                      className="inline-flex min-h-11 items-center rounded-full bg-white/15 px-4 text-[11px] text-canvas transition hover:bg-white/25 disabled:opacity-60"
+                    >
+                      انصراف
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {deleteError ? (
+        <p className="rounded-xl bg-rose-50 px-3 py-2 text-[12px] text-rose-700">
+          {deleteError}
+        </p>
+      ) : null}
     </div>
   );
 }

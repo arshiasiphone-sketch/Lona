@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/glass";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatDiscount, formatPrice } from "@/lib/format";
+import { categoryLabelFa } from "@/lib/categories";
 
 const silhouetteFor = (cat: string) => {
   switch (cat) {
@@ -70,7 +71,7 @@ export function ListCard({ product }: ListCardProps) {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="type-eyebrow text-ink-muted">
-              {product.collection.replace("-", " · ")} · {product.colors[0].name}
+              {categoryLabelFa(product.category)} · {product.colors[0].name}
             </p>
             <Link
               to={`/shop/${product.slug}`}

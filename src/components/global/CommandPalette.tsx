@@ -10,7 +10,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { products, collections } from "@/data/catalog";
+import { products } from "@/data/catalog";
+import { categoryLabelFa } from "@/lib/categories";
 import { useOverlay } from "@/hooks/use-overlay";
 import { useAuth } from "@/hooks/use-auth";
 import { useWishlist } from "@/hooks/use-wishlist";
@@ -20,13 +21,11 @@ import {
   Search,
   Sparkles,
   ArrowLeft,
-  Compass,
 } from "lucide-react";
 
 const PAGE_LINKS: { label: string; to: string; group: string }[] = [
   { label: "خانه", to: "/", group: "صفحه‌ها" },
   { label: "همه محصولات", to: "/shop", group: "صفحه‌ها" },
-  { label: "کالکسیون‌ها", to: "/collections", group: "صفحه‌ها" },
   { label: "سبد خرید", to: "/cart", group: "صفحه‌ها" },
   { label: "علاقه‌مندی‌ها", to: "/wishlist", group: "صفحه‌ها" },
   { label: "حساب کاربری", to: "/account", group: "صفحه‌ها" },
@@ -59,7 +58,7 @@ export function CommandPalette() {
     if (!q) return [];
     return products
       .filter((p) =>
-        [p.name, p.description, p.category, p.collection]
+        [p.name, p.description, p.category]
           .join(" ")
           .toLowerCase()
           .includes(q)
@@ -75,7 +74,7 @@ export function CommandPalette() {
   return (
     <CommandDialog open={commandOpen} onOpenChange={(o) => !o && closeCommand()}>
       <CommandInput
-        placeholder="جست‌وجو در لونا… محصول، کالکسیون، صفحه"
+        placeholder="جست‌وجو در لونا… محصول، دسته، صفحه"
         value={query}
         onValueChange={setQuery}
         dir="rtl"
@@ -83,7 +82,7 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>
           <span className="block py-8 text-center text-sm text-ink-muted">
-            نتیجه‌ای برای «{query}» پیدا نشد. یک کالکسیون یا صفحه را امتحان کنید.
+            نتیجه‌ای برای «{query}» پیدا نشد. یک دسته‌بندی یا صفحه را امتحان کنید.
           </span>
         </CommandEmpty>
 
@@ -102,7 +101,7 @@ export function CommandPalette() {
                 <div className="flex-1 text-right leading-tight">
                   <p className="text-sm text-ink">{p.name}</p>
                   <p className="text-[11px] text-ink-muted">
-                    {p.collection.replace("-", " ")}
+                    {categoryLabelFa(p.category)}
                   </p>
                 </div>
                 <span className="text-[11px] text-ink-muted">
@@ -130,24 +129,6 @@ export function CommandPalette() {
                   <span className="flex-1">{s.label}</span>
                   <span className="text-[11px] text-ink-muted">{s.meta}</span>
                   <ArrowLeft className="h-3 w-3 text-ink-muted" />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-
-            <CommandSeparator />
-
-            <CommandGroup heading="کالکسیون‌ها">
-              {collections.map((c) => (
-                <CommandItem
-                  key={c.id}
-                  value={`coll-${c.slug}`}
-                  onSelect={() => go(`/collections/${c.slug}`)}
-                >
-                  <Compass className="ml-2 h-3.5 w-3.5 text-primary" />
-                  <div className="flex-1 text-right leading-tight">
-                    <p className="text-sm text-ink">{c.name}</p>
-                    <p className="text-[11px] text-ink-muted">{c.eyebrow}</p>
-                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>

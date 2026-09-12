@@ -9,6 +9,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePermission, audit } from "./admin";
+import { sanitizeSocial } from "../lib/social";
 
 const vHomepageBlock = v.object({
   id: v.string(),
@@ -42,15 +43,7 @@ const HOMEPAGE_IMAGE_KEYS = [
   "instagram_4",
   "instagram_5",
   "instagram_6",
-  "featured_collection_1",
-  "featured_collection_2",
-  "featured_collection_3",
   "about_workshop",
-  "collections_1",
-  "collections_2",
-  "collections_3",
-  "collections_4",
-  "collection_hero",
   "press_hero",
   "press_1",
   "press_2",
@@ -318,6 +311,13 @@ export const upsertSetting = mutation({
   },
   handler: async (ctx, { key, value }) => {
     const user = await requirePermission(ctx, "manage_settings");
+    // Phase 8.5 — the store settings carry public storefront links. Strip
+    // anything that is not a valid http(s) link for its network so a
+    // pasted `javascript:`/`data:` URL can never reach an <a href>.
+    if (key === "store" && value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      value = { ...record, social: sanitizeSocial(record.social as Record<string, unknown> | undefined) };
+    }
     const existing = await ctx.db
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", key))
