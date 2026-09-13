@@ -109,7 +109,7 @@ export const getStoreInfo = query({
       postalCode: (value.postalCode as string) ?? "",
       nationalId: (value.nationalId as string) ?? "",
       hours: (value.hours as string) ?? "",
-      social: (value.social as Record<string, string>) ?? {},
+      social: sanitizeSocial(value.social as Record<string, unknown> | undefined),
       enamadCode: (value.enamadCode as string) ?? "",
     };
   },
