@@ -1,8 +1,11 @@
 import { Link } from "react-router";
 import { motion } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Instagram, Send, MessageCircle } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { EASE_LUXURY } from "@/lib/motion";
 import { LonaLogo } from "@/components/brand/LonaLogo";
+import { socialHref } from "@/lib/social";
 
 interface MobileNavProps {
   open: boolean;
@@ -69,7 +72,51 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           <span>تأسیس ۱۳۹۸</span>
           <span>تهران · اصفهان · شیراز</span>
         </div>
+
+        {/* شبکه‌های اجتماعی */}
+        {socialLinks.length > 0 && (
+          <div className="mt-8 flex flex-col gap-3">
+            <span className="text-xs tracking-[0.04em] text-ink-muted">شبکه‌های اجتماعی</span>
+            <div className="flex flex-col gap-2">
+              {socialLinks.map(({ key, label, href, Icon }) => (
+                <a
+                  key={key}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className="inline-flex items-center gap-3 rounded-xl bg-white/70 px-4 py-3 text-sm text-ink transition hover:bg-white hover:text-primary"
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.aside>
     </motion.div>
   );
 }
+
+const SOCIAL_LINKS: {
+  key: "instagram" | "telegram" | "whatsapp";
+  label: string;
+  Icon: typeof Instagram;
+}[] = [
+  { key: "instagram", label: "اینستاگرام", Icon: Instagram },
+  { key: "telegram", label: "تلگرام", Icon: Send },
+  { key: "whatsapp", label: "واتساپ", Icon: MessageCircle },
+];
+
+function useSocialLinks() {
+  const store = useQuery(api.admin_settings.getStoreInfo, {});
+  return SOCIAL_LINKS
+    .map((entry) => ({
+      ...entry,
+      href: socialHref(store?.social?.[entry.key]),
+    }))
+    .filter((entry): entry is typeof entry & { href: string } => entry.href !== null);
+}
+
+const socialLinks = useSocialLinks();

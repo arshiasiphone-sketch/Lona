@@ -168,20 +168,23 @@ export function Footer() {
               کنار شما ساخته شده‌اند — به آرامی، برای سال‌ها.
             </p>
             {socialLinks.length > 0 && (
-              <div className="mt-6 flex items-center gap-2">
-                {socialLinks.map(({ key, label, href, Icon }) => (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full hairline text-ink-soft transition hover:bg-white/40 hover:text-ink"
-                    aria-label={label}
-                    title={label}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                ))}
+              <div className="mt-6 flex flex-col gap-3">
+                <span className="type-eyebrow text-ink-muted">شبکه‌های اجتماعی</span>
+                <div className="flex items-center gap-2">
+                  {socialLinks.map(({ key, label, href, Icon }) => (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full hairline text-ink-soft transition hover:bg-white/40 hover:text-ink"
+                      aria-label={label}
+                      title={label}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>

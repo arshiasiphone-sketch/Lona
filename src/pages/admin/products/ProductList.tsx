@@ -18,6 +18,16 @@ import { Doc, Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Archive,
   ArrowLeft,
   Copy,
@@ -29,6 +39,7 @@ import {
   Send,
   Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -52,19 +63,21 @@ const STATUS_FILTERS = [
   { value: "archived", label: "آرشیو شده" },
 ] as const;
 
-type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];
-
-export default function ProductList() {
+type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export default function ProductList() {
   const products = useQuery(api.admin_products.listForAdmin, {});
   const bulkArchive = useMutation(api.admin_products.bulkArchive);
-  const bulkPublish = useMutation(api.admin_products.bulkPublish);
-  const duplicate = useMutation(api.admin_products.duplicate);
+	const bulkPublish = useMutation(api.admin_products.bulkPublish);
+	const duplicate = useMutation(api.admin_products.duplicate);
+	const archive = useMutation(api.admin_products.archive);
 
-  const [query, setQuery] = React.useState("");
+	const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilterValue>("all");
   const [selectedKeys, setSelectedKeys] = React.useState<Set<string>>(new Set());
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = React.useState(false);
+  const [archivingId, setArchivingId] = React.useState<Id<"products"> | null>(null);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = React.useState(false);
+  const [archiveTarget, setArchiveTarget] = React.useState<ProductRow | null>(null);
 
   React.useEffect(() => {
     setSelectedKeys(new Set());
@@ -89,14 +102,29 @@ export default function ProductList() {
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
-  };
-
-  const handleDuplicate = React.useCallback(
+  };	  const handleDuplicate = React.useCallback(
     async (productId: Id<"products">) => {
       await duplicate({ id: productId });
     },
     [duplicate],
   );
+
+  const requestArchive = (row: ProductRow) => {
+    setArchiveTarget(row);
+    setArchiveConfirmOpen(true);
+  };	  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    setArchivingId(archiveTarget._id);
+    try {
+      await withAdminTimeout(archive({ id: archiveTarget._id }));
+      setArchiveConfirmOpen(false);
+      setArchiveTarget(null);
+    } catch (error) {
+      setActionError(getAdminErrorMessage(error));
+    } finally {
+      setArchivingId(null);
+    }
+  };
 
   const bulkAction = selectedKeys.size > 0 ? (
     <div className="flex items-center gap-2">
@@ -237,6 +265,34 @@ export default function ProductList() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog
+        open={archiveConfirmOpen}
+        onOpenChange={setArchiveConfirmOpen}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>بایگانی محصول</AlertDialogTitle>
+            <AlertDialogDescription>
+              {archiveTarget
+                ? `آیا از بایگانی محصول «${archiveTarget.name}» مطمئن هستید؟ این محصول از لیست محصولات پنهان می‌شود، اما داده‌های سفارشات تاریخی دست‌نخورده باقی می‌مانند.`
+                : "آیا از بایگانی این محصول مطمئن هستید؟"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setArchiveConfirmOpen(false)}>
+              انصراف
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmArchive}
+      
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {isArchiveBusy ? "در حال بایگانی…" : "بایگانی محصول"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="type-eyebrow text-ink-muted">کاتالوگ</p>
@@ -409,11 +465,13 @@ function RowActions({
 }: {
   row: ProductRow;
   onDuplicate: (id: Id<"products">) => Promise<void>;
-}) {
-  const archive = useMutation(api.admin_products.archive);
-  const restore = useMutation(api.admin_products.restore);
+}) {	const restore = useMutation(api.admin_products.restore);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const isArchived = row.status === "archived";
+  const isArchiveBusy = archivingId === row._id;
+
   return (
     <div className="flex items-center justify-end gap-1">
       <Link
@@ -442,7 +500,7 @@ function RowActions({
       >
         <Copy className="h-3.5 w-3.5 text-ink" />
       </button>
-      {row.status === "archived" ? (
+      {isArchived ? (
         <button
           type="button"
           disabled={busy}
@@ -457,33 +515,34 @@ function RowActions({
               setBusy(false);
             }
           }}
-          aria-label="بازنشانی"
+          aria-label="بازیابی"
           className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
         >
           <RotateCcw className="h-3.5 w-3.5 text-ink" />
         </button>
       ) : (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              await withAdminTimeout(archive({ id: row._id }));
-            } catch (actionError) {
-              setError(getAdminErrorMessage(actionError));
-            } finally {
-              setBusy(false);
-            }
-          }}
-          aria-label="بایگانی"
-          className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-white disabled:opacity-40"
-        >
-          <Archive className="h-3.5 w-3.5 text-ink" />
-        </button>
+        <>
+          <button
+            type="button"
+    
+            onClick={() => requestArchive(row)}
+            aria-label="بایگانی محصول"
+            className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"
+          >
+            {isArchiveBusy ? (
+              <span className="grid h-3.5 w-3.5 place-items-center">
+                <svg className="h-3.5 w-3.5 animate-spin text-ink-soft" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </span>
+            ) : (
+              <Archive className="h-3.5 w-3.5 text-ink" />
+            )}
+          </button>
+          <PublishGate row={row} />
+        </>
       )}
-      <PublishGate row={row} />
       {error ? <span className="max-w-32 text-[10px] text-rose-700">{error}</span> : null}
     </div>
   );

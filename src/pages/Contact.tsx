@@ -6,6 +6,7 @@ import {
   Instagram,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
   Send,
   ShieldCheck,
@@ -135,7 +136,27 @@ export default function Contact() {
             </form>
           )}
 
-          {Object.values(socials).some(Boolean) ? <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-edge/70 pt-6"><span className="type-eyebrow text-ink-muted">شبکه‌های اجتماعی</span>{Object.entries(socials).filter(([, value]) => value).map(([key, value]) => <a key={key} href={value.startsWith("http") ? value : `https://${value}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full hairline px-3 py-2 text-xs text-ink-soft transition hover:bg-white hover:text-ink" aria-label={key}><Instagram className="h-3.5 w-3.5" />{key}</a>)}</div> : null}
+          {Object.values(socials).some(Boolean) ? (
+            <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-edge/70 pt-6">
+              <span className="type-eyebrow text-ink-muted">شبکه‌های اجتماعی</span>
+              {Object.entries(socials).filter(([, value]) => value).map(([key, value]) => {
+                const Icon = key === "telegram" ? Send : key === "whatsapp" ? MessageCircle : Instagram;
+                return (
+                  <a
+                    key={key}
+                    href={value.startsWith("http") ? value : `https://${value}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full hairline px-3 py-2 text-xs text-ink-soft transition hover:bg-white hover:text-ink"
+                    aria-label={key}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {key === "instagram" ? "اینستاگرام" : key === "telegram" ? "تلگرام" : "واتساپ"}
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 
