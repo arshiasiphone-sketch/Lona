@@ -68,6 +68,7 @@ type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export defaul
   const bulkArchive = useMutation(api.admin_products.bulkArchive);
 	const bulkPublish = useMutation(api.admin_products.bulkPublish);
 	const duplicate = useMutation(api.admin_products.duplicate);
+
 	const archive = useMutation(api.admin_products.archive);
 
 	const [query, setQuery] = React.useState("");
@@ -102,17 +103,17 @@ type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export defaul
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
-  };	  const handleDuplicate = React.useCallback(
+  };	const handleDuplicate = React.useCallback(
     async (productId: Id<"products">) => {
       await duplicate({ id: productId });
     },
     [duplicate],
   );
 
-  const requestArchive = (row: ProductRow) => {
+	const requestArchive = (row: ProductRow) => {
     setArchiveTarget(row);
     setArchiveConfirmOpen(true);
-  };	  const confirmArchive = async () => {
+  };	const confirmArchive = async () => {
     if (!archiveTarget) return;
     setArchivingId(archiveTarget._id);
     try {
@@ -125,6 +126,7 @@ type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export defaul
       setArchivingId(null);
     }
   };
+
 
   const bulkAction = selectedKeys.size > 0 ? (
     <div className="flex items-center gap-2">
@@ -257,8 +259,7 @@ type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export defaul
     },
     {
       key: "actions",
-      header: "",
-      cell: (row) => <RowActions row={row} onDuplicate={handleDuplicate} />,
+      header: "",        cell: (row) => <RowActions row={row} onDuplicate={handleDuplicate} rowArchivingId={archivingId} requestArchive={requestArchive} />,
       className: "w-[60px]",
     },
   ];
@@ -281,13 +282,12 @@ type StatusFilterValue = (typeof STATUS_FILTERS)[number]["value"];	export defaul
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setArchiveConfirmOpen(false)}>
               انصراف
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </AlertDialogCancel>		            <AlertDialogAction
               onClick={confirmArchive}
-      
+              disabled={archivingId !== null}
               className="bg-rose-600 hover:bg-rose-700 text-white"
             >
-              {isArchiveBusy ? "در حال بایگانی…" : "بایگانی محصول"}
+              {archivingId !== null ? "در حال بایگانی…" : "بایگانی محصول"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -462,15 +462,20 @@ function GradientChip({ row }: { row: ProductRow }) {
 function RowActions({
   row,
   onDuplicate,
+  rowArchivingId,
+  requestArchive,
 }: {
   row: ProductRow;
   onDuplicate: (id: Id<"products">) => Promise<void>;
-}) {	const restore = useMutation(api.admin_products.restore);
+  rowArchivingId: Id<"products"> | null;
+  requestArchive: (row: ProductRow) => void;
+}) {
+  const restore = useMutation(api.admin_products.restore);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const isArchived = row.status === "archived";
-  const isArchiveBusy = archivingId === row._id;
+  const busyArchive = rowArchivingId === row._id;
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -524,12 +529,12 @@ function RowActions({
         <>
           <button
             type="button"
-    
+            disabled={busyArchive}
             onClick={() => requestArchive(row)}
             aria-label="بایگانی محصول"
             className="grid h-8 w-8 place-items-center rounded-full hairline bg-white/80 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40"
           >
-            {isArchiveBusy ? (
+            {busyArchive ? (
               <span className="grid h-3.5 w-3.5 place-items-center">
                 <svg className="h-3.5 w-3.5 animate-spin text-ink-soft" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
