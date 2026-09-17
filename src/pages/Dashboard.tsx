@@ -29,6 +29,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { EASE_LUXURY } from "@/lib/motion";
 import { formatDate, formatPrice } from "@/lib/format";
+import { formatIranianMobileFa } from "@/convex/auth/phoneNumber";
 
 const tabKeys = ["overview", "orders", "saved", "addresses", "preferences", "recent", "support", "returns", "notifications"] as const;
 type TabKey = (typeof tabKeys)[number];
@@ -403,11 +404,31 @@ export default function Dashboard() {
                     className="mt-2 w-full rounded-2xl bg-canvas/60 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
+                {/*
+                  The verified mobile IS the sign-in identity now, so it is
+                  shown read-only rather than editable — changing it would
+                  require a fresh SMS verification, not a profile edit.
+                */}
                 <label className="block">
-                  <span className="type-eyebrow text-ink-muted">ایمیل</span>
+                  <span className="type-eyebrow text-ink-muted">
+                    شماره موبایل (شناسه ورود)
+                  </span>
+                  <input
+                    type="tel"
+                    dir="ltr"
+                    readOnly
+                    aria-readonly="true"
+                    value={user?.phone ? formatIranianMobileFa(user.phone) : "ثبت نشده"}
+                    className="mt-2 w-full rounded-2xl bg-canvas/40 px-4 py-3 text-sm text-ink-soft focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="type-eyebrow text-ink-muted">ایمیل (اختیاری)</span>
                   <input
                     type="email"
+                    dir="ltr"
                     defaultValue={user?.email ?? ""}
+                    placeholder="برای دریافت فاکتور و خبرنامه"
                     className="mt-2 w-full rounded-2xl bg-canvas/60 px-4 py-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>

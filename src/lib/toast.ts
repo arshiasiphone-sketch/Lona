@@ -64,13 +64,16 @@ export const toast = {
   error: (message: string, description?: string) =>
     sonner.error(message, { description, duration: 4500 }),
 
-  /** Auth. */
+  /**
+   * Auth. Sign-in is phone-first, so the confirmation never mentions
+   * email and never repeats the customer's number back to the screen.
+   */
   auth: {
     signedIn: () => sonner.success("خوش آمدید", { duration: 3500 }),
     signedOut: () => sonner("با موفقیت خارج شدید", { duration: 2500 }),
     otpSent: () =>
       sonner.success("کد تأیید ارسال شد", {
-        description: "ایمیل خود را بررسی کنید.",
+        description: "پیامک ارسال‌شده به شماره موبایل خود را بررسی کنید.",
         duration: 4000,
       }),
   },

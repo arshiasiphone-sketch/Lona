@@ -3,8 +3,9 @@ import { useMutation, useQuery } from "convex/react";
 import { useParams } from "react-router";
 import { api } from "@/convex/_generated/api";
 import { AdminEmptyState, AdminTable, StatusBadge } from "@/components/admin";
-import { Loader2, ShieldCheck, UserPlus } from "lucide-react";
+import { Check, Loader2, ShieldCheck, UserPlus } from "lucide-react";
 import { useToast } from "@/lib/toast";
+import { formatIranianMobileFa, normalizeIranianMobile } from "@/convex/auth/phoneNumber";
 
 const roleLabels: Record<string, string> = {
   owner: "مالک",
@@ -32,31 +33,64 @@ export default function TeamPage() {
   const createInvite = useMutation(api.admin_team.createInvite);
   const updateRole = useMutation(api.admin_team.updateRole);
   const setStatus = useMutation(api.admin_team.setStatus);
+  const setPhone = useMutation(api.admin_team.setPhone);
   const toast = useToast();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [role, setRole] = useState("support");
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
+  // Owner-only pre-provisioning: attach a mobile to an existing staff
+  // account so their next SMS sign-in links to it instead of creating a new one.
+  const [phoneFor, setPhoneFor] = useState<string | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [phoneBusy, setPhoneBusy] = useState(false);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return (members ?? []).filter((member) => !needle || `${member.name} ${member.email}`.toLowerCase().includes(needle));
+    return (members ?? []).filter(
+      (member) =>
+        !needle ||
+        `${member.name} ${member.email} ${member.phone}`.toLowerCase().includes(needle),
+    );
   }, [members, search]);
 
   async function invite() {
-    if (!email.trim()) return;
+    if (!identifier.trim()) return;
     setBusy(true);
     try {
-      const result = await createInvite({ email, role, permissions: rolePermissions[role] ?? [] });
+      const result = await createInvite({
+        identifier,
+        role,
+        permissions: rolePermissions[role] ?? [],
+      });
       setInviteToken(result.token);
-      setEmail("");
+      setIdentifier("");
       toast.success("دعوت ایجاد شد؛ توکن را فقط از مسیر امن برای مدیر ارسال کنید.");
     } catch (error) {
       toast.error((error as Error).message || "ایجاد دعوت ناموفق بود.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function savePhone(userId: string) {
+    const canonical = normalizeIranianMobile(phoneDraft);
+    if (!canonical) {
+      toast.error("شماره موبایل واردشده معتبر نیست.");
+      return;
+    }
+    setPhoneBusy(true);
+    try {
+      await setPhone({ userId: userId as never, phone: canonical });
+      toast.success("شماره موبایل ثبت شد. این مدیر اکنون با همین شماره وارد می‌شود.");
+      setPhoneFor(null);
+      setPhoneDraft("");
+    } catch (error) {
+      toast.error((error as Error).message || "ثبت شماره موبایل ناموفق بود.");
+    } finally {
+      setPhoneBusy(false);
     }
   }
 
@@ -90,7 +124,8 @@ export default function TeamPage() {
           <>
             <div className="grid gap-4 rounded-3xl border border-edge bg-white/85 p-6 sm:grid-cols-3">
               <div><p className="text-xs text-ink-muted">نام</p><p className="mt-1 font-medium text-ink">{member.name || "بدون نام"}</p></div>
-              <div><p className="text-xs text-ink-muted">ایمیل</p><p className="mt-1 text-ink" dir="ltr">{member.email}</p></div>
+              <div><p className="text-xs text-ink-muted">شماره موبایل (ورود)</p><p className="mt-1 text-ink" dir="rtl">{member.phone ? formatIranianMobileFa(member.phone) : "ثبت نشده"}</p></div>
+              <div><p className="text-xs text-ink-muted">ایمیل</p><p className="mt-1 text-ink" dir="ltr">{member.email || "—"}</p></div>
               <div><p className="text-xs text-ink-muted">آخرین ورود</p><p className="mt-1 text-ink">{formatDate(member.lastLoginAt)}</p></div>
             </div>
             <div className="rounded-3xl border border-edge bg-white/85 p-6">
@@ -114,23 +149,24 @@ export default function TeamPage() {
       </header>
 
       <section className="rounded-3xl border border-edge bg-white/85 p-6">
-        <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><UserPlus className="h-4 w-4" /></span><div><h2 className="font-display text-2xl text-ink">دعوت مدیر جدید</h2><p className="text-sm text-ink-muted">توکن دعوت فقط یک‌بار نمایش داده می‌شود و هفت روز اعتبار دارد.</p></div></div>
+        <div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><UserPlus className="h-4 w-4" /></span><div><h2 className="font-display text-2xl text-ink">دعوت مدیر جدید</h2><p className="text-sm text-ink-muted">ورود با شماره موبایل انجام می‌شود؛ دعوت را با شماره موبایل یا ایمیل حساب موجود بسازید. توکن دعوت فقط یک‌بار نمایش داده می‌شود و هفت روز اعتبار دارد.</p></div></div>
         <div className="mt-5 grid gap-3 md:grid-cols-[1fr_180px_auto]">
-          <input dir="ltr" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@example.com" className="rounded-2xl border border-edge bg-canvas/60 px-4 py-3 text-sm text-ink focus:border-primary focus:outline-none" />
+          <input dir="ltr" type="text" inputMode="tel" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="۰۹۱۲۱۲۳۴۵۶۷ یا admin@example.com" className="rounded-2xl border border-edge bg-canvas/60 px-4 py-3 text-sm text-ink focus:border-primary focus:outline-none" />
           <select value={role} onChange={(event) => setRole(event.target.value)} className="rounded-2xl border border-edge bg-canvas/60 px-4 py-3 text-sm text-ink focus:border-primary focus:outline-none">{Object.keys(roleLabels).filter((key) => key !== "owner").map((key) => <option key={key} value={key}>{roleLabels[key]}</option>)}</select>
-          <button type="button" onClick={() => void invite()} disabled={busy || !email.trim()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-ink px-5 py-3 text-sm font-medium text-canvas transition hover:bg-primary disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} ایجاد دعوت</button>
+          <button type="button" onClick={() => void invite()} disabled={busy || !identifier.trim()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-ink px-5 py-3 text-sm font-medium text-canvas transition hover:bg-primary disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} ایجاد دعوت</button>
         </div>
         {inviteToken ? <div className="mt-4 rounded-2xl border border-amber-300/60 bg-amber-50 p-4"><p className="text-sm font-medium text-amber-900">توکن امن دعوت — این مقدار را در اختیار فرد دعوت‌شده بگذارید:</p><code dir="ltr" className="mt-2 block select-all break-all rounded-xl bg-white/80 p-3 text-xs text-amber-950">{inviteToken}</code></div> : null}
       </section>
 
       <section className="rounded-3xl border border-edge bg-white/85 p-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="font-display text-2xl text-ink">اعضای تیم</h2><input dir="rtl" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="جست‌وجوی نام یا ایمیل" className="rounded-full border border-edge bg-canvas/60 px-4 py-2 text-sm text-ink focus:border-primary focus:outline-none" /></div>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="font-display text-2xl text-ink">اعضای تیم</h2><input dir="rtl" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="جست‌وجوی نام، ایمیل یا موبایل" className="rounded-full border border-edge bg-canvas/60 px-4 py-2 text-sm text-ink focus:border-primary focus:outline-none" /></div>
         <AdminTable
           rows={filtered}
           rowKey={(row) => String(row.id)}
           searchPlaceholder=""
           columns={[
-            { key: "identity", header: "هویت", cell: (row) => <div><a href={`/admin/team/${String(row.id)}`} className="font-medium text-ink hover:text-primary">{row.name || "بدون نام"}</a><p className="text-xs text-ink-muted" dir="ltr">{row.email}</p></div> },
+            { key: "identity", header: "هویت", cell: (row) => <div><a href={`/admin/team/${String(row.id)}`} className="font-medium text-ink hover:text-primary">{row.name || "بدون نام"}</a><p className="text-xs text-ink-muted" dir="rtl">{row.phone ? formatIranianMobileFa(row.phone) : row.email || "بدون شناسه"}</p></div> },
+            { key: "phone", header: "ورود با موبایل", cell: (row) => phoneFor === String(row.id) ? <div className="flex items-center gap-2"><input dir="ltr" inputMode="tel" autoFocus value={phoneDraft} onChange={(event) => setPhoneDraft(event.target.value)} aria-label="شماره موبایل" placeholder="۰۹۱۲۱۲۳۴۵۶۷" className="w-36 rounded-lg border border-edge bg-white px-2 py-1 text-xs" /><button type="button" disabled={phoneBusy} onClick={() => void savePhone(String(row.id))} aria-label="ذخیره شماره موبایل" className="grid h-7 w-7 place-items-center rounded-full hairline bg-white disabled:opacity-40">{phoneBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 text-ink" />}</button></div> : <div className="flex items-center gap-2"><span className="text-xs text-ink" dir="rtl">{row.phone ? formatIranianMobileFa(row.phone) : "ثبت نشده"}</span><button type="button" onClick={() => { setPhoneFor(String(row.id)); setPhoneDraft(row.phone); }} className="text-xs font-medium text-primary hover:underline">{row.phone ? "تغییر" : "ثبت"}</button></div> },
             { key: "role", header: "نقش", cell: (row) => row.role === "owner" ? <span className="font-medium text-ink">مالک</span> : <select value={row.role ?? "support"} onChange={(event) => void changeRole(String(row.id), event.target.value)} className="rounded-lg border border-edge bg-white px-2 py-1 text-xs">{Object.keys(roleLabels).filter((key) => key !== "owner").map((key) => <option key={key} value={key}>{roleLabels[key]}</option>)}</select> },
             { key: "status", header: "وضعیت", cell: (row) => <StatusBadge status={row.adminStatus === "disabled" ? "inactive" : "active"} label={row.adminStatus === "disabled" ? "غیرفعال" : "فعال"} /> },
             { key: "login", header: "آخرین ورود", cell: (row) => formatDate(row.lastLoginAt) },

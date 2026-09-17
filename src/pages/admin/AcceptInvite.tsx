@@ -35,7 +35,9 @@ export default function AcceptInvite() {
         <p className="mt-5 type-eyebrow text-ink-muted">دعوت تیم مدیریتی</p>
         <h1 className="mt-2 font-display text-3xl text-ink">پیوستن به تیم لونا</h1>
         <p className="mt-3 text-sm leading-7 text-ink-soft">
-          برای پذیرش دعوت، ابتدا با همان ایمیلی که دعوت شده‌اید وارد حساب شوید.
+          برای پذیرش دعوت، ابتدا با همان شماره موبایل (یا ایمیل) که دعوت
+          شده‌اید وارد حساب شوید. ورود با کد پیامکی انجام می‌شود و اگر
+          شماره‌تان ثبت نشده باشد باید مالک مجموعه آن را برایتان ثبت کند.
           این دعوت فقط یک‌بار و تا هفت روز معتبر است.
         </p>
         <button

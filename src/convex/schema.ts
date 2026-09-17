@@ -56,13 +56,31 @@ const schema = defineSchema(
     // ============================================================
     ...authTables,
 
+    /**
+     * `users` extends `authTables.users`.
+     *
+     * IMPORTANT — the two index NAMES below are REQUIRED by Convex Auth
+     * itself and must stay exactly `email` and `phone`:
+     *   • `email` → `uniqueUserWithVerifiedEmail` (account linking)
+     *   • `phone` → `uniqueUserWithVerifiedPhone` (phone OTP linking)
+     * `emailVerificationTime` / `phoneVerificationTime` are the flags
+     * Convex Auth writes once a contact point is OTP-verified; without
+     * `phoneVerificationTime` the phone provider's account-linking lookup
+     * can never match and one human could accumulate duplicate accounts.
+     */
     users: defineTable({
       name: v.optional(v.string()),
       image: v.optional(v.string()),
       email: v.optional(v.string()),
       emailVerificationTime: v.optional(v.number()),
+      /**
+       * Set by Convex Auth once the phone number has been verified with a
+       * real SMS OTP. Never set from a form submission.
+       */
+      phoneVerificationTime: v.optional(v.number()),
       isAnonymous: v.optional(v.boolean()),
       role: v.optional(vRole),
+      /** Canonical `+98…` mobile — also the phone provider's account id. */
       phone: v.optional(v.string()),
       locale: v.optional(v.string()),
       defaultAddressId: v.optional(v.id("addresses")),
@@ -74,7 +92,9 @@ const schema = defineSchema(
       invitedAt: v.optional(v.number()),
       disabledAt: v.optional(v.number()),
       lastLoginAt: v.optional(v.number()),
-    }).index("email", ["email"]),
+    })
+      .index("email", ["email"])
+      .index("phone", ["phone"]),
 
     // ============================================================
     // USER · addresses / preferences / notifications / activity
@@ -634,9 +654,17 @@ const schema = defineSchema(
       .index("by_order", ["orderId"])
       .index("by_status", ["status"]),
 
-    /** Phase 8.4 — one-time, owner-created admin invitations. */
+    /**
+     * Phase 8.4 — one-time, owner-created admin invitations.
+     *
+     * Since authentication is phone-first, an invite is claimed by the
+     * verified phone number (`phone`, canonical `+98…`) and/or the legacy
+     * `email` for staff accounts that predate the migration. At least one
+     * of the two is always present.
+     */
     admin_invites: defineTable({
-      email: v.string(),
+      email: v.optional(v.string()),
+      phone: v.optional(v.string()),
       role: v.union(
         v.literal("admin"),
         v.literal("manager"),
@@ -652,6 +680,7 @@ const schema = defineSchema(
     })
       .index("by_tokenHash", ["tokenHash"])
       .index("by_email", ["email"])
+      .index("by_phone", ["phone"])
       .index("by_invitedBy", ["invitedBy"]),
 
     /** Phase 8.4 — future-ready MFA switch; no MFA is enabled yet. */
@@ -661,6 +690,19 @@ const schema = defineSchema(
       method: v.optional(v.union(v.literal("authenticator"), v.literal("sms"))),
       updatedAt: v.number(),
     }).index("by_user", ["userId"]),
+
+    /**
+     * Server-side OTP send throttle (see `convex/auth/otpThrottle.ts`).
+     *
+     * Stores ONLY the canonical phone number and the send timestamp —
+     * never the code and never the token hash. Rows outside the sliding
+     * window are pruned on every write, so the table stays bounded
+     * without needing a cron job.
+     */
+    otp_send_log: defineTable({
+      phone: v.string(),
+      at: v.number(),
+    }).index("by_phone", ["phone"]),
 
     backup_snapshots: defineTable({
       label: v.string(),
