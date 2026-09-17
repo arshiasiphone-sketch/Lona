@@ -23,6 +23,8 @@ export const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 export const OTP_WINDOW_MS = 15 * 60 * 1000;
 /** Maximum codes issued per number inside `OTP_WINDOW_MS`. */
 export const OTP_MAX_PER_WINDOW = 5;
+/** How long after a claim a `release` may still undo it. */
+export const OTP_RELEASE_GRACE_MS = 15 * 1000;
 
 export const claim = internalMutation({
   args: { phone: v.string() },
@@ -30,20 +32,16 @@ export const claim = internalMutation({
     const now = Date.now();
     const windowStart = now - OTP_WINDOW_MS;
 
-    const recent = (
-      await ctx.db
-        .query("otp_send_log")
-        .withIndex("by_phone", (q) => q.eq("phone", phone))
-        .collect()
-    ).filter((row) => row.at > windowStart);
-
-    // Prune everything outside the window (cheap: bounded by the burst cap).
-    const stale = await ctx.db
+    const rows = await ctx.db
       .query("otp_send_log")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .collect();
-    for (const row of stale) {
-      if (row.at <= windowStart) await ctx.db.delete(row._id);
+
+    // Prune everything outside the window (cheap: bounded by the burst cap).
+    const recent: { _id: unknown; at: number }[] = [];
+    for (const row of rows) {
+      if (row.at > windowStart) recent.push(row);
+      else await ctx.db.delete(row._id);
     }
 
     const last = recent.reduce(
@@ -58,6 +56,41 @@ export const claim = internalMutation({
     }
 
     await ctx.db.insert("otp_send_log", { phone, at: now });
+    return { ok: true };
+  },
+});
+
+/**
+ * Controlled retry window for a claim that never produced an SMS.
+ *
+ * If the Kavenegar call fails (transport error, provider rejection,
+ * missing configuration), the send did NOT happen — so it must not count
+ * against the number's quota and the user must not be stuck behind the
+ * 60-second cooldown for a message they never received.
+ *
+ * Safety: only the claim made a few seconds ago by THIS send request is
+ * removed. Older claims (i.e. sends that actually succeeded) are left
+ * alone, and the mutation is internal — reachable only by the auth
+ * provider. A client can therefore never invalidate a code that was
+ * genuinely delivered, nor reset its burst window.
+ */
+export const release = internalMutation({
+  args: { phone: v.string() },
+  handler: async (ctx, { phone }): Promise<{ ok: true }> => {
+    const now = Date.now();
+    const rows = await ctx.db
+      .query("otp_send_log")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
+      .collect();
+
+    const latest = rows.reduce<typeof rows[number] | null>(
+      (newest, row) => (!newest || row.at > newest.at ? row : newest),
+      null,
+    );
+
+    if (latest && now - latest.at <= OTP_RELEASE_GRACE_MS) {
+      await ctx.db.delete(latest._id);
+    }
     return { ok: true };
   },
 });

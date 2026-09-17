@@ -33,7 +33,7 @@ import { PHONE_AUTH_ERRORS } from "./phoneErrors";
  * Codes live for five minutes. Short lifetime + Kavenegar's own per-number
  * throttling keeps brute force impractical for a 6-digit code.
  */
-const OTP_MAX_AGE_SECONDS = 60 * 5;
+export const OTP_MAX_AGE_SECONDS = 60 * 5;
 
 /** Cryptographically secure 6-digit code (no Math.random). */
 function generateSixDigitCode(): string {
@@ -121,6 +121,17 @@ export const phoneOtp = Phone({
         token,
       });
     } catch (error) {
+      // A claim whose send never produced an SMS must not count against
+      // the number's quota, and the user must not be stuck behind the
+      // 60-second cooldown for a message they never received. The release
+      // window is intentionally narrow and only removes THIS send's claim,
+      // so a genuinely delivered code is never undone.
+      await ctx
+        .runMutation(internal.auth.otpThrottle.release, { phone })
+        .catch(() => {
+          // Releasing is a courtesy — never mask the real failure.
+        });
+
       // Map every transport/configuration failure to a controlled,
       // secret-free error. Nothing about the API key, the template, the
       // token or the provider payload leaves the server.

@@ -41,6 +41,8 @@ import { PHONE_AUTH_ERRORS } from "@/convex/auth/phoneErrors";
 const OTP_LENGTH = 6;
 /** Mirrors the backend window in `convex/auth/otpThrottle.ts`. */
 const RESEND_COOLDOWN_SECONDS = 60;
+/** Mirrors the provider's `maxAge` in `convex/auth/phoneOtp.ts`. */
+const CODE_TTL_SECONDS = 5 * 60;
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -115,6 +117,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [error, setError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
+  const [codeTtl, setCodeTtl] = useState(0);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -129,6 +132,13 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     const timer = window.setTimeout(() => setCooldown(cooldown - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [cooldown]);
+
+  // Code validity countdown (advisory; Convex Auth enforces the real TTL).
+  useEffect(() => {
+    if (codeTtl <= 0) return;
+    const timer = window.setTimeout(() => setCodeTtl(codeTtl - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [codeTtl]);
 
   const requestCode = async () => {
     const normalized = normalizeIranianMobile(phoneInput);
@@ -145,6 +155,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setOtp("");
       setStep("code");
       setCooldown(RESEND_COOLDOWN_SECONDS);
+      setCodeTtl(CODE_TTL_SECONDS);
     } catch (signInError) {
       setError(authErrorMessage(signInError, "phone"));
     } finally {
@@ -162,6 +173,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     } catch (verifyError) {
       setError(authErrorMessage(verifyError, "code"));
       setOtp("");
+      setCodeTtl(0);
     } finally {
       setIsLoading(false);
     }
@@ -172,6 +184,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setOtp("");
     setError(null);
     setCooldown(0);
+    setCodeTtl(0);
   };
 
   const handlePhoneSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -187,6 +200,14 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   const resendDisabled = isLoading || cooldown > 0;
+
+  // Auto-submit once all six digits are entered. `otp.length !== 6` guards
+  // against auto-submitting while a fresh code is still being typed.
+  useEffect(() => {
+    if (step !== "code" || otp.length !== OTP_LENGTH || isLoading) return;
+    void verifyCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- verifyCode reads only otp/canonicalPhone/isLoading
+  }, [otp, step, isLoading]);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -318,9 +339,10 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                       <InputOTP
                         id="lona-otp"
                         value={otp}
-                        onChange={(value) =>
-                          setOtp(toAsciiDigits(value).slice(0, OTP_LENGTH))
-                        }
+                        onChange={(value) => {
+                          setError(null);
+                          setOtp(toAsciiDigits(value).slice(0, OTP_LENGTH));
+                        }}
                         maxLength={OTP_LENGTH}
                         pattern="[0-9\u06F0-\u06F9]*"
                         inputMode="numeric"
@@ -361,6 +383,18 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </Button>
 
                   <div className="flex flex-col items-center gap-2">
+                    <p
+                      className="text-[11px] text-ink-muted tabular-nums"
+                      aria-live="off"
+                    >
+                      {codeTtl > 0
+                        ? `اعتبار کد: ${toPersianDigits(
+                            `${String(Math.floor(codeTtl / 60)).padStart(2, "0")}:${String(
+                              codeTtl % 60
+                            ).padStart(2, "0")}`
+                          )}`
+                        : "کد تأیید منقضی شده است. لطفاً کد جدید دریافت کنید."}
+                    </p>
                     <button
                       type="button"
                       onClick={() => void requestCode()}

@@ -135,6 +135,30 @@ describe("display helpers never leak more than intended", () => {
   });
 });
 
+describe("OTP throttle constants — server policy is the source of truth", () => {
+  test("backend policy matches the documented contract", async () => {
+    // Import the real constants so a silent policy drift fails CI.
+    const throttle = await import("../src/convex/auth/otpThrottle");
+    expect(throttle.OTP_RESEND_COOLDOWN_MS).toBe(60_000);
+    expect(throttle.OTP_WINDOW_MS).toBe(15 * 60_000);
+    expect(throttle.OTP_MAX_PER_WINDOW).toBe(5);
+    // A failed send may be released only within a narrow window — long
+    // enough to cover the Kavenegar timeout, far shorter than the 60s
+    // cooldown, so a delivered code can never be retro-actively released.
+    expect(throttle.OTP_RELEASE_GRACE_MS).toBeLessThan(
+      throttle.OTP_RESEND_COOLDOWN_MS,
+    );
+    expect(throttle.OTP_RELEASE_GRACE_MS).toBeGreaterThan(0);
+  });
+
+  test("the provider TTL matches the UI countdown", async () => {
+    const { OTP_MAX_AGE_SECONDS } = await import(
+      "../src/convex/auth/phoneOtp"
+    );
+    expect(OTP_MAX_AGE_SECONDS).toBe(5 * 60);
+  });
+});
+
 describe("phone auth error contract", () => {
   test("codes are unique and stable — the browser maps them verbatim", () => {
     const codes = Object.values(PHONE_AUTH_ERRORS);
