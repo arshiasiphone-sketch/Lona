@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+
+# Kavenegar web-push service worker
+Allow: /kvn-push-sw.js
 Disallow: /admin
 Disallow: /cart
 Disallow: /checkout
