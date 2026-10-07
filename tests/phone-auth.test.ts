@@ -15,6 +15,7 @@
  * CommonJS package bound to Node's `https` module, and the only thing
  * the rest of the app relies on is the adapter's error contract
  * (`KAVENEGAR_ERRORS`) — which is asserted below without any network.
+ * `tests/kavenegar-adapter.test.ts` owns the adapter's own behaviour.
  */
 import { describe, expect, test } from "bun:test";
 import {
@@ -168,6 +169,7 @@ describe("phone auth error contract", () => {
       "PHONE_MISMATCH",
       "SMS_UNAVAILABLE",
       "SMS_NOT_CONFIGURED",
+      "SMS_NOT_READY",
       "OTP_RATE_LIMITED",
     ]);
   });
@@ -178,3 +180,4 @@ describe("phone auth error contract", () => {
     }
   });
 });
+

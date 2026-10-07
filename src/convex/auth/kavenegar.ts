@@ -64,6 +64,21 @@ const KAVENEGAR_TIMEOUT_MS = 15_000;
 export const KAVENEGAR_ERRORS = {
   notConfigured: "KAVENEGAR_NOT_CONFIGURED",
   invalidRecipient: "KAVENEGAR_INVALID_RECIPIENT",
+  /**
+   * Kavenegar 426 — «استفاده از این متد نیازمند سرویس پیشرفته می باشد»:
+   * the account may not call `verify/lookup` at all yet. This is an
+   * account setting on Kavenegar's side (activating the verification /
+   * advanced service for this API key); no code change can work around
+   * it, so it is reported as its own cause instead of a generic failure.
+   */
+  serviceNotEnabled: "KAVENEGAR_SERVICE_NOT_ENABLED",
+  /**
+   * Kavenegar 424 — «الگوی مورد نظر پیدا نشد»: the configured template
+   * does not exist (or its pattern is not approved yet).
+   * `KAVENEGAR_OTP_TEMPLATE` must hold the template NAME exactly as the
+   * Kavenegar panel spells it, not an internal numeric id.
+   */
+  templateNotFound: "KAVENEGAR_TEMPLATE_NOT_FOUND",
   rejected: "KAVENEGAR_REJECTED",
   unreachable: "KAVENEGAR_UNREACHABLE",
 } as const;
@@ -71,14 +86,46 @@ export const KAVENEGAR_ERRORS = {
 export type KavenegarErrorCode =
   (typeof KAVENEGAR_ERRORS)[keyof typeof KAVENEGAR_ERRORS];
 
-/** Thrown for every failure path so callers can map a safe Persian message. */
+/**
+ * Thrown for every failure path so callers can map a safe Persian message.
+ *
+ * `code` is ALSO embedded in the message on purpose: Convex carries a
+ * thrown error across the V8 ← Node runtime hop by message (and stack)
+ * only, so a custom property would not survive `ctx.runAction(...)`. The
+ * property is kept as well for in-process callers and tests.
+ */
 export class KavenegarError extends Error {
   readonly code: KavenegarErrorCode;
+  /** Kavenegar's numeric `return.status`, when the call reached them. */
+  readonly status?: number;
 
-  constructor(code: KavenegarErrorCode) {
-    super(code);
+  constructor(code: KavenegarErrorCode, status?: number) {
+    super(status === undefined ? code : `${code} (Kavenegar status ${status})`);
     this.name = "KavenegarError";
     this.code = code;
+    this.status = status;
+  }
+}
+
+/**
+ * Translate Kavenegar's `return.status` into a stable adapter code.
+ *
+ * Only the causes the login flow can act on are distinguished; everything
+ * else collapses into `rejected` so the contract stays small. Statuses
+ * come from Kavenegar's documented table:
+ *   411 invalid receptor · 424 template not found · 426 advanced service
+ *   required · 401/403 account inactive / wrong API key · 418 no credit.
+ */
+function codeForStatus(status: number): KavenegarErrorCode {
+  switch (status) {
+    case 426:
+      return KAVENEGAR_ERRORS.serviceNotEnabled;
+    case 424:
+      return KAVENEGAR_ERRORS.templateNotFound;
+    case 411:
+      return KAVENEGAR_ERRORS.invalidRecipient;
+    default:
+      return KAVENEGAR_ERRORS.rejected;
   }
 }
 
@@ -126,7 +173,8 @@ function verifyLookup(
           new KavenegarError(
             status === undefined
               ? KAVENEGAR_ERRORS.unreachable
-              : KAVENEGAR_ERRORS.rejected,
+              : codeForStatus(status),
+            status,
           ),
         );
       });

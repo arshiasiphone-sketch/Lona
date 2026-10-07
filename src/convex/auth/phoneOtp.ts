@@ -30,6 +30,18 @@ import { normalizeIranianMobile } from "./phoneNumber";
 import { PHONE_AUTH_ERRORS } from "./phoneErrors";
 
 /**
+ * Mirror of the Kavenegar adapter's failure codes that this provider acts
+ * on (`convex/auth/kavenegar.ts`).
+ *
+ * They are spelled out as literals rather than imported because
+ * `kavenegar.ts` is a `"use node"` module: a V8 file may not import it,
+ * and the adapter is reached through `ctx.runAction` instead.
+ */
+const KAVENEGAR_NOT_CONFIGURED = "KAVENEGAR_NOT_CONFIGURED";
+const KAVENEGAR_SERVICE_NOT_ENABLED = "KAVENEGAR_SERVICE_NOT_ENABLED";
+const KAVENEGAR_TEMPLATE_NOT_FOUND = "KAVENEGAR_TEMPLATE_NOT_FOUND";
+
+/**
  * Codes live for five minutes. Short lifetime + Kavenegar's own per-number
  * throttling keeps brute force impractical for a 6-digit code.
  */
@@ -135,9 +147,22 @@ export const phoneOtp = Phone({
       // Map every transport/configuration failure to a controlled,
       // secret-free error. Nothing about the API key, the template, the
       // token or the provider payload leaves the server.
-      const code = (error as { code?: string } | null)?.code;
-      if (code === "KAVENEGAR_NOT_CONFIGURED") {
+      // Convex re-throws across the V8 ← Node hop by message only, so the
+      // adapter's code is matched in the message; the property is still
+      // read because it is present for in-process callers.
+      const detail = `${(error as { code?: string } | null)?.code ?? ""} ${
+        (error as Error | null)?.message ?? ""
+      }`;
+      if (detail.includes(KAVENEGAR_NOT_CONFIGURED)) {
         throw new Error(PHONE_AUTH_ERRORS.smsNotConfigured);
+      }
+      if (
+        detail.includes(KAVENEGAR_SERVICE_NOT_ENABLED) ||
+        detail.includes(KAVENEGAR_TEMPLATE_NOT_FOUND)
+      ) {
+        // Distinct from a transient outage: retrying cannot help until the
+        // Kavenegar account/template is fixed by whoever owns it.
+        throw new Error(PHONE_AUTH_ERRORS.smsNotReady);
       }
       throw new Error(PHONE_AUTH_ERRORS.smsUnavailable);
     }

@@ -145,11 +145,46 @@ describe("Kavenegar adapter — VerifyLookup request shape", () => {
 });
 
 describe("Kavenegar adapter — failure mapping", () => {
-  test("a non-200 provider status becomes KAVENEGAR_REJECTED", async () => {
-    behaviour = { kind: "status", status: 424 };
+  test("the causes a deployment can act on get their own code", async () => {
+    // Statuses taken from Kavenegar's documented table. Keeping these
+    // apart is what lets the login flow tell "retry in a minute" apart
+    // from "this account cannot use OTP at all".
+    const cases: [number, string][] = [
+      [426, KAVENEGAR_ERRORS.serviceNotEnabled],
+      [424, KAVENEGAR_ERRORS.templateNotFound],
+      [411, KAVENEGAR_ERRORS.invalidRecipient],
+    ];
+
+    for (const [status, code] of cases) {
+      behaviour = { kind: "status", status };
+      const error = await callSendOtp({
+        phone: "09121234567",
+        token: "123456",
+      }).catch((e: unknown) => e as Error & { code: string });
+      expect(error.code).toBe(code);
+    }
+  });
+
+  test("any other rejection collapses to KAVENEGAR_REJECTED", async () => {
+    behaviour = { kind: "status", status: 418 }; // credit exhausted
     await expect(
       callSendOtp({ phone: "09121234567", token: "123456" }),
     ).rejects.toMatchObject({ code: KAVENEGAR_ERRORS.rejected });
+  });
+
+  test("the code and status ride in the message, so they survive the V8 ← Node hop", async () => {
+    // Convex re-throws an error thrown inside this `"use node"` action to
+    // the V8 provider by message (and stack) only. If the code were not
+    // part of the message, every Kavenegar failure would silently degrade
+    // to the generic SMS_UNAVAILABLE in the auth layer.
+    behaviour = { kind: "status", status: 426 };
+    const error = await callSendOtp({
+      phone: "09121234567",
+      token: "123456",
+    }).catch((e: unknown) => e as Error & { code: string });
+
+    expect(error.message).toContain(KAVENEGAR_ERRORS.serviceNotEnabled);
+    expect(error.message).toContain("426");
   });
 
   test("a transport failure (status undefined) becomes KAVENEGAR_UNREACHABLE", async () => {
@@ -169,6 +204,8 @@ describe("Kavenegar adapter — failure mapping", () => {
     const surface = `${error.name}:${error.code}:${error.message}`;
     expect(surface).not.toContain("test-key-not-real");
     expect(surface).not.toContain("042197");
+    // Kavenegar's own Persian text is dropped; only our code and their
+    // numeric status may appear.
     expect(surface).not.toContain("سرویس");
     expect(error.code).toBe(KAVENEGAR_ERRORS.rejected);
   });

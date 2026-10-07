@@ -24,6 +24,14 @@ export const PHONE_AUTH_ERRORS = {
   smsUnavailable: "SMS_UNAVAILABLE",
   /** `KAVENEGAR_API_KEY` / `KAVENEGAR_OTP_TEMPLATE` missing in Convex. */
   smsNotConfigured: "SMS_NOT_CONFIGURED",
+  /**
+   * The Kavenegar account/template is not usable for OTP yet (Kavenegar
+   * 426 — verification service not activated for this account, or 424 —
+   * the configured template name does not exist). Both are deployment
+   * configuration problems that retrying cannot fix, so the customer is
+   * told the SMS service is not ready instead of being asked to retry.
+   */
+  smsNotReady: "SMS_NOT_READY",
   /** Server-side resend throttle rejected this send. */
   rateLimited: "OTP_RATE_LIMITED",
 } as const;

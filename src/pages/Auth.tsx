@@ -83,6 +83,11 @@ function authErrorMessage(error: unknown, stage: "phone" | "code"): string {
   if (message.includes(PHONE_AUTH_ERRORS.smsNotConfigured)) {
     return "سامانه پیامک در حال حاضر در دسترس نیست. لطفاً بعداً تلاش کنید.";
   }
+  // Configuration problem on the SMS side — retrying immediately would
+  // only loop, so the copy says so instead of "try again".
+  if (message.includes(PHONE_AUTH_ERRORS.smsNotReady)) {
+    return "سامانه پیامک هنوز فعال نشده است. لطفاً بعداً تلاش کنید یا با پشتیبانی تماس بگیرید.";
+  }
   if (message.includes(PHONE_AUTH_ERRORS.smsUnavailable)) {
     return "ارسال کد تأیید انجام نشد. لطفاً چند لحظه بعد دوباره تلاش کنید.";
   }
