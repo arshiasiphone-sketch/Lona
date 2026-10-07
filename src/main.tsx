@@ -203,7 +203,28 @@ createRoot(document.getElementById("root")!).render(
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
-      <ConvexAuthProvider client={convex}>
+      {/*
+        Session persistence — standard Convex Auth behaviour, pinned
+        explicitly here so it cannot regress silently:
+
+          • tokens live in `localStorage` (namespaced by the Convex
+            deployment URL) and the short-lived JWT is refreshed in the
+            background, so a signed-in visitor stays signed in across
+            reloads and browser restarts and does NOT need a new SMS OTP.
+            A new OTP is only required on a new device/browser, cleared
+            storage, after signing out, or after the session expires;
+          • the server-side session lasts 30 days (library default; tunable
+            with the `AUTH_SESSION_TOTAL_DURATION_MS` Convex env var);
+          • `signOut()` deletes the session and every refresh token server
+            side AND clears the stored tokens client side, so signing out
+            always demands a fresh OTP again.
+      */}
+      <ConvexAuthProvider
+        client={convex}
+        storage={
+          typeof window === "undefined" ? undefined : window.localStorage
+        }
+      >
         <CartProvider>
           <WishlistProvider>
             <RecentlyViewedProvider>
