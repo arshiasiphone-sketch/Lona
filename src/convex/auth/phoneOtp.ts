@@ -62,13 +62,17 @@ export const phoneOtp = Phone({
   maxAge: OTP_MAX_AGE_SECONDS,
 
   /**
-   * Runs first, on the server, for both the send and the verify call.
+   * Declared for forward compatibility — the installed version of
+   * `@convex-dev/auth` (grepped end to end) never calls it, so it is NOT
+   * what protects the account space and must not be relied on.
    *
-   * This is the single normalization choke point: whatever the browser
-   * submits (Persian digits, `0912…`, `0098…`, spaced input) becomes the
-   * canonical `+98…` value that is stored as `providerAccountId` and sent
-   * to Kavenegar. Invalid input throws before a code is created, so an
-   * unusable identifier never reaches the SMS quota or the throttle table.
+   * Consequence worth knowing: the library stores the raw client value
+   * verbatim as `authAccounts.providerAccountId`. Canonical form is
+   * therefore guaranteed by (a) the login/admin clients, which normalize
+   * with `convex/auth/phoneNumber.ts` before calling `signIn`, and (b)
+   * `sendVerificationRequest` below, which re-validates the identifier and
+   * throws before a code is created — so an unusable number never reaches
+   * the SMS quota or the throttle table.
    */
   normalizeIdentifier: (identifier: string) => {
     const phone = normalizeIranianMobile(identifier);
@@ -83,13 +87,13 @@ export const phoneOtp = Phone({
    * guarantees "no code without a code request", so the remaining job is
    * to prove the submitted phone owns the pending code.
    *
-   * `normalizeIdentifier` has already canonicalized both the submitted
-   * `phone` and the stored `providerAccountId`, so this is a strict
-   * equality check between two canonical values. A code requested for one
-   * number therefore cannot be redeemed for another, and because the
-   * 6-digit token is shorter than the library's 24-character
-   * self-contained threshold, the `phone` argument is mandatory — a bare
-   * token is never sufficient on its own.
+   * `account.providerAccountId` is the identifier the code was requested
+   * with, stored verbatim (the library does not canonicalize — see
+   * `normalizeIdentifier` above), so the submitted value is normalized here
+   * and then compared exactly. A code requested for one number therefore
+   * cannot be redeemed for another, and because the 6-digit token is shorter
+   * than the library's 24-character self-contained threshold, the `phone`
+   * argument is mandatory — a bare token is never sufficient on its own.
    */
   authorize: async (params, account) => {
     const raw = params.phone;
