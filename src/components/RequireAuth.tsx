@@ -1,22 +1,25 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
+import {
+  AuthGateFallback,
+  AuthGateSpinner,
+  useAuthStuckGuard,
+} from "@/components/AuthGateFallback";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
+  const timedOut = useAuthStuckGuard(isLoading);
+  const returnTo = `${location.pathname}${location.search}`;
 
   if (isLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </main>
-    );
+    // Never spin forever: stale sessions are auto-recovered (see the
+    // guard), and a healthy-but-unreachable session gets a retry UI.
+    return timedOut ? <AuthGateFallback returnTo={returnTo} /> : <AuthGateSpinner />;
   }
 
   if (!isAuthenticated) {
-    const returnTo = `${location.pathname}${location.search}`;
     return (
       <Navigate
         to={`/auth?returnTo=${encodeURIComponent(returnTo)}`}

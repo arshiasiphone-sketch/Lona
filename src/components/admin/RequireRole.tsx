@@ -15,7 +15,11 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission, type AdminPermission } from "@/lib/data/permissions";
-import { Loader2 } from "lucide-react";
+import {
+  AuthGateFallback,
+  AuthGateSpinner,
+  useAuthStuckGuard,
+} from "@/components/AuthGateFallback";
 
 interface RequireRoleProps {
   permission?: AdminPermission;
@@ -24,18 +28,19 @@ interface RequireRoleProps {
 export function RequireRole({ permission }: RequireRoleProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+  const timedOut = useAuthStuckGuard(isLoading);
+  const returnTo = location.pathname + location.search;
 
   if (isLoading) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-canvas">
-        <Loader2 className="h-5 w-5 animate-spin text-ink-soft" />
-      </div>
+    return timedOut ? (
+      <AuthGateFallback returnTo={returnTo} />
+    ) : (
+      <AuthGateSpinner />
     );
   }
 
   if (!isAuthenticated || !user) {
-    const returnTo = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/auth?returnTo=${returnTo}`} replace />;
+    return <Navigate to={`/auth?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   if (user.adminStatus === "disabled") {
