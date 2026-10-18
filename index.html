@@ -3,8 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Enamad ownership verification (reg2.enamad.ir) — keep this first in
-         <head> as a static tag so any crawler sees it without running JS. -->
-    <meta name="enamad" content="75440596" />
+         <head> as a static tag so any crawler sees it without running JS.
+         The tag must match the panel's string exactly (no space before />).
+         Variant with a space, for exact-substring crawlers:
+         <meta name="enamad" content="75440596" /> -->
+    <meta name="enamad" content="75440596"/>
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

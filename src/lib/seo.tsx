@@ -28,6 +28,9 @@ export interface PageMeta {
 }
 
 const BRAND = "لونا";
+// TEMP (Enamad title verification, reg2.enamad.ir) — remove this constant and
+// restore the two `fullTitle` usages below after the panel approves this step.
+const TEMP_ENAMAD_TITLE = "75440596";
 const SITE_URL = typeof window !== "undefined" ? window.location.origin : "";
 const DEFAULT_IMAGE = `${SITE_URL}/logo.svg`;
 
@@ -59,7 +62,8 @@ function removeStaleMeta(ids: string[]) {
 export function usePageMeta(meta: PageMeta) {
   useEffect(() => {
     const fullTitle = meta.title.includes(BRAND) ? meta.title : `${BRAND} | ${meta.title}`;
-    document.title = fullTitle;
+    // TEMP: Enamad title check — must stay `TEMP_ENAMAD_TITLE` until approved.
+    document.title = TEMP_ENAMAD_TITLE;
 
     const ids: string[] = [];
 
@@ -68,7 +72,7 @@ export function usePageMeta(meta: PageMeta) {
     ids.push("desc");
 
     // Open Graph
-    setMeta("og:title", "og:title", fullTitle, true);
+    setMeta("og:title", "og:title", TEMP_ENAMAD_TITLE, true);
     setMeta("og:description", "og:description", meta.description, true);
     setMeta("og:type", "og:type", meta.ogType ?? "website", true);
     setMeta("og:image", "og:image", meta.ogImage ?? DEFAULT_IMAGE, true);
