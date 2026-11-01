@@ -49,7 +49,14 @@ import {
   type Testimonial as StaticTestimonial,
   type Order as StaticOrder,
   mockOrders as staticMockOrders,
+  // Export the static data for fallback
+  products,
+  editorials,
+  getProduct,
 } from "@/data/catalog";
+
+// Static catalog data for fallback when Convex is unavailable
+import { LONA_PRODUCTS } from "@/data/lona-catalog";
 
 /* ────────────────────────────────────────────────────────────────
  * Re-exports — types stay where the locked UI already imports them.
@@ -172,7 +179,10 @@ export interface UseProductsArgs {
   limit?: number;
 }
 
-/** Reactive list. Returns `undefined` while Convex is still loading. */
+/**
+ * Reactive list. Returns static fallback data if Convex is unavailable.
+ * This ensures the site renders even when the backend is down.
+ */
 export function useProducts(args: UseProductsArgs = {}): Product[] | undefined {
   const { category, limit } = args;
 
@@ -214,10 +224,32 @@ export function useProducts(args: UseProductsArgs = {}): Product[] | undefined {
     [picked]
   );
 
+  // Fall back to static data when Convex is unavailable
+  const fallback = useMemo(() => {
+    if (adapted) return undefined;
+    
+    let list: Product[] = products;
+    
+    if (args.featured) {
+      const featuredSlugs = LONA_PRODUCTS.filter(p => p.featured).map(p => p.slug);
+      list = products.filter(p => featuredSlugs.includes(p.slug));
+    } else if (args.trending) {
+      const trendingSlugs = LONA_PRODUCTS.filter(p => p.trending).map(p => p.slug);
+      list = products.filter(p => trendingSlugs.includes(p.slug));
+    } else if (args.editorial) {
+      const editorialSlugs = LONA_PRODUCTS.filter(p => p.editorial).map(p => p.slug);
+      list = products.filter(p => editorialSlugs.includes(p.slug));
+    } else if (category) {
+      list = products.filter(p => p.category === category);
+    }
+    
+    return limit ? list.slice(0, limit) : list;
+  }, [adapted, args.featured, args.trending, args.editorial, category, limit]);
+
   return useMemo(() => {
-    if (!adapted) return undefined;
-    return limit ? adapted.slice(0, limit) : adapted;
-  }, [adapted, limit]);
+    if (adapted) return limit ? adapted.slice(0, limit) : adapted;
+    return fallback;
+  }, [adapted, fallback, limit]);
 }
 
 export function useProduct(slugOrId: string | undefined): Product | null | undefined {
@@ -238,7 +270,17 @@ export function useProduct(slugOrId: string | undefined): Product | null | undef
     return bySlug ? adaptProduct(bySlug) : null;
   }, [bySlug]);
 
-  return live;
+  // Fall back to static product when Convex is unavailable
+  const fallback = useMemo(() => {
+    if (live !== undefined) return undefined;
+    if (!slug) return undefined;
+    return getProduct(slug) ?? null;
+  }, [live, slug]);
+
+  return useMemo(() => {
+    if (live !== undefined) return live;
+    return fallback;
+  }, [live, fallback]);
 }
 
 export function useFeaturedProducts(limit?: number): Product[] | undefined {
@@ -303,7 +345,8 @@ export function useSearchProducts({
 
 export function useEditorials(): Editorial[] | undefined {
   const remote = useQuery(api.editorials.listPublished, {});
-  return useMemo(
+  
+  const adapted = useMemo(
     () =>
       remote
         ? remote
@@ -312,6 +355,17 @@ export function useEditorials(): Editorial[] | undefined {
         : undefined,
     [remote]
   );
+  
+  // Fall back to static editorials when Convex is unavailable
+  const fallback = useMemo(() => {
+    if (adapted) return undefined;
+    return editorials.sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+  }, [adapted]);
+  
+  return useMemo(() => {
+    if (adapted) return adapted;
+    return fallback;
+  }, [adapted, fallback]);
 }
 
 export function useEditorial(
@@ -327,7 +381,17 @@ export function useEditorial(
     return remote ? adaptEditorial(remote) : null;
   }, [remote]);
 
-  return live;
+  // Fall back to static editorial when Convex is unavailable
+  const fallback = useMemo(() => {
+    if (live !== undefined) return undefined;
+    if (!slug) return undefined;
+    return editorials.find(e => e.slug === slug) ?? null;
+  }, [live, slug]);
+
+  return useMemo(() => {
+    if (live !== undefined) return live;
+    return fallback;
+  }, [live, fallback]);
 }
 
 /* ────────────────────────────────────────────────────────────────
