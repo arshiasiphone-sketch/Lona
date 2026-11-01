@@ -172,7 +172,10 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// Use a default empty string if VITE_CONVEX_URL is not set
+// The app will use static fallback data when Convex is unavailable
+const convexUrl = import.meta.env.VITE_CONVEX_URL || "";
+const convex = new ConvexReactClient(convexUrl);
 
 function RouteSyncer() {
   const location = useLocation();
