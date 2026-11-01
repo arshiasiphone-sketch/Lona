@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "node serve.mjs",
     "build": "tsc -b && vite build",
     "build:frontend": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
